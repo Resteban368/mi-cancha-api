@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
-import { PlusIcon, SearchIcon } from '../components/icons';
+import { Link } from 'react-router';
+import { ChevronRightIcon, PlusIcon, SearchIcon } from '../components/icons';
 import {
   Badge,
   Button,
@@ -117,13 +118,18 @@ export function ClientsPage() {
                     <Th align="right">Canchas</Th>
                     <Th>Estado</Th>
                     <Th>Alta</Th>
+                    <Th>
+                      <span className="sr-only">Ver ficha</span>
+                    </Th>
                   </tr>
                 </thead>
                 <tbody>
                   {clients.data.items.map((client) => (
                     <tr key={client.id}>
                       <Td>
-                        <p className="font-medium">{client.name}</p>
+                        <Link to={client.id} className="font-medium hover:text-accent hover:underline">
+                          {client.name}
+                        </Link>
                         <p className="text-xs text-fg-3">{client.neighborhood}</p>
                       </Td>
                       <Td>
@@ -165,6 +171,15 @@ export function ClientsPage() {
                         </div>
                       </Td>
                       <Td className="whitespace-nowrap text-fg-2">{formatDate(client.createdAt)}</Td>
+                      <Td align="right">
+                        <Link
+                          to={client.id}
+                          aria-label={`Ver ficha de ${client.name}`}
+                          className="inline-flex items-center gap-1 whitespace-nowrap rounded-lg px-2 py-1 text-sm font-medium text-accent hover:bg-accent-soft"
+                        >
+                          Ver ficha <ChevronRightIcon width={16} height={16} />
+                        </Link>
+                      </Td>
                     </tr>
                   ))}
                 </tbody>

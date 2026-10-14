@@ -10,7 +10,9 @@ type ModelMock = Record<
   | 'updateMany'
   | 'count'
   | 'delete'
-  | 'groupBy',
+  | 'upsert'
+  | 'groupBy'
+  | 'aggregate',
   Mock
 >;
 
@@ -25,7 +27,9 @@ function modelMock(): ModelMock {
     updateMany: vi.fn(),
     count: vi.fn(),
     delete: vi.fn(),
+    upsert: vi.fn(),
     groupBy: vi.fn(),
+    aggregate: vi.fn(),
   };
 }
 
@@ -41,6 +45,7 @@ export function createPrismaMock() {
     subscription: modelMock(),
     amenity: modelMock(),
     paymentMethod: modelMock(),
+    businessProfileImage: modelMock(),
     $queryRaw: vi.fn(),
     $transaction: vi.fn(),
   };

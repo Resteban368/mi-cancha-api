@@ -58,6 +58,18 @@ export const CheckIcon = (p: IconProps) => (
 export const AlertIcon = (p: IconProps) => (
   <Icon {...p}><circle cx="12" cy="12" r="9" /><path d="M12 7.5v5.5" /><circle cx="12" cy="16.5" r=".6" fill="currentColor" /></Icon>
 );
+export const ArrowLeftIcon = (p: IconProps) => (
+  <Icon {...p}><path d="M19 12H5" /><path d="M11 6l-6 6 6 6" /></Icon>
+);
+export const ChevronRightIcon = (p: IconProps) => (
+  <Icon {...p}><path d="M9 6l6 6-6 6" /></Icon>
+);
+export const ImageIcon = (p: IconProps) => (
+  <Icon {...p}><rect x="3" y="4" width="18" height="16" rx="2" /><circle cx="9" cy="10" r="2" /><path d="M21 16l-5-5-9 9" /></Icon>
+);
+export const MapPinIcon = (p: IconProps) => (
+  <Icon {...p}><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></Icon>
+);
 
 /** Ícono de la app (assets/logo.png). Las esquinas se redondean como ícono de app. */
 export function BrandMark({ size = 32 }: { size?: number }) {

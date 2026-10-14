@@ -42,6 +42,29 @@ export class EnvironmentVariables {
   @IsOptional()
   @IsString()
   APPLE_CLIENT_IDS?: string;
+
+  /** Cuenta de Koofr donde se guardan las imágenes (correo de inicio de sesión). */
+  @IsOptional()
+  @IsString()
+  KOOFR_EMAIL?: string;
+
+  /** Contraseña de aplicación de Koofr (no la contraseña de la cuenta). */
+  @IsOptional()
+  @IsString()
+  KOOFR_APP_PASSWORD?: string;
+
+  /** Raíz WebDAV de Koofr. */
+  @IsString()
+  KOOFR_WEBDAV_URL: string = 'https://app.koofr.net/dav/Koofr';
+
+  /** Carpeta raíz de la app dentro del almacenamiento. */
+  @Matches(/^[\w-]+(\/[\w-]+)*$/)
+  STORAGE_ROOT: string = 'mi-cancha';
+
+  /** URL pública de la API para armar enlaces absolutos (p. ej. https://mi-cancha-api.vercel.app). */
+  @IsOptional()
+  @IsString()
+  PUBLIC_API_URL?: string;
 }
 
 export function validateEnv(

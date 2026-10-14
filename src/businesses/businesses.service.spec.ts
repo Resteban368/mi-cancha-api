@@ -1,4 +1,5 @@
 import { NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import {
   createPrismaMock,
@@ -16,7 +17,12 @@ const dto = {
 
 /** Simula lo que devuelve Prisma con `include: { amenities }`. */
 function storedBusiness(data: Record<string, unknown>) {
-  return { id: 'biz-1', ...data, amenities: [{ code: 'WIFI' }] };
+  return {
+    id: 'biz-1',
+    ...data,
+    amenities: [{ code: 'WIFI' }],
+    profileImage: null,
+  };
 }
 
 describe('BusinessesService', () => {
@@ -35,6 +41,12 @@ describe('BusinessesService', () => {
         BusinessesService,
         { provide: PrismaService, useValue: prisma },
         { provide: CatalogsService, useValue: catalogs },
+        {
+          provide: ConfigService,
+          useValue: new ConfigService({
+            PUBLIC_API_URL: 'https://api.test/',
+          }),
+        },
       ],
     }).compile();
     service = moduleRef.get(BusinessesService);
@@ -47,6 +59,19 @@ describe('BusinessesService', () => {
     );
     await expect(service.requireBusinessId('owner-1')).rejects.toThrow(
       NotFoundException,
+    );
+  });
+
+  it('arma la URL pública de la foto de portada', async () => {
+    prisma.business.findUnique.mockResolvedValue({
+      ...storedBusiness(dto),
+      profileImage: { id: 'img-1' },
+    });
+
+    const result = await service.findMine('owner-1');
+
+    expect(result.imageUrl).toBe(
+      'https://api.test/api/v1/images/business-profile/img-1',
     );
   });
 
@@ -75,6 +100,7 @@ describe('BusinessesService', () => {
       }),
     });
     expect(result.amenities).toEqual(['WIFI']);
+    expect(result.imageUrl).toBeNull();
   });
 
   it('al actualizar reemplaza los servicios y no toca la suscripción', async () => {

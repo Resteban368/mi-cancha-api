@@ -3,12 +3,19 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import bcrypt from 'bcryptjs';
 import { Page, pageArgs, PageQueryDto } from '../common/dto/page.dto.js';
+import { businessImageUrl, publicApiUrl } from '../common/public-url.js';
 import type { Prisma } from '../generated/prisma/client.js';
-import { UserRole } from '../generated/prisma/enums.js';
+import {
+  PaymentStatus,
+  ReservationStatus,
+  UserRole,
+} from '../generated/prisma/enums.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
+  ClientDetailDto,
   ClientDto,
   CreateClientDto,
   UpdateSubscriptionDto,
@@ -16,6 +23,7 @@ import {
 
 const BCRYPT_ROUNDS = 12;
 const SUBSCRIPTION_PERIOD_DAYS = 30;
+const RECENT_ITEMS = 10;
 
 const clientInclude = {
   owner: { select: { id: true, displayName: true, email: true, phone: true } },
@@ -29,9 +37,51 @@ type ClientRecord = Prisma.BusinessGetPayload<{
   include: typeof clientInclude;
 }>;
 
+const detailInclude = {
+  owner: {
+    select: {
+      id: true,
+      displayName: true,
+      email: true,
+      phone: true,
+      verified: true,
+      createdAt: true,
+    },
+  },
+  amenities: {
+    select: { code: true, name: true },
+    orderBy: { sortOrder: 'asc' },
+  },
+  profileImage: { select: { id: true } },
+  subscription: {
+    include: {
+      plan: {
+        select: { id: true, name: true, monthlyPrice: true, courtLimit: true },
+      },
+    },
+  },
+  courts: {
+    select: {
+      id: true,
+      name: true,
+      sport: true,
+      hourlyPrice: true,
+      active: true,
+    },
+    orderBy: [{ active: 'desc' }, { name: 'asc' }],
+  },
+} satisfies Prisma.BusinessInclude;
+
 @Injectable()
 export class ClientsService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly publicApiUrl: string;
+
+  constructor(
+    private readonly prisma: PrismaService,
+    config: ConfigService,
+  ) {
+    this.publicApiUrl = publicApiUrl(config);
+  }
 
   async findAll(query: PageQueryDto): Promise<Page<ClientDto>> {
     const search = query.search?.trim();
@@ -63,6 +113,120 @@ export class ClientsService {
       total,
       page: query.page,
       pageSize: query.pageSize,
+    };
+  }
+
+  /** Ficha completa del cliente: negocio, responsable, plan, canchas y actividad. */
+  async findOne(
+    businessId: string,
+    now = new Date(),
+  ): Promise<ClientDetailDto> {
+    const business = await this.prisma.business.findUnique({
+      where: { id: businessId },
+      include: detailInclude,
+    });
+    if (!business) throw new NotFoundException('El cliente no existe');
+
+    const last30Days = addDays(now, -30);
+    const [
+      reservationsTotal,
+      reservationsLast30Days,
+      upcomingReservations,
+      approvedRevenue,
+      pendingPayments,
+      reservations,
+      payments,
+    ] = await Promise.all([
+      this.prisma.reservation.count({ where: { businessId } }),
+      this.prisma.reservation.count({
+        where: { businessId, start: { gte: last30Days, lt: now } },
+      }),
+      this.prisma.reservation.count({
+        where: {
+          businessId,
+          status: ReservationStatus.CONFIRMED,
+          start: { gte: now },
+        },
+      }),
+      this.prisma.payment.aggregate({
+        where: {
+          businessId,
+          status: PaymentStatus.APPROVED,
+          receivedAt: { gte: last30Days },
+        },
+        _sum: { amount: true },
+      }),
+      this.prisma.payment.count({
+        where: { businessId, status: PaymentStatus.PENDING },
+      }),
+      this.prisma.reservation.findMany({
+        where: { businessId },
+        orderBy: { start: 'desc' },
+        take: RECENT_ITEMS,
+        include: { court: { select: { name: true } } },
+      }),
+      this.prisma.payment.findMany({
+        where: { businessId },
+        orderBy: { receivedAt: 'desc' },
+        take: RECENT_ITEMS,
+        include: { method: { select: { name: true } } },
+      }),
+    ]);
+
+    const { owner, subscription } = business;
+    return {
+      id: business.id,
+      name: business.name,
+      address: business.address,
+      neighborhood: business.neighborhood,
+      description: business.description,
+      imageUrl: business.profileImage
+        ? businessImageUrl(this.publicApiUrl, business.profileImage.id)
+        : null,
+      amenities: business.amenities,
+      createdAt: business.createdAt,
+      updatedAt: business.updatedAt,
+      owner: {
+        id: owner.id,
+        fullName: owner.displayName,
+        email: owner.email,
+        phone: owner.phone,
+        verified: owner.verified,
+        createdAt: owner.createdAt,
+      },
+      subscription: subscription && {
+        plan: subscription.plan,
+        since: subscription.since,
+        nextPayment: subscription.nextPayment,
+        isActive: subscription.isActive,
+        autoBilling: subscription.autoBilling,
+      },
+      courts: business.courts,
+      stats: {
+        reservationsTotal,
+        reservationsLast30Days,
+        upcomingReservations,
+        approvedRevenueLast30Days: approvedRevenue._sum.amount ?? 0,
+        pendingPayments,
+      },
+      recentReservations: reservations.map((r) => ({
+        id: r.id,
+        start: r.start,
+        end: r.end,
+        courtName: r.court.name,
+        customerName: r.customerName,
+        totalPrice: r.totalPrice,
+        status: r.status,
+      })),
+      recentPayments: payments.map((p) => ({
+        id: p.id,
+        receivedAt: p.receivedAt,
+        customerName: p.customerName,
+        amount: p.amount,
+        method: p.method.name,
+        concept: p.concept,
+        status: p.status,
+      })),
     };
   }
 

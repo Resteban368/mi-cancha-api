@@ -13,6 +13,7 @@ import { HealthController } from './health/health.controller.js';
 import { PaymentsModule } from './payments/payments.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { ReservationsModule } from './reservations/reservations.module.js';
+import { StorageModule } from './storage/storage.module.js';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { ReservationsModule } from './reservations/reservations.module.js';
       serveRoot: '/admin',
     }),
     PrismaModule,
+    StorageModule,
     AuthModule,
     BusinessesModule,
     CourtsModule,

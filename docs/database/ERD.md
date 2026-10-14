@@ -29,6 +29,15 @@ erDiagram
     DateTime createdAt
     DateTime updatedAt
   }
+  BusinessProfileImage {
+    String id PK
+    String businessId FK, UK
+    String storagePath "Ruta del archivo dentro del almacenamiento, p. ej. mi-cancha/business-profile/<negocio>/<id>.jpg"
+    String contentType
+    Int sizeBytes
+    DateTime createdAt
+    DateTime updatedAt
+  }
   Court {
     String id PK
     String businessId FK
@@ -109,6 +118,7 @@ erDiagram
     Boolean autoBilling
   }
   User ||--o| Business : "business"
+  Business ||--o| BusinessProfileImage : "profileImage"
   Business ||--o{ Court : "courts"
   Business ||--o{ Reservation : "reservations"
   Court ||--o{ Reservation : "reservations"

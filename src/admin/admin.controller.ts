@@ -24,6 +24,7 @@ import {
 import { ClientsService } from './clients.service.js';
 import { DashboardService } from './dashboard.service.js';
 import {
+  ClientDetailDto,
   ClientDto,
   ClientPageDto,
   CreateClientDto,
@@ -90,6 +91,15 @@ export class AdminController {
   @ApiOperation({ summary: 'Listado de clientes (negocios)' })
   findClients(@Query() query: PageQueryDto): Promise<ClientPageDto> {
     return this.clientsService.findAll(query);
+  }
+
+  @Get('clients/:id')
+  @ApiOperation({
+    summary:
+      'Ficha del cliente: negocio, responsable, plan, canchas y actividad',
+  })
+  findClient(@Param('id', ParseUUIDPipe) id: string): Promise<ClientDetailDto> {
+    return this.clientsService.findOne(id);
   }
 
   @Post('clients')

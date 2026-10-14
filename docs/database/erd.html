@@ -29,7 +29,7 @@
 <body>
   <main>
     <h1>Mi Cancha · Base de datos</h1>
-    <p class="sub">9 tablas · 5 enums · generado desde <code>prisma/schema.prisma</code></p>
+    <p class="sub">10 tablas · 5 enums · generado desde <code>prisma/schema.prisma</code></p>
     <div class="diagram"><pre class="mermaid">
 erDiagram
   User {
@@ -52,6 +52,15 @@ erDiagram
     String address
     String neighborhood
     String description "opcional"
+    DateTime createdAt
+    DateTime updatedAt
+  }
+  BusinessProfileImage {
+    String id PK
+    String businessId FK, UK
+    String storagePath "Ruta del archivo dentro del almacenamiento, p. ej. mi-cancha/business-profile/&lt;negocio&gt;/&lt;id&gt;.jpg"
+    String contentType
+    Int sizeBytes
     DateTime createdAt
     DateTime updatedAt
   }
@@ -135,6 +144,7 @@ erDiagram
     Boolean autoBilling
   }
   User ||--o| Business : "business"
+  Business ||--o| BusinessProfileImage : "profileImage"
   Business ||--o{ Court : "courts"
   Business ||--o{ Reservation : "reservations"
   Court ||--o{ Reservation : "reservations"

@@ -1,4 +1,5 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import bcrypt from 'bcryptjs';
 import {
@@ -46,7 +47,14 @@ describe('ClientsService', () => {
   beforeEach(async () => {
     prisma = createPrismaMock();
     const moduleRef = await Test.createTestingModule({
-      providers: [ClientsService, { provide: PrismaService, useValue: prisma }],
+      providers: [
+        ClientsService,
+        { provide: PrismaService, useValue: prisma },
+        {
+          provide: ConfigService,
+          useValue: new ConfigService({ PUBLIC_API_URL: 'https://api.test' }),
+        },
+      ],
     }).compile();
     service = moduleRef.get(ClientsService);
   });
@@ -117,5 +125,92 @@ describe('ClientsService', () => {
     await expect(
       service.updateSubscription('biz-1', { isActive: true }),
     ).rejects.toThrow(ConflictException);
+  });
+
+  describe('findOne', () => {
+    const now = new Date('2026-10-14T12:00:00Z');
+
+    it('lanza 404 si el cliente no existe', async () => {
+      prisma.business.findUnique.mockResolvedValue(null);
+      await expect(service.findOne('biz-x', now)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('arma la ficha con foto, plan, canchas y actividad', async () => {
+      prisma.business.findUnique.mockResolvedValue({
+        ...storedClient,
+        description: 'Sintética',
+        updatedAt: now,
+        owner: { ...storedClient.owner, verified: true, createdAt: now },
+        amenities: [{ code: 'WIFI', name: 'WiFi' }],
+        profileImage: { id: 'img-1' },
+        subscription: {
+          since: now,
+          nextPayment: now,
+          isActive: true,
+          autoBilling: true,
+          plan: {
+            id: 'plan-1',
+            name: 'Básico',
+            monthlyPrice: 89_000,
+            courtLimit: 3,
+          },
+        },
+        courts: [
+          {
+            id: 'c1',
+            name: 'Cancha 1',
+            sport: 'FUTBOL',
+            hourlyPrice: 90_000,
+            active: true,
+          },
+        ],
+      });
+      prisma.reservation.count
+        .mockResolvedValueOnce(12)
+        .mockResolvedValueOnce(5)
+        .mockResolvedValueOnce(2);
+      prisma.payment.aggregate.mockResolvedValue({ _sum: { amount: 180_000 } });
+      prisma.payment.count.mockResolvedValue(1);
+      prisma.reservation.findMany.mockResolvedValue([
+        {
+          id: 'r1',
+          start: now,
+          end: now,
+          court: { name: 'Cancha 1' },
+          customerName: 'Camilo',
+          totalPrice: 90_000,
+          status: 'CONFIRMED',
+        },
+      ]);
+      prisma.payment.findMany.mockResolvedValue([
+        {
+          id: 'p1',
+          receivedAt: now,
+          customerName: 'Camilo',
+          amount: 90_000,
+          method: { name: 'Nequi' },
+          concept: 'TOTAL',
+          status: 'APPROVED',
+        },
+      ]);
+
+      const detail = await service.findOne('biz-1', now);
+
+      expect(detail.imageUrl).toBe(
+        'https://api.test/api/v1/images/business-profile/img-1',
+      );
+      expect(detail.subscription?.plan.courtLimit).toBe(3);
+      expect(detail.stats).toEqual({
+        reservationsTotal: 12,
+        reservationsLast30Days: 5,
+        upcomingReservations: 2,
+        approvedRevenueLast30Days: 180_000,
+        pendingPayments: 1,
+      });
+      expect(detail.recentReservations[0].courtName).toBe('Cancha 1');
+      expect(detail.recentPayments[0].method).toBe('Nequi');
+    });
   });
 });

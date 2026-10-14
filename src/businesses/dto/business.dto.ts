@@ -49,4 +49,6 @@ export class BusinessDto {
   description: string | null;
   /** Códigos de los servicios que ofrece. */
   amenities: string[];
+  /** URL pública de la foto de portada; null si no tiene. */
+  imageUrl: string | null;
 }

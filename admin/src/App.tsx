@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router';
 import { Layout } from './components/Layout';
 import { useAuth } from './lib/auth-context';
 import { CatalogsPage } from './pages/CatalogsPage';
+import { ClientDetailPage } from './pages/ClientDetailPage';
 import { ClientsPage } from './pages/ClientsPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { LoginPage } from './pages/LoginPage';
@@ -16,6 +17,7 @@ export function App() {
       <Route element={<Layout />}>
         <Route index element={<DashboardPage />} />
         <Route path="clientes" element={<ClientsPage />} />
+        <Route path="clientes/:id" element={<ClientDetailPage />} />
         <Route path="usuarios" element={<UsersPage />} />
         <Route path="planes" element={<PlansPage />} />
         <Route path="catalogos" element={<CatalogsPage />} />

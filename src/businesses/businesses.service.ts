@@ -1,5 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CatalogsService } from '../catalogs/catalogs.service.js';
+import { businessImageUrl, publicApiUrl } from '../common/public-url.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { BusinessDto, SaveBusinessDto } from './dto/business.dto.js';
@@ -8,6 +10,7 @@ const SUBSCRIPTION_PERIOD_DAYS = 30;
 
 const businessInclude = {
   amenities: { select: { code: true }, orderBy: { sortOrder: 'asc' } },
+  profileImage: { select: { id: true } },
 } satisfies Prisma.BusinessInclude;
 
 type BusinessWithAmenities = Prisma.BusinessGetPayload<{
@@ -16,10 +19,15 @@ type BusinessWithAmenities = Prisma.BusinessGetPayload<{
 
 @Injectable()
 export class BusinessesService {
+  private readonly publicApiUrl: string;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly catalogs: CatalogsService,
-  ) {}
+    config: ConfigService,
+  ) {
+    this.publicApiUrl = publicApiUrl(config);
+  }
 
   async findMine(ownerId: string): Promise<BusinessDto> {
     const business = await this.prisma.business.findUnique({
@@ -27,7 +35,7 @@ export class BusinessesService {
       include: businessInclude,
     });
     if (!business) throw notCreatedYet();
-    return toBusinessDto(business);
+    return this.toDto(business);
   }
 
   /**
@@ -77,7 +85,7 @@ export class BusinessesService {
       return created;
     });
 
-    return toBusinessDto(business);
+    return this.toDto(business);
   }
 
   /** Id del negocio del administrador; lanza 404 si aún no lo ha creado. */
@@ -89,6 +97,19 @@ export class BusinessesService {
     if (!business) throw notCreatedYet();
     return business.id;
   }
+
+  private toDto(business: BusinessWithAmenities): BusinessDto {
+    const image = business.profileImage;
+    return {
+      id: business.id,
+      name: business.name,
+      address: business.address,
+      neighborhood: business.neighborhood,
+      description: business.description,
+      amenities: business.amenities.map((a) => a.code),
+      imageUrl: image ? businessImageUrl(this.publicApiUrl, image.id) : null,
+    };
+  }
 }
 
 function notCreatedYet(): NotFoundException {
@@ -97,15 +118,4 @@ function notCreatedYet(): NotFoundException {
 
 function addDays(date: Date, days: number): Date {
   return new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
-}
-
-export function toBusinessDto(business: BusinessWithAmenities): BusinessDto {
-  return {
-    id: business.id,
-    name: business.name,
-    address: business.address,
-    neighborhood: business.neighborhood,
-    description: business.description,
-    amenities: business.amenities.map((a) => a.code),
-  };
 }

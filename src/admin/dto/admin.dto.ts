@@ -17,7 +17,13 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { PageQueryDto } from '../../common/dto/page.dto.js';
-import { UserRole } from '../../generated/prisma/enums.js';
+import {
+  PaymentConcept,
+  PaymentStatus,
+  ReservationStatus,
+  Sport,
+  UserRole,
+} from '../../generated/prisma/enums.js';
 
 // ---------- Dashboard ----------
 
@@ -130,6 +136,93 @@ export class ClientPageDto {
   total: number;
   page: number;
   pageSize: number;
+}
+
+export class CatalogRefDto {
+  code: string;
+  name: string;
+}
+
+export class ClientOwnerDetailDto {
+  id: string;
+  fullName: string;
+  email: string | null;
+  phone: string | null;
+  verified: boolean;
+  createdAt: Date;
+}
+
+export class ClientSubscriptionDto {
+  plan: { id: string; name: string; monthlyPrice: number; courtLimit: number };
+  since: Date;
+  nextPayment: Date;
+  isActive: boolean;
+  autoBilling: boolean;
+}
+
+export class ClientCourtDto {
+  id: string;
+  name: string;
+  @ApiProperty({ enum: Sport })
+  sport: Sport;
+  /** Precio por hora en COP. */
+  hourlyPrice: number;
+  active: boolean;
+}
+
+export class ClientStatsDto {
+  reservationsTotal: number;
+  reservationsLast30Days: number;
+  /** Reservas confirmadas desde ahora en adelante. */
+  upcomingReservations: number;
+  /** Pagos aprobados en los últimos 30 días, en COP. */
+  approvedRevenueLast30Days: number;
+  pendingPayments: number;
+}
+
+export class ClientReservationDto {
+  id: string;
+  start: Date;
+  end: Date;
+  courtName: string;
+  customerName: string;
+  totalPrice: number;
+  @ApiProperty({ enum: ReservationStatus })
+  status: ReservationStatus;
+}
+
+export class ClientPaymentDto {
+  id: string;
+  receivedAt: Date;
+  customerName: string;
+  amount: number;
+  method: string;
+  @ApiProperty({ enum: PaymentConcept })
+  concept: PaymentConcept;
+  @ApiProperty({ enum: PaymentStatus })
+  status: PaymentStatus;
+}
+
+/** Toda la información de un cliente para la ficha del panel. */
+export class ClientDetailDto {
+  id: string;
+  name: string;
+  address: string;
+  neighborhood: string;
+  description: string | null;
+  /** URL pública de la foto de portada; null si no tiene. */
+  imageUrl: string | null;
+  amenities: CatalogRefDto[];
+  createdAt: Date;
+  updatedAt: Date;
+  owner: ClientOwnerDetailDto;
+  subscription: ClientSubscriptionDto | null;
+  courts: ClientCourtDto[];
+  stats: ClientStatsDto;
+  /** Las 10 reservas más recientes por fecha de juego. */
+  recentReservations: ClientReservationDto[];
+  /** Los 10 pagos más recientes. */
+  recentPayments: ClientPaymentDto[];
 }
 
 // ---------- Usuarios ----------
