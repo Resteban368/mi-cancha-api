@@ -26,6 +26,8 @@ erDiagram
     String address
     String neighborhood
     String description "opcional"
+    Float latitude "opcional · Punto de llegada (WGS84). Ambos nulos si aún no se fijó en el mapa."
+    Float longitude "opcional"
     DateTime createdAt
     DateTime updatedAt
   }

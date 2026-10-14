@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CatalogsService } from '../catalogs/catalogs.service.js';
 import { businessImageUrl, publicApiUrl } from '../common/public-url.js';
@@ -43,6 +47,11 @@ export class BusinessesService {
    * plan gratuito (si existe) para que pueda registrar su primera cancha.
    */
   async save(ownerId: string, dto: SaveBusinessDto): Promise<BusinessDto> {
+    if ((dto.latitude == null) !== (dto.longitude == null)) {
+      throw new BadRequestException(
+        'Envía latitude y longitude juntas, o ninguna de las dos',
+      );
+    }
     const amenityIds = await this.catalogs.resolveAmenityIds(
       dto.amenities ?? [],
     );
@@ -51,6 +60,8 @@ export class BusinessesService {
       address: dto.address,
       neighborhood: dto.neighborhood,
       description: dto.description ?? null,
+      latitude: dto.latitude ?? null,
+      longitude: dto.longitude ?? null,
     };
     const amenityRefs = amenityIds.map((id) => ({ id }));
 
@@ -108,6 +119,8 @@ export class BusinessesService {
       description: business.description,
       amenities: business.amenities.map((a) => a.code),
       imageUrl: image ? businessImageUrl(this.publicApiUrl, image.id) : null,
+      latitude: business.latitude,
+      longitude: business.longitude,
     };
   }
 }

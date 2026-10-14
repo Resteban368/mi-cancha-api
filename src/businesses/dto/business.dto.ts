@@ -2,6 +2,8 @@ import {
   ArrayMaxSize,
   ArrayUnique,
   IsArray,
+  IsLatitude,
+  IsLongitude,
   IsOptional,
   IsString,
   MaxLength,
@@ -32,6 +34,19 @@ export class SaveBusinessDto {
   @MaxLength(1000)
   description?: string;
 
+  /**
+   * Latitud del punto de llegada. Va junto con longitude; si se omiten, la
+   * ubicación se borra (es un PUT). @example 4.6097
+   */
+  @IsOptional()
+  @IsLatitude()
+  latitude?: number;
+
+  /** Longitud del punto de llegada. @example -74.0817 */
+  @IsOptional()
+  @IsLongitude()
+  longitude?: number;
+
   /** Códigos del catálogo de servicios (GET /catalogs). @example ["PARQUEADERO","WIFI"] */
   @IsOptional()
   @IsArray()
@@ -51,4 +66,7 @@ export class BusinessDto {
   amenities: string[];
   /** URL pública de la foto de portada; null si no tiene. */
   imageUrl: string | null;
+  /** Punto de llegada; ambos null si aún no se fijó. */
+  latitude: number | null;
+  longitude: number | null;
 }

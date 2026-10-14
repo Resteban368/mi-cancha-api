@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import {
@@ -115,5 +115,46 @@ describe('BusinessesService', () => {
       set: [],
     });
     expect(prisma.subscription.create).not.toHaveBeenCalled();
+  });
+
+  it('guarda y devuelve el punto de llegada', async () => {
+    prisma.business.findUnique.mockResolvedValue({ id: 'biz-1' });
+    prisma.business.update.mockImplementation(({ data }) =>
+      storedBusiness(data),
+    );
+
+    const result = await service.save('owner-1', {
+      ...dto,
+      latitude: 4.6097,
+      longitude: -74.0817,
+    });
+
+    expect(prisma.business.update.mock.calls[0][0].data).toMatchObject({
+      latitude: 4.6097,
+      longitude: -74.0817,
+    });
+    expect(result).toMatchObject({ latitude: 4.6097, longitude: -74.0817 });
+  });
+
+  it('sin coordenadas borra la ubicación (es un PUT)', async () => {
+    prisma.business.findUnique.mockResolvedValue({ id: 'biz-1' });
+    prisma.business.update.mockImplementation(({ data }) =>
+      storedBusiness(data),
+    );
+
+    const result = await service.save('owner-1', dto);
+
+    expect(prisma.business.update.mock.calls[0][0].data).toMatchObject({
+      latitude: null,
+      longitude: null,
+    });
+    expect(result.latitude).toBeNull();
+  });
+
+  it('rechaza latitude sin longitude', async () => {
+    await expect(
+      service.save('owner-1', { ...dto, latitude: 4.6 }),
+    ).rejects.toThrow(BadRequestException);
+    expect(prisma.business.update).not.toHaveBeenCalled();
   });
 });

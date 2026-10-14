@@ -97,6 +97,9 @@ model Business {
   address      String
   neighborhood String
   description  String?
+  /// Punto de llegada (WGS84). Ambos nulos si aún no se fijó en el mapa.
+  latitude     Float?
+  longitude    Float?
   amenities    Amenity[]
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
