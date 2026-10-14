@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ServeStaticModule } from '@nestjs/serve-static';
-import { join } from 'node:path';
+import { join, sep } from 'node:path';
 import { AccountModule } from './account/account.module.js';
 import { AdminModule } from './admin/admin.module.js';
 import { AuthModule } from './auth/auth.module.js';
@@ -18,11 +18,26 @@ import { StorageModule } from './storage/storage.module.js';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
-    // Panel de super admin (npm run build:admin → public/admin), servido en /admin
-    // en local. En Vercel lo sirve el CDN desde public/ y esto no interviene.
+    // Panel de super admin (npm run build:admin → public/admin), servido en /admin.
+    // En Vercel los archivos tienen la fecha fija, así que el ETag de index.html no
+    // cambia entre despliegues y el navegador se quedaría con uno viejo (304) que
+    // apunta a un JS que ya no existe. Por eso lo que no está en assets/ va con
+    // no-store; los de assets/ llevan hash en el nombre y se guardan para siempre.
     ServeStaticModule.forRoot({
       rootPath: join(process.cwd(), 'public', 'admin'),
       serveRoot: '/admin',
+      serveStaticOptions: {
+        etag: false,
+        lastModified: false,
+        setHeaders: (res, path) => {
+          res.setHeader(
+            'Cache-Control',
+            path.includes(`${sep}assets${sep}`)
+              ? 'public, max-age=31536000, immutable'
+              : 'no-store',
+          );
+        },
+      },
     }),
     PrismaModule,
     StorageModule,
