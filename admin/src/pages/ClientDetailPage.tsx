@@ -2,9 +2,12 @@ import { useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router';
 import { StatTile } from '../components/charts/StatTile';
 import { ClientCourts } from '../components/ClientCourts';
-import { ArrowLeftIcon, ImageIcon, MapPinIcon } from '../components/icons';
+import { NewReservationModal } from '../components/NewReservation';
+import { CancelReservationModal, RefundsCard } from '../components/ReservationCancel';
+import { ArrowLeftIcon, ImageIcon, MapPinIcon, PlusIcon } from '../components/icons';
 import {
   Badge,
+  Button,
   Card,
   EmptyState,
   ErrorBanner,
@@ -76,6 +79,13 @@ function ClientDetailView({
   onChanged: () => void;
 }) {
   const { owner, subscription, stats } = data;
+  const [creating, setCreating] = useState(false);
+  const [cancelling, setCancelling] = useState<ClientDetail['recentReservations'][number] | null>(null);
+  const [version, setVersion] = useState(0);
+  const refresh = () => {
+    setVersion((v) => v + 1);
+    onChanged();
+  };
   const activeCourts = data.courts.filter((c) => c.isActive).length;
 
   return (
@@ -192,7 +202,15 @@ function ClientDetailView({
       />
 
       <div className="flex flex-col gap-6">
-        <Card title="Últimas reservas" description="Las 10 más recientes por fecha de juego">
+        <Card
+          title="Últimas reservas"
+          description="Las 10 más recientes por fecha de juego"
+          actions={
+            <Button variant="primary" size="sm" onClick={() => setCreating(true)}>
+              <PlusIcon /> Nueva reserva
+            </Button>
+          }
+        >
           {data.recentReservations.length === 0 ? (
             <EmptyState title="Sin reservas todavía" />
           ) : (
@@ -203,6 +221,9 @@ function ClientDetailView({
                   <Th>Cliente</Th>
                   <Th align="right">Valor</Th>
                   <Th>Estado</Th>
+                  <Th>
+                    <span className="sr-only">Acciones</span>
+                  </Th>
                 </tr>
               </thead>
               <tbody>
@@ -222,6 +243,16 @@ function ClientDetailView({
                       </Td>
                       <Td>
                         <Badge tone={status?.tone}>{status?.label ?? r.status}</Badge>
+                        {r.cancellationReason && (
+                          <p className="mt-1 max-w-56 text-xs text-fg-3">{r.cancellationReason}</p>
+                        )}
+                      </Td>
+                      <Td align="right">
+                        {r.status === 'CONFIRMED' && (
+                          <Button size="sm" variant="ghost" onClick={() => setCancelling(r)}>
+                            Cancelar
+                          </Button>
+                        )}
                       </Td>
                     </tr>
                   );
@@ -269,7 +300,30 @@ function ClientDetailView({
             </Table>
           )}
         </Card>
+        <RefundsCard clientId={data.id} version={version} />
       </div>
+
+      {creating && (
+        <NewReservationModal
+          clientId={data.id}
+          onClose={() => setCreating(false)}
+          onCreated={() => {
+            setCreating(false);
+            refresh();
+          }}
+        />
+      )}
+      {cancelling && (
+        <CancelReservationModal
+          clientId={data.id}
+          reservation={cancelling}
+          onClose={() => setCancelling(null)}
+          onCancelled={() => {
+            setCancelling(null);
+            refresh();
+          }}
+        />
+      )}
     </div>
   );
 }

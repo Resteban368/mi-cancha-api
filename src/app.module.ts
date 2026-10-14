@@ -9,9 +9,11 @@ import { BusinessesModule } from './businesses/businesses.module.js';
 import { CatalogsModule } from './catalogs/catalogs.module.js';
 import { validateEnv } from './config/env.validation.js';
 import { CourtsModule } from './courts/courts.module.js';
+import { CustomersModule } from './customers/customers.module.js';
 import { HealthController } from './health/health.controller.js';
 import { PaymentsModule } from './payments/payments.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
+import { RefundsModule } from './refunds/refunds.module.js';
 import { ReservationsModule } from './reservations/reservations.module.js';
 import { StorageModule } from './storage/storage.module.js';
 
@@ -45,6 +47,8 @@ import { StorageModule } from './storage/storage.module.js';
     BusinessesModule,
     CourtsModule,
     ReservationsModule,
+    CustomersModule,
+    RefundsModule,
     PaymentsModule,
     AccountModule,
     CatalogsModule,

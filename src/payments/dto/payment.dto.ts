@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
   IsEnum,
-  IsInt,
+  IsNumber,
   IsOptional,
   IsString,
   IsUUID,
@@ -28,10 +28,10 @@ export class CreatePaymentDto {
   @MaxLength(100)
   customerName: string;
 
-  /** Monto en COP. @example 60000 */
-  @IsInt()
-  @Min(1)
-  @Max(100_000_000)
+  /** Monto con hasta 2 decimales. @example 60000 */
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0.01)
+  @Max(1_000_000_000)
   amount: number;
 
   /** Código del catálogo de métodos de pago (GET /catalogs). @example NEQUI */

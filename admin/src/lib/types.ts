@@ -45,7 +45,7 @@ export interface Client {
 
 export type Sport = 'FUTBOL' | 'PADEL' | 'BALONCESTO' | 'VOLEIBOL';
 export type ReservationStatus = 'CONFIRMED' | 'COMPLETED' | 'NO_SHOW' | 'CANCELLED';
-export type PaymentStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+export type PaymentStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'REFUNDED';
 export type PaymentConcept = 'ANTICIPO' | 'SALDO' | 'TOTAL';
 
 export type DayOfWeek =
@@ -141,6 +141,7 @@ export interface ClientDetail {
     totalPrice: number;
     currency: string;
     status: ReservationStatus;
+    cancellationReason: string | null;
   }[];
   recentPayments: {
     id: string;
@@ -196,4 +197,45 @@ export interface SystemEnum {
   name: string;
   description: string;
   values: string[];
+}
+
+export interface Customer {
+  id: string;
+  name: string;
+  phone: string;
+  documentId: string;
+  createdAt: string;
+}
+
+export interface AvailabilitySlot {
+  start: string;
+  end: string;
+  status: 'AVAILABLE' | 'BOOKED' | 'PAST';
+  price: number;
+}
+
+export interface Availability {
+  date: string;
+  courtId: string;
+  slotDuration: number;
+  currency: string;
+  maxSlots: number;
+  slots: AvailabilitySlot[];
+}
+
+export interface Refund {
+  id: string;
+  amount: number;
+  currency: string;
+  reason: string;
+  createdAt: string;
+  createdBy: string | null;
+  reservation: { id: string; courtName: string; start: string; end: string };
+  payment: { id: string; method: string; methodName: string; concept: PaymentConcept; reference: string | null; receivedAt: string };
+  customer: { id: string; name: string; phone: string; documentId: string } | null;
+}
+
+export interface Catalogs {
+  amenities: { code: string; name: string }[];
+  paymentMethods: { code: string; name: string; requiresReference: boolean }[];
 }

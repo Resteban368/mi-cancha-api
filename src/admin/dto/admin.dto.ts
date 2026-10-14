@@ -194,6 +194,7 @@ export class ClientReservationDto {
   currency: string;
   @ApiProperty({ enum: ReservationStatus })
   status: ReservationStatus;
+  cancellationReason: string | null;
 }
 
 export class ClientPaymentDto {

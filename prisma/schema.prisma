@@ -65,6 +65,8 @@ enum PaymentStatus {
   PENDING
   APPROVED
   REJECTED
+  /// Devuelto al cliente al cancelar la reserva (ver Refund).
+  REFUNDED
 }
 
 /// Cualquier persona que inicia sesión: super admin, administrador de negocio o jugador (según role).
@@ -84,8 +86,10 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  business     Business?
-  reservations Reservation[]
+  business              Business?
+  reservations          Reservation[]
+  cancelledReservations Reservation[] @relation("ReservationCancelledBy")
+  refunds               Refund[]
 }
 
 /// La sede deportiva de un cliente. Cada administrador de negocio tiene exactamente una.
@@ -105,8 +109,10 @@ model Business {
   updatedAt    DateTime  @updatedAt
 
   courts       Court[]
+  customers    Customer[]
   reservations Reservation[]
   payments     Payment[]
+  refunds      Refund[]
   subscription Subscription?
   profileImage BusinessProfileImage?
 }
@@ -203,34 +209,87 @@ model CourtPhoto {
 
 /// Un turno reservado en una cancha. La crea el negocio desde la app (o un jugador, en el futuro).
 model Reservation {
-  id             String            @id @default(uuid())
-  businessId     String
-  business       Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  courtId        String
-  court          Court             @relation(fields: [courtId], references: [id], onDelete: Restrict)
-  playerId       String?
-  player         User?             @relation(fields: [playerId], references: [id], onDelete: SetNull)
-  start          DateTime
-  end            DateTime
-  customerName   String
-  customerDetail String?
-  phone          String
-  contactNote    String?
-  tag            String?
-  isRecurring    Boolean           @default(false)
-  /// Valor total en la moneda de la cancha.
-  totalPrice     Decimal           @db.Decimal(12, 2)
-  status         ReservationStatus @default(CONFIRMED)
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
+  id                 String            @id @default(uuid())
+  businessId         String
+  business           Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  courtId            String
+  court              Court             @relation(fields: [courtId], references: [id], onDelete: Restrict)
+  playerId           String?
+  player             User?             @relation(fields: [playerId], references: [id], onDelete: SetNull)
+  /// Cliente del negocio; null en reservas anteriores a la tabla de clientes.
+  customerId         String?
+  customer           Customer?         @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  start              DateTime
+  end                DateTime
+  /// Nombre y teléfono del cliente al momento de reservar.
+  customerName       String
+  customerDetail     String?
+  phone              String
+  contactNote        String?
+  tag                String?
+  isRecurring        Boolean           @default(false)
+  /// Valor según las tarifas, antes del descuento.
+  subtotal           Decimal           @db.Decimal(12, 2)
+  discount           Decimal           @default(0) @db.Decimal(12, 2)
+  /// subtotal - discount, en la moneda de la cancha.
+  totalPrice         Decimal           @db.Decimal(12, 2)
+  status             ReservationStatus @default(CONFIRMED)
+  cancellationReason String?
+  cancelledAt        DateTime?
+  cancelledById      String?
+  cancelledBy        User?             @relation("ReservationCancelledBy", fields: [cancelledById], references: [id], onDelete: SetNull)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
 
   payments Payment[]
+  refunds  Refund[]
 
   @@index([businessId, start])
   @@index([courtId, start, end])
 }
 
 /// Dinero recibido por el negocio, normalmente ligado a una reserva. Los pagos por transferencia
+/// Cliente de un negocio (quien reserva). Cada negocio tiene su propia lista;
+/// teléfono y cédula son únicos dentro del negocio.
+model Customer {
+  id         String   @id @default(uuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name       String
+  phone      String
+  /// Número de cédula u otro documento de identidad.
+  documentId String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  reservations Reservation[]
+  refunds      Refund[]
+
+  @@unique([businessId, phone])
+  @@unique([businessId, documentId])
+}
+
+/// Devolución de un pago aprobado al cancelar su reserva. El pago queda REFUNDED.
+model Refund {
+  id            String      @id @default(uuid())
+  businessId    String
+  business      Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  reservationId String
+  reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  paymentId     String      @unique
+  payment       Payment     @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  customerId    String?
+  customer      Customer?   @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  amount        Decimal     @db.Decimal(12, 2)
+  /// Motivo de la cancelación que originó la devolución.
+  reason        String
+  createdById   String?
+  createdBy     User?       @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt     DateTime    @default(now())
+
+  @@index([businessId, createdAt])
+}
+
 /// quedan pendientes hasta que el negocio los aprueba o rechaza.
 model Payment {
   id                   String         @id @default(uuid())
@@ -239,8 +298,8 @@ model Payment {
   reservationId        String?
   reservation          Reservation?   @relation(fields: [reservationId], references: [id], onDelete: SetNull)
   customerName         String
-  /// Monto en COP.
-  amount               Int
+  /// Monto en la moneda del negocio, con hasta 2 decimales.
+  amount               Decimal        @db.Decimal(12, 2)
   methodId             String
   method               PaymentMethod  @relation(fields: [methodId], references: [id], onDelete: Restrict)
   concept              PaymentConcept
@@ -251,6 +310,8 @@ model Payment {
   registeredByBusiness Boolean        @default(false)
   receivedAt           DateTime       @default(now())
   updatedAt            DateTime       @updatedAt
+
+  refund Refund?
 
   @@index([businessId, status, receivedAt])
   @@index([methodId])

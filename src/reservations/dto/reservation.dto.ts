@@ -1,9 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
   IsBoolean,
-  IsEnum,
-  IsNumber,
+  IsIn,
+  IsInt,
   IsISO8601,
+  IsNumber,
   IsOptional,
   IsString,
   IsUUID,
@@ -12,8 +14,23 @@ import {
   MaxLength,
   Min,
   MinLength,
+  ValidateNested,
 } from 'class-validator';
-import { ReservationStatus, Sport } from '../../generated/prisma/enums.js';
+import { CATALOG_CODE_PATTERN } from '../../catalogs/dto/catalog.dto.js';
+import {
+  CustomerDto,
+  CustomerInputDto,
+} from '../../customers/dto/customer.dto.js';
+import {
+  PaymentConcept,
+  PaymentStatus,
+  ReservationStatus,
+  Sport,
+} from '../../generated/prisma/enums.js';
+
+/** Máximo de turnos seguidos en una reserva. */
+export const MAX_SLOTS = 5;
+const MONEY = { maxDecimalPlaces: 2 };
 
 export class DayQueryDto {
   /** Día en la zona horaria del negocio. @example 2026-10-13 */
@@ -24,35 +41,60 @@ export class DayQueryDto {
   date: string;
 }
 
+export class ReservationPaymentInputDto {
+  /** Lo que paga al reservar; si es el total, el pago queda como TOTAL, si no como ANTICIPO. @example 50000 */
+  @IsNumber(MONEY)
+  @Min(0.01)
+  @Max(1_000_000_000)
+  amount: number;
+
+  /** Código del método de pago (GET /catalogs). Si se omite, EFECTIVO. @example NEQUI */
+  @IsOptional()
+  @Matches(CATALOG_CODE_PATTERN, { message: 'method no es un código válido' })
+  method?: string;
+
+  /** Obligatoria si el método la exige (p. ej. Nequi). @example M4829310 */
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  reference?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  note?: string;
+}
+
 export class CreateReservationDto {
   @IsUUID()
   courtId: string;
 
-  /** Inicio en ISO 8601. @example 2026-10-13T19:00:00-05:00 */
+  /** Inicio del primer turno (debe coincidir con un turno de GET …/availability). @example 2026-10-20T19:00:00-05:00 */
   @IsISO8601({ strict: true })
   start: string;
 
-  /** Fin en ISO 8601. @example 2026-10-13T20:00:00-05:00 */
-  @IsISO8601({ strict: true })
-  end: string;
+  /** Turnos seguidos a reservar (la duración sale del turno de la cancha). @example 2 */
+  @IsInt()
+  @Min(1)
+  @Max(MAX_SLOTS)
+  slots: number;
 
-  /** @example Valentina Dussán */
-  @IsString()
-  @MinLength(2)
-  @MaxLength(100)
-  customerName: string;
+  /** Cliente existente del negocio. Envía esto o `customer`. */
+  @IsOptional()
+  @IsUUID()
+  customerId?: string;
+
+  /** Cliente nuevo (si el teléfono o la cédula ya existen, se usa el existente). */
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => CustomerInputDto)
+  customer?: CustomerInputDto;
 
   /** @example Equipo Los Halcones */
   @IsOptional()
   @IsString()
   @MaxLength(100)
   customerDetail?: string;
-
-  /** @example 3001234567 */
-  @IsString()
-  @MinLength(7)
-  @MaxLength(20)
-  phone: string;
 
   @IsOptional()
   @IsString()
@@ -69,18 +111,76 @@ export class CreateReservationDto {
   @IsBoolean()
   isRecurring?: boolean;
 
-  /** Valor total en la moneda de la cancha. Si se omite se calcula con sus tarifas y su precio base. */
+  /** Se resta del valor de las tarifas. Por defecto 0. @example 10000 */
   @IsOptional()
-  @IsNumber({ maxDecimalPlaces: 2 })
+  @IsNumber(MONEY)
   @Min(0)
   @Max(1_000_000_000)
-  totalPrice?: number;
+  discount?: number;
+
+  /** Pago opcional al reservar (anticipo o total). */
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ReservationPaymentInputDto)
+  payment?: ReservationPaymentInputDto;
 }
 
+/** Estados que se asignan a mano; para cancelar se usa POST …/cancel. */
+const MANUAL_STATUSES = [
+  ReservationStatus.CONFIRMED,
+  ReservationStatus.COMPLETED,
+  ReservationStatus.NO_SHOW,
+];
+
 export class UpdateReservationStatusDto {
-  @ApiProperty({ enum: ReservationStatus })
-  @IsEnum(ReservationStatus)
+  @ApiProperty({ enum: MANUAL_STATUSES })
+  @IsIn(MANUAL_STATUSES, {
+    message:
+      'status debe ser CONFIRMED, COMPLETED o NO_SHOW; para cancelar usa POST /cancel con el motivo',
+  })
   status: ReservationStatus;
+}
+
+export class CancelReservationDto {
+  /** @example El cliente avisó que no puede asistir */
+  @IsString()
+  @MinLength(3)
+  @MaxLength(200)
+  reason: string;
+}
+
+export class AvailabilityQueryDto extends DayQueryDto {}
+
+export class SlotDto {
+  start: Date;
+  end: Date;
+  @ApiProperty({ enum: ['AVAILABLE', 'BOOKED', 'PAST'] })
+  status: 'AVAILABLE' | 'BOOKED' | 'PAST';
+  /** Valor del turno según las tarifas. */
+  price: number;
+}
+
+export class AvailabilityDto {
+  date: string;
+  courtId: string;
+  slotDuration: number;
+  currency: string;
+  /** Turnos seguidos que se pueden reservar como máximo. */
+  maxSlots: number;
+  @ApiProperty({ type: [SlotDto] })
+  slots: SlotDto[];
+}
+
+export class ReservationPaymentDto {
+  id: string;
+  amount: number;
+  method: string;
+  @ApiProperty({ enum: PaymentConcept })
+  concept: PaymentConcept;
+  @ApiProperty({ enum: PaymentStatus })
+  status: PaymentStatus;
+  reference: string | null;
+  receivedAt: Date;
 }
 
 export class ReservationDto {
@@ -91,18 +191,31 @@ export class ReservationDto {
   sport: Sport;
   start: Date;
   end: Date;
+  /** null en reservas anteriores a la tabla de clientes. */
+  customer: CustomerDto | null;
   customerName: string;
   customerDetail: string | null;
   phone: string;
   contactNote: string | null;
   tag: string | null;
   isRecurring: boolean;
-  /** Valor total en la moneda de la cancha. */
+  /** Valor según las tarifas. */
+  subtotal: number;
+  discount: number;
+  /** subtotal - discount. */
   totalPrice: number;
   /** Código ISO 4217, p. ej. COP. */
   currency: string;
   /** Suma de los pagos aprobados. */
   amountPaid: number;
+  /** totalPrice - amountPaid. */
+  balance: number;
+  @ApiProperty({ type: [ReservationPaymentDto] })
+  payments: ReservationPaymentDto[];
   @ApiProperty({ enum: ReservationStatus })
   status: ReservationStatus;
+  cancellationReason: string | null;
+  cancelledAt: Date | null;
+  /** Nombre de quien canceló. */
+  cancelledBy: string | null;
 }

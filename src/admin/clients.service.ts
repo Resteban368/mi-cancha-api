@@ -217,7 +217,7 @@ export class ClientsService {
         reservationsTotal,
         reservationsLast30Days,
         upcomingReservations,
-        approvedRevenueLast30Days: approvedRevenue._sum.amount ?? 0,
+        approvedRevenueLast30Days: Number(approvedRevenue._sum.amount ?? 0),
         pendingPayments,
       },
       recentReservations: reservations.map((r) => ({
@@ -229,12 +229,13 @@ export class ClientsService {
         totalPrice: Number(r.totalPrice),
         currency: r.court.currency,
         status: r.status,
+        cancellationReason: r.cancellationReason,
       })),
       recentPayments: payments.map((p) => ({
         id: p.id,
         receivedAt: p.receivedAt,
         customerName: p.customerName,
-        amount: p.amount,
+        amount: Number(p.amount),
         method: p.method.name,
         concept: p.concept,
         status: p.status,

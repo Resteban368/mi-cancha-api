@@ -6,18 +6,37 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { BusinessesService } from '../businesses/businesses.service.js';
+import { CatalogsService } from '../catalogs/catalogs.service.js';
 import { dayRange } from '../common/utils/day-range.js';
-import { Prisma } from '../generated/prisma/client.js';
-import { PaymentStatus, ReservationStatus } from '../generated/prisma/enums.js';
 import {
-  fitsSchedule,
+  daySlots,
+  localDate,
+  previousDate,
   priceFor,
   reservationIntervals,
+  type Slot,
 } from '../courts/court-time.js';
-import { courtInclude, REQUIRED_PHOTOS } from '../courts/courts.service.js';
+import {
+  courtInclude,
+  type CourtWithDetails,
+  REQUIRED_PHOTOS,
+} from '../courts/courts.service.js';
+import {
+  CustomersService,
+  toCustomerDto,
+} from '../customers/customers.service.js';
+import { Prisma } from '../generated/prisma/client.js';
+import {
+  PaymentConcept,
+  PaymentStatus,
+  ReservationStatus,
+} from '../generated/prisma/enums.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
+  AvailabilityDto,
+  CancelReservationDto,
   CreateReservationDto,
+  MAX_SLOTS,
   ReservationDto,
   UpdateReservationStatusDto,
 } from './dto/reservation.dto.js';
@@ -27,15 +46,15 @@ const BLOCKING_STATUSES: ReservationStatus[] = [
   ReservationStatus.CONFIRMED,
   ReservationStatus.COMPLETED,
 ];
-
-/** Una reserva no puede durar más de un día. */
-const MAX_RESERVATION_MINUTES = 24 * 60;
+const DEFAULT_PAYMENT_METHOD = 'EFECTIVO';
 
 const reservationInclude = {
   court: { select: { name: true, sport: true, currency: true } },
+  customer: true,
+  cancelledBy: { select: { displayName: true } },
   payments: {
-    where: { status: PaymentStatus.APPROVED },
-    select: { amount: true },
+    include: { method: { select: { code: true } } },
+    orderBy: { receivedAt: 'asc' },
   },
 } satisfies Prisma.ReservationInclude;
 
@@ -50,13 +69,77 @@ export class ReservationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly businesses: BusinessesService,
+    private readonly customers: CustomersService,
+    private readonly catalogs: CatalogsService,
     config: ConfigService,
   ) {
     this.utcOffset = config.getOrThrow<string>('APP_UTC_OFFSET');
   }
 
+  // ---------- Administrador de negocio (por ownerId) ----------
+
   async findForDay(ownerId: string, date: string): Promise<ReservationDto[]> {
     const businessId = await this.businesses.requireBusinessId(ownerId);
+    return this.listForDay(businessId, date);
+  }
+
+  async findOne(ownerId: string, id: string): Promise<ReservationDto> {
+    const businessId = await this.businesses.requireBusinessId(ownerId);
+    return toReservationDto(await this.findOwned(businessId, id));
+  }
+
+  async availabilityForOwner(
+    ownerId: string,
+    courtId: string,
+    date: string,
+  ): Promise<AvailabilityDto> {
+    const businessId = await this.businesses.requireBusinessId(ownerId);
+    return this.availability(businessId, courtId, date);
+  }
+
+  async create(
+    ownerId: string,
+    dto: CreateReservationDto,
+  ): Promise<ReservationDto> {
+    const businessId = await this.businesses.requireBusinessId(ownerId);
+    return this.createForBusiness(businessId, dto);
+  }
+
+  async updateStatus(
+    ownerId: string,
+    id: string,
+    dto: UpdateReservationStatusDto,
+  ): Promise<ReservationDto> {
+    const businessId = await this.businesses.requireBusinessId(ownerId);
+    const reservation = await this.findOwned(businessId, id);
+    if (reservation.status === ReservationStatus.CANCELLED) {
+      throw new ConflictException(
+        'Una reserva cancelada no se puede modificar',
+      );
+    }
+    const updated = await this.prisma.reservation.update({
+      where: { id: reservation.id },
+      data: { status: dto.status },
+      include: reservationInclude,
+    });
+    return toReservationDto(updated);
+  }
+
+  async cancel(
+    ownerId: string,
+    id: string,
+    dto: CancelReservationDto,
+  ): Promise<ReservationDto> {
+    const businessId = await this.businesses.requireBusinessId(ownerId);
+    return this.cancelForBusiness(businessId, id, dto, ownerId);
+  }
+
+  // ---------- Núcleo por negocio (también lo usa el super admin) ----------
+
+  async listForDay(
+    businessId: string,
+    date: string,
+  ): Promise<ReservationDto[]> {
     const { from, to } = dayRange(date, this.utcOffset);
     const reservations = await this.prisma.reservation.findMany({
       where: { businessId, start: { gte: from, lt: to } },
@@ -66,36 +149,75 @@ export class ReservationsService {
     return reservations.map(toReservationDto);
   }
 
-  async findOne(ownerId: string, id: string): Promise<ReservationDto> {
-    const businessId = await this.businesses.requireBusinessId(ownerId);
-    const reservation = await this.prisma.reservation.findFirst({
-      where: { id, businessId },
-      include: reservationInclude,
+  /** Turnos del día con su estado y precio. */
+  async availability(
+    businessId: string,
+    courtId: string,
+    date: string,
+    now = new Date(),
+  ): Promise<AvailabilityDto> {
+    const court = await this.prisma.court.findFirst({
+      where: { id: courtId, businessId },
+      include: courtInclude,
     });
-    if (!reservation) throw new NotFoundException('La reserva no existe');
-    return toReservationDto(reservation);
+    if (!court) throw new NotFoundException('La cancha no existe');
+
+    const slots = daySlots(
+      date,
+      court.schedules,
+      court.slotDuration,
+      this.utcOffset,
+    );
+    const booked = slots.length
+      ? await this.prisma.reservation.findMany({
+          where: {
+            courtId,
+            status: { in: BLOCKING_STATUSES },
+            start: { lt: slots.at(-1)!.end },
+            end: { gt: slots[0].start },
+          },
+          select: { start: true, end: true },
+        })
+      : [];
+    const rates = courtRates(court);
+    const base = Number(court.basePricePerHour);
+
+    return {
+      date,
+      courtId,
+      slotDuration: court.slotDuration,
+      currency: court.currency,
+      maxSlots: MAX_SLOTS,
+      slots: slots.map((slot) => ({
+        start: slot.start,
+        end: slot.end,
+        status: booked.some((r) => r.start < slot.end && r.end > slot.start)
+          ? 'BOOKED'
+          : slot.end <= now
+            ? 'PAST'
+            : 'AVAILABLE',
+        price: priceFor(
+          reservationIntervals(slot.start, slot.end, this.utcOffset),
+          base,
+          rates,
+        ),
+      })),
+    };
   }
 
-  async create(
-    ownerId: string,
+  async createForBusiness(
+    businessId: string,
     dto: CreateReservationDto,
+    now = new Date(),
   ): Promise<ReservationDto> {
-    const businessId = await this.businesses.requireBusinessId(ownerId);
+    if (!dto.customerId === !dto.customer) {
+      throw new BadRequestException(
+        'Envía customerId (cliente existente) o customer (cliente nuevo), uno de los dos',
+      );
+    }
     const start = new Date(dto.start);
-    const end = new Date(dto.end);
-    if (end <= start) {
-      throw new BadRequestException(
-        'La hora de fin debe ser posterior al inicio',
-      );
-    }
-    const minutes = (end.getTime() - start.getTime()) / 60_000;
-    if (minutes > MAX_RESERVATION_MINUTES) {
-      throw new BadRequestException(
-        'Una reserva no puede durar más de 24 horas',
-      );
-    }
 
-    // Serializable evita que dos reservas simultáneas pasen la validación de cruce.
+    // Serializable evita que dos reservas simultáneas tomen el mismo turno.
     const reservation = await this.prisma.$transaction(
       async (tx) => {
         const court = await tx.court.findFirst({
@@ -103,35 +225,18 @@ export class ReservationsService {
           include: courtInclude,
         });
         if (!court) throw new NotFoundException('La cancha no existe');
-        if (!court.isActive) {
-          throw new ConflictException('La cancha está desactivada');
-        }
-        const missing = REQUIRED_PHOTOS.filter(
-          (slot) => !court.photos.some((p) => p.slot === slot),
-        );
-        if (missing.length) {
-          throw new ConflictException(
-            `La cancha está incompleta: le faltan las fotos ${missing.join(', ')}`,
-          );
-        }
-        if (minutes % court.slotDuration !== 0) {
-          throw new BadRequestException(
-            `La reserva debe durar múltiplos de ${court.slotDuration} minutos`,
-          );
-        }
-        const interval = reservationIntervals(start, end, this.utcOffset);
-        if (!fitsSchedule(interval, court.schedules)) {
-          throw new BadRequestException(
-            'La reserva está fuera del horario de la cancha',
-          );
-        }
+        assertBookable(court);
 
+        const { first, last } = this.findSlots(court, start, dto.slots);
+        if (last.end <= now) {
+          throw new BadRequestException('Ese turno ya pasó');
+        }
         const overlapping = await tx.reservation.findFirst({
           where: {
             courtId: court.id,
             status: { in: BLOCKING_STATUSES },
-            start: { lt: end },
-            end: { gt: start },
+            start: { lt: last.end },
+            end: { gt: first.start },
           },
           select: { id: true },
         });
@@ -141,28 +246,48 @@ export class ReservationsService {
           );
         }
 
+        const subtotal = priceFor(
+          reservationIntervals(first.start, last.end, this.utcOffset),
+          Number(court.basePricePerHour),
+          courtRates(court),
+        );
+        const discount = dto.discount ?? 0;
+        if (discount > subtotal) {
+          throw new BadRequestException(
+            `El descuento no puede superar el valor de la reserva (${subtotal})`,
+          );
+        }
+        const totalPrice = round2(subtotal - discount);
+        const payment = dto.payment
+          ? await this.paymentData(dto.payment, totalPrice)
+          : null;
+
+        const customer = await this.customers.resolve(tx, businessId, dto);
         return tx.reservation.create({
           data: {
             businessId,
             courtId: court.id,
-            start,
-            end,
-            customerName: dto.customerName,
+            customerId: customer.id,
+            start: first.start,
+            end: last.end,
+            customerName: customer.name,
+            phone: customer.phone,
             customerDetail: dto.customerDetail,
-            phone: dto.phone,
             contactNote: dto.contactNote,
             tag: dto.tag,
             isRecurring: dto.isRecurring ?? false,
-            totalPrice:
-              dto.totalPrice ??
-              priceFor(
-                interval,
-                Number(court.basePricePerHour),
-                court.rates.map((r) => ({
-                  ...r,
-                  pricePerHour: Number(r.pricePerHour),
-                })),
-              ),
+            subtotal,
+            discount,
+            totalPrice,
+            ...(payment && {
+              payments: {
+                create: {
+                  ...payment,
+                  businessId,
+                  customerName: customer.name,
+                },
+              },
+            }),
           },
           include: reservationInclude,
         });
@@ -173,33 +298,184 @@ export class ReservationsService {
     return toReservationDto(reservation);
   }
 
-  async updateStatus(
-    ownerId: string,
+  /**
+   * Cancela una reserva confirmada con su motivo y libera el turno. Los pagos
+   * aprobados quedan REFUNDED con su devolución; los pendientes, rechazados.
+   */
+  async cancelForBusiness(
+    businessId: string,
     id: string,
-    dto: UpdateReservationStatusDto,
+    dto: CancelReservationDto,
+    actorId: string,
   ): Promise<ReservationDto> {
-    const businessId = await this.businesses.requireBusinessId(ownerId);
+    const reason = dto.reason.trim();
+    const reservation = await this.prisma.$transaction(async (tx) => {
+      const current = await tx.reservation.findFirst({
+        where: { id, businessId },
+        include: { payments: true },
+      });
+      if (!current) throw new NotFoundException('La reserva no existe');
+      if (current.status !== ReservationStatus.CONFIRMED) {
+        throw new ConflictException(
+          'Solo se pueden cancelar reservas confirmadas',
+        );
+      }
+
+      for (const payment of current.payments) {
+        if (payment.status === PaymentStatus.APPROVED) {
+          await tx.payment.update({
+            where: { id: payment.id },
+            data: {
+              status: PaymentStatus.REFUNDED,
+              refund: {
+                create: {
+                  businessId,
+                  reservationId: current.id,
+                  customerId: current.customerId,
+                  amount: payment.amount,
+                  reason,
+                  createdById: actorId,
+                },
+              },
+            },
+          });
+        } else if (payment.status === PaymentStatus.PENDING) {
+          await tx.payment.update({
+            where: { id: payment.id },
+            data: {
+              status: PaymentStatus.REJECTED,
+              rejectionReason: `Reserva cancelada: ${reason}`,
+            },
+          });
+        }
+      }
+
+      return tx.reservation.update({
+        where: { id: current.id },
+        data: {
+          status: ReservationStatus.CANCELLED,
+          cancellationReason: reason,
+          cancelledAt: new Date(),
+          cancelledById: actorId,
+        },
+        include: reservationInclude,
+      });
+    });
+    return toReservationDto(reservation);
+  }
+
+  private async findOwned(
+    businessId: string,
+    id: string,
+  ): Promise<ReservationWithRelations> {
     const reservation = await this.prisma.reservation.findFirst({
       where: { id, businessId },
-      select: { id: true, status: true },
-    });
-    if (!reservation) throw new NotFoundException('La reserva no existe');
-    if (reservation.status === ReservationStatus.CANCELLED) {
-      throw new ConflictException(
-        'Una reserva cancelada no se puede modificar',
-      );
-    }
-
-    const updated = await this.prisma.reservation.update({
-      where: { id: reservation.id },
-      data: { status: dto.status },
       include: reservationInclude,
     });
-    return toReservationDto(updated);
+    if (!reservation) throw new NotFoundException('La reserva no existe');
+    return reservation;
+  }
+
+  /**
+   * Turnos que ocupa la reserva: `start` debe ser el inicio de un turno del día
+   * (o del día anterior, si su horario pasa de la medianoche) y deben existir
+   * `count` turnos seguidos dentro del mismo horario.
+   */
+  private findSlots(
+    court: CourtWithDetails,
+    start: Date,
+    count: number,
+  ): { first: Slot; last: Slot } {
+    const date = localDate(start, this.utcOffset);
+    for (const day of [date, previousDate(date)]) {
+      const slots = daySlots(
+        day,
+        court.schedules,
+        court.slotDuration,
+        this.utcOffset,
+      );
+      const index = slots.findIndex(
+        (s) => s.start.getTime() === start.getTime(),
+      );
+      if (index === -1) continue;
+      if (index + count > slots.length) {
+        throw new BadRequestException(
+          `No hay ${count} turnos seguidos desde ese inicio: la cancha cierra antes`,
+        );
+      }
+      return { first: slots[index], last: slots[index + count - 1] };
+    }
+    throw new BadRequestException(
+      'El inicio no coincide con ningún turno de la cancha (consulta la disponibilidad)',
+    );
+  }
+
+  private async paymentData(
+    input: NonNullable<CreateReservationDto['payment']>,
+    totalPrice: number,
+  ) {
+    if (input.amount > totalPrice) {
+      throw new BadRequestException(
+        `El pago no puede superar el total de la reserva (${totalPrice})`,
+      );
+    }
+    const method = await this.catalogs.resolvePaymentMethod(
+      input.method ?? DEFAULT_PAYMENT_METHOD,
+    );
+    const reference = input.reference?.trim() || null;
+    if (method.requiresReference && !reference) {
+      throw new BadRequestException(
+        `El pago con ${method.name} requiere el número de referencia`,
+      );
+    }
+    return {
+      amount: input.amount,
+      methodId: method.id,
+      concept:
+        input.amount === totalPrice
+          ? PaymentConcept.TOTAL
+          : PaymentConcept.ANTICIPO,
+      reference: method.requiresReference ? reference : null,
+      note: input.note,
+      // Lo registra el negocio: queda aprobado de inmediato.
+      status: PaymentStatus.APPROVED,
+      registeredByBusiness: true,
+    };
   }
 }
 
-function toReservationDto(r: ReservationWithRelations): ReservationDto {
+function assertBookable(court: CourtWithDetails): void {
+  if (!court.isActive) {
+    throw new ConflictException('La cancha está desactivada');
+  }
+  const missing = REQUIRED_PHOTOS.filter(
+    (slot) => !court.photos.some((p) => p.slot === slot),
+  );
+  if (missing.length) {
+    throw new ConflictException(
+      `La cancha está incompleta: le faltan las fotos ${missing.join(', ')}`,
+    );
+  }
+}
+
+function courtRates(court: CourtWithDetails) {
+  return court.rates.map((r) => ({
+    ...r,
+    pricePerHour: Number(r.pricePerHour),
+  }));
+}
+
+function round2(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+export function toReservationDto(r: ReservationWithRelations): ReservationDto {
+  const totalPrice = Number(r.totalPrice);
+  const amountPaid = round2(
+    r.payments
+      .filter((p) => p.status === PaymentStatus.APPROVED)
+      .reduce((sum, p) => sum + Number(p.amount), 0),
+  );
   return {
     id: r.id,
     courtId: r.courtId,
@@ -207,15 +483,31 @@ function toReservationDto(r: ReservationWithRelations): ReservationDto {
     sport: r.court.sport,
     start: r.start,
     end: r.end,
+    customer: r.customer ? toCustomerDto(r.customer) : null,
     customerName: r.customerName,
     customerDetail: r.customerDetail,
     phone: r.phone,
     contactNote: r.contactNote,
     tag: r.tag,
     isRecurring: r.isRecurring,
-    totalPrice: Number(r.totalPrice),
+    subtotal: Number(r.subtotal),
+    discount: Number(r.discount),
+    totalPrice,
     currency: r.court.currency,
-    amountPaid: r.payments.reduce((sum, p) => sum + p.amount, 0),
+    amountPaid,
+    balance: round2(totalPrice - amountPaid),
+    payments: r.payments.map((p) => ({
+      id: p.id,
+      amount: Number(p.amount),
+      method: p.method.code,
+      concept: p.concept,
+      status: p.status,
+      reference: p.reference,
+      receivedAt: p.receivedAt,
+    })),
     status: r.status,
+    cancellationReason: r.cancellationReason,
+    cancelledAt: r.cancelledAt,
+    cancelledBy: r.cancelledBy?.displayName ?? null,
   };
 }

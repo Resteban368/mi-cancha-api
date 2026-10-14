@@ -14,6 +14,9 @@ import { CurrentUser } from '../common/auth/current-user.decorator.js';
 import { Roles } from '../common/auth/roles.decorator.js';
 import { UserRole } from '../generated/prisma/enums.js';
 import {
+  AvailabilityDto,
+  AvailabilityQueryDto,
+  CancelReservationDto,
   CreateReservationDto,
   DayQueryDto,
   ReservationDto,
@@ -47,7 +50,10 @@ export class ReservationsController {
   }
 
   @Post()
-  @ApiOperation({ summary: 'Crear una reserva (valida cruces de horario)' })
+  @ApiOperation({
+    summary:
+      'Reservar turnos seguidos con cliente (existente o nuevo), descuento y pago opcional',
+  })
   create(
     @CurrentUser() user: AuthPayload,
     @Body() dto: CreateReservationDto,
@@ -55,9 +61,23 @@ export class ReservationsController {
     return this.reservationsService.create(user.sub, dto);
   }
 
+  @Post(':id/cancel')
+  @ApiOperation({
+    summary:
+      'Cancelar una reserva confirmada con su motivo (libera el turno y devuelve los pagos)',
+  })
+  cancel(
+    @CurrentUser() user: AuthPayload,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CancelReservationDto,
+  ): Promise<ReservationDto> {
+    return this.reservationsService.cancel(user.sub, id, dto);
+  }
+
   @Patch(':id/status')
   @ApiOperation({
-    summary: 'Cambiar el estado (completada, no-show, cancelada…)',
+    summary:
+      'Marcar como confirmada, jugada (COMPLETED) o no asistió (NO_SHOW)',
   })
   updateStatus(
     @CurrentUser() user: AuthPayload,
@@ -65,5 +85,30 @@ export class ReservationsController {
     @Body() dto: UpdateReservationStatusDto,
   ): Promise<ReservationDto> {
     return this.reservationsService.updateStatus(user.sub, id, dto);
+  }
+}
+
+@ApiTags('business / reservations')
+@ApiBearerAuth()
+@Roles([UserRole.ADMIN_NEGOCIO])
+@Controller('business/courts')
+export class CourtAvailabilityController {
+  constructor(private readonly reservationsService: ReservationsService) {}
+
+  @Get(':id/availability')
+  @ApiOperation({
+    summary:
+      'Turnos de un día con su estado (AVAILABLE, BOOKED, PAST) y precio',
+  })
+  availability(
+    @CurrentUser() user: AuthPayload,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() query: AvailabilityQueryDto,
+  ): Promise<AvailabilityDto> {
+    return this.reservationsService.availabilityForOwner(
+      user.sub,
+      id,
+      query.date,
+    );
   }
 }

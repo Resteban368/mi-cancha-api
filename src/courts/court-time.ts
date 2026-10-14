@@ -201,3 +201,51 @@ export function priceFor(
   total += ((length - covered) / 60) * basePricePerHour;
   return Math.round(total * 100) / 100;
 }
+
+export interface Slot {
+  start: Date;
+  end: Date;
+}
+
+/**
+ * Turnos de un día calendario (YYYY-MM-DD, hora local) según su horario: desde la
+ * apertura, cada `slotDuration` minutos, solo turnos completos. Si el horario cierra
+ * al día siguiente, los turnos de la madrugada pertenecen a este día.
+ */
+export function daySlots(
+  date: string,
+  schedules: ScheduleInput[],
+  slotDuration: number,
+  utcOffset: string,
+): Slot[] {
+  const midnight = new Date(`${date}T00:00:00.000${utcOffset}`);
+  // El día de la semana sale de la fecha calendario, no del instante en UTC.
+  const weekday = DAYS[(new Date(`${date}T12:00:00Z`).getUTCDay() + 6) % 7];
+  const schedule = schedules.find((s) => s.dayOfWeek === weekday);
+  if (!schedule?.isOpen || !schedule.openTime || !schedule.closeTime) return [];
+
+  const open = toMinutes(schedule.openTime);
+  const count = Math.floor(
+    spanMinutes(schedule.openTime, schedule.closeTime) / slotDuration,
+  );
+  return Array.from({ length: count }, (_, i) => {
+    const start = new Date(
+      midnight.getTime() + (open + i * slotDuration) * 60_000,
+    );
+    return { start, end: new Date(start.getTime() + slotDuration * 60_000) };
+  });
+}
+
+/** Fecha calendario local (YYYY-MM-DD) de un instante. */
+export function localDate(date: Date, utcOffset: string): string {
+  const sign = utcOffset.startsWith('-') ? -1 : 1;
+  const offset = sign * toMinutes(utcOffset.slice(1));
+  return new Date(date.getTime() + offset * 60_000).toISOString().slice(0, 10);
+}
+
+/** El día calendario anterior a `date` (YYYY-MM-DD). */
+export function previousDate(date: string): string {
+  const d = new Date(`${date}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().slice(0, 10);
+}

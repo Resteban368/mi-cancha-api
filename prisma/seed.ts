@@ -301,7 +301,20 @@ async function seedDemo() {
     courts[court.name] = saved.id;
   }
 
-  const reservation = (
+  // Clientes del negocio: la cédula de demo sale del teléfono para que sea estable.
+  const customerFor = (name: string, phone: string) =>
+    prisma.customer.upsert({
+      where: { businessId_phone: { businessId: business.id, phone } },
+      update: {},
+      create: {
+        businessId: business.id,
+        name,
+        phone,
+        documentId: `10${phone.slice(-8)}`,
+      },
+    });
+
+  const reservation = async (
     court: string,
     start: Date,
     hours: number,
@@ -314,16 +327,20 @@ async function seedDemo() {
       tag?: string;
       isRecurring?: boolean;
     },
-  ) =>
-    prisma.reservation.create({
+  ) => {
+    const customer = await customerFor(data.customerName, data.phone);
+    return prisma.reservation.create({
       data: {
         businessId: business.id,
         courtId: courts[court],
+        customerId: customer.id,
         start,
         end: new Date(start.getTime() + hours * 3_600_000),
+        subtotal: data.totalPrice,
         ...data,
       },
     });
+  };
 
   const r1 = await reservation('Sintética 1', todayAt(8), 1, {
     customerName: 'Juan Pablo Ríos',

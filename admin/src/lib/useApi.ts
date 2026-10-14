@@ -11,8 +11,9 @@ interface ApiState<T> {
 /**
  * Carga `path` y lo recarga cuando cambia o al llamar `reload()`. Mientras
  * carga conserva los datos anteriores para no hacer parpadear la pantalla.
+ * Con `path` null no pide nada.
  */
-export function useApi<T>(path: string) {
+export function useApi<T>(path: string | null) {
   const [version, setVersion] = useState(0);
   const key = `${path}#${version}`;
   const [state, setState] = useState<ApiState<T>>({
@@ -22,6 +23,7 @@ export function useApi<T>(path: string) {
   });
 
   useEffect(() => {
+    if (!path) return;
     let cancelled = false;
     api<T>(path)
       .then((data) => {
@@ -37,7 +39,7 @@ export function useApi<T>(path: string) {
   }, [path, key]);
 
   const reload = useCallback(() => setVersion((v) => v + 1), []);
-  const settled = state.key === key;
+  const settled = !path || state.key === key;
   return {
     data: state.data,
     error: settled ? state.error : undefined,

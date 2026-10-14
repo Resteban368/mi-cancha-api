@@ -85,25 +85,51 @@ erDiagram
     String businessId FK
     String courtId FK
     String playerId FK "opcional"
+    String customerId FK "opcional · Cliente del negocio; null en reservas anteriores a la tabla de clientes."
     DateTime start
     DateTime end
-    String customerName
+    String customerName "Nombre y teléfono del cliente al momento de reservar."
     String customerDetail "opcional"
     String phone
     String contactNote "opcional"
     String tag "opcional"
     Boolean isRecurring
-    Decimal totalPrice "Valor total en la moneda de la cancha."
+    Decimal subtotal "Valor según las tarifas, antes del descuento."
+    Decimal discount
+    Decimal totalPrice "subtotal - discount, en la moneda de la cancha."
     ReservationStatus status
+    String cancellationReason "opcional"
+    DateTime cancelledAt "opcional"
+    String cancelledById FK "opcional"
     DateTime createdAt
     DateTime updatedAt
+  }
+  Customer {
+    String id PK
+    String businessId FK
+    String name
+    String phone
+    String documentId "Número de cédula u otro documento de identidad."
+    DateTime createdAt
+    DateTime updatedAt
+  }
+  Refund {
+    String id PK
+    String businessId FK
+    String reservationId FK
+    String paymentId FK, UK
+    String customerId FK "opcional"
+    Decimal amount
+    String reason "Motivo de la cancelación que originó la devolución."
+    String createdById FK "opcional"
+    DateTime createdAt
   }
   Payment {
     String id PK
     String businessId FK
     String reservationId FK "opcional"
     String customerName
-    Int amount "Monto en COP."
+    Decimal amount "Monto en la moneda del negocio, con hasta 2 decimales."
     String methodId FK
     PaymentConcept concept
     PaymentStatus status
@@ -158,6 +184,14 @@ erDiagram
   Business ||--o{ Reservation : "reservations"
   Court ||--o{ Reservation : "reservations"
   User |o--o{ Reservation : "reservations"
+  Customer |o--o{ Reservation : "reservations"
+  User |o--o{ Reservation : "cancelledReservations"
+  Business ||--o{ Customer : "customers"
+  Business ||--o{ Refund : "refunds"
+  Reservation ||--o{ Refund : "refunds"
+  Payment ||--o| Refund : "refund"
+  Customer |o--o{ Refund : "refunds"
+  User |o--o{ Refund : "refunds"
   Business ||--o{ Payment : "payments"
   Reservation |o--o{ Payment : "payments"
   PaymentMethod ||--o{ Payment : "payments"
@@ -177,6 +211,8 @@ Los negocios entran con email y contraseña; los jugadores con Google o Apple.
 
 - **Business**: Puede tener un Business (campo business); la llave foránea está en Business.
 - **Reservation**: Tiene cero o muchos Reservation (campo reservations). Cada Reservation apunta a este User.
+- **Reservation**: Tiene cero o muchos Reservation (campo cancelledReservations). Cada Reservation apunta a este User.
+- **Refund**: Tiene cero o muchos Refund (campo refunds). Cada Refund apunta a este User.
 
 ### Business
 
@@ -185,8 +221,10 @@ La sede deportiva de un cliente. Cada administrador de negocio tiene exactamente
 - **User**: Pertenece siempre a un User mediante ownerId; un User tiene como máximo un Business. Si se borra el User, se borra también su Business.
 - **Amenity**: Muchos a muchos con Amenity: cada Business puede tener varios Amenity y cada Amenity puede estar en varios Business (campo amenities).
 - **Court**: Tiene cero o muchos Court (campo courts). Cada Court apunta a este Business.
+- **Customer**: Tiene cero o muchos Customer (campo customers). Cada Customer apunta a este Business.
 - **Reservation**: Tiene cero o muchos Reservation (campo reservations). Cada Reservation apunta a este Business.
 - **Payment**: Tiene cero o muchos Payment (campo payments). Cada Payment apunta a este Business.
+- **Refund**: Tiene cero o muchos Refund (campo refunds). Cada Refund apunta a este Business.
 - **Subscription**: Puede tener un Subscription (campo subscription); la llave foránea está en Subscription.
 - **BusinessProfileImage**: Puede tener un BusinessProfileImage (campo profileImage); la llave foránea está en BusinessProfileImage.
 
@@ -234,16 +272,39 @@ Un turno reservado en una cancha. La crea el negocio desde la app (o un jugador,
 - **Business**: Pertenece siempre a un Business mediante businessId; un Business puede tener varios Reservation. Si se borra el Business, se borran también sus Reservation.
 - **Court**: Pertenece siempre a un Court mediante courtId; un Court puede tener varios Reservation. No se puede borrar un Court mientras tenga Reservation.
 - **User**: Puede pertenecer a un User mediante playerId; un User puede tener varios Reservation. Si se borra el User, el Reservation se conserva sin User.
+- **Customer**: Puede pertenecer a un Customer mediante customerId; un Customer puede tener varios Reservation. Si se borra el Customer, el Reservation se conserva sin Customer.
+- **User**: Puede pertenecer a un User mediante cancelledById; un User puede tener varios Reservation. Si se borra el User, el Reservation se conserva sin User.
 - **Payment**: Tiene cero o muchos Payment (campo payments). Cada Payment apunta a este Reservation.
+- **Refund**: Tiene cero o muchos Refund (campo refunds). Cada Refund apunta a este Reservation.
+
+### Customer
+
+Dinero recibido por el negocio, normalmente ligado a una reserva. Los pagos por transferencia
+Cliente de un negocio (quien reserva). Cada negocio tiene su propia lista;
+teléfono y cédula son únicos dentro del negocio.
+
+- **Business**: Pertenece siempre a un Business mediante businessId; un Business puede tener varios Customer. Si se borra el Business, se borran también sus Customer.
+- **Reservation**: Tiene cero o muchos Reservation (campo reservations). Cada Reservation apunta a este Customer.
+- **Refund**: Tiene cero o muchos Refund (campo refunds). Cada Refund apunta a este Customer.
+
+### Refund
+
+Devolución de un pago aprobado al cancelar su reserva. El pago queda REFUNDED.
+
+- **Business**: Pertenece siempre a un Business mediante businessId; un Business puede tener varios Refund. Si se borra el Business, se borran también sus Refund.
+- **Reservation**: Pertenece siempre a un Reservation mediante reservationId; un Reservation puede tener varios Refund. Si se borra el Reservation, se borran también sus Refund.
+- **Payment**: Pertenece siempre a un Payment mediante paymentId; un Payment tiene como máximo un Refund. Si se borra el Payment, se borra también su Refund.
+- **Customer**: Puede pertenecer a un Customer mediante customerId; un Customer puede tener varios Refund. Si se borra el Customer, el Refund se conserva sin Customer.
+- **User**: Puede pertenecer a un User mediante createdById; un User puede tener varios Refund. Si se borra el User, el Refund se conserva sin User.
 
 ### Payment
 
-Dinero recibido por el negocio, normalmente ligado a una reserva. Los pagos por transferencia
 quedan pendientes hasta que el negocio los aprueba o rechaza.
 
 - **Business**: Pertenece siempre a un Business mediante businessId; un Business puede tener varios Payment. Si se borra el Business, se borran también sus Payment.
 - **Reservation**: Puede pertenecer a un Reservation mediante reservationId; un Reservation puede tener varios Payment. Si se borra el Reservation, el Payment se conserva sin Reservation.
 - **PaymentMethod**: Pertenece siempre a un PaymentMethod mediante methodId; un PaymentMethod puede tener varios Payment. No se puede borrar un PaymentMethod mientras tenga Payment.
+- **Refund**: Puede tener un Refund (campo refund); la llave foránea está en Refund.
 
 ### Amenity
 
@@ -280,10 +341,12 @@ Plan que tiene contratado un negocio, su estado (activo o suspendido) y la fecha
 | `CourtPhotoSlot` | `MAIN`, `SURFACE`, `LIGHTING`, `EXTRA_1`, `EXTRA_2` |
 | `ReservationStatus` | `CONFIRMED`, `COMPLETED`, `NO_SHOW`, `CANCELLED` |
 | `PaymentConcept` | `ANTICIPO`, `SALDO`, `TOTAL` |
-| `PaymentStatus` | `PENDING`, `APPROVED`, `REJECTED` |
+| `PaymentStatus` | `PENDING`, `APPROVED`, `REJECTED`, `REFUNDED` |
 
 ## Únicos compuestos
 
 - Court: (businessId, name)
 - CourtSchedule: (courtId, dayOfWeek)
 - CourtPhoto: (courtId, slot)
+- Customer: (businessId, phone)
+- Customer: (businessId, documentId)

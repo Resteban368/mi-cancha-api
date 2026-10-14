@@ -81,8 +81,13 @@ Para regenerarlos a mano: `npm run db:erd`. No los edites directamente.
 | PUT · DELETE | `/business/profile/image` | Foto de portada del negocio (multipart `image`, JPG/PNG ≤ 4 MB) |
 | GET · POST · PATCH · DELETE | `/business/courts` · `/:id` | Canchas con horarios y tarifas (respeta el límite del plan; DELETE desactiva) |
 | PUT · DELETE | `/business/courts/:id/photos/:slot` | Fotos de la cancha por posición: `MAIN`, `SURFACE`, `LIGHTING` (obligatorias), `EXTRA_1`, `EXTRA_2` |
-| GET | `/business/reservations?date=YYYY-MM-DD` | Agenda del día |
-| POST · PATCH `:id/status` | `/business/reservations` | Crear reserva (valida horario, turno y cruces; calcula el precio con las tarifas) y cambiar estado |
+| GET | `/business/courts/:id/availability?date=YYYY-MM-DD` | Turnos del día: `AVAILABLE`, `BOOKED` o `PAST`, con su precio |
+| GET | `/business/reservations?date=YYYY-MM-DD` · `/:id` | Agenda del día y detalle |
+| POST | `/business/reservations` | Reservar: `start` (inicio de un turno), `slots` (1 a 5), `customerId` o `customer {name, phone, documentId}`, `discount` y `payment` opcionales |
+| POST | `/business/reservations/:id/cancel` | Cancelar con `{ reason }`: libera el turno, devuelve los pagos aprobados y rechaza los pendientes |
+| PATCH | `/business/reservations/:id/status` | `CONFIRMED`, `COMPLETED` o `NO_SHOW` |
+| GET | `/business/customers?search=` | Clientes del negocio por nombre, teléfono o cédula |
+| GET | `/business/refunds` | Devoluciones (pagos devueltos al cancelar) |
 | GET · POST | `/business/payments?status=` | Pagos; los registrados por el negocio quedan aprobados |
 | PATCH | `/business/payments/:id/approve` · `/reject` | Validar pagos pendientes |
 | GET | `/business/account` | Perfil del admin y suscripción |
@@ -90,6 +95,9 @@ Para regenerarlos a mano: `npm run db:erd`. No los edites directamente.
 | GET | `/admin/dashboard` | Métricas de la plataforma |
 | GET · POST | `/admin/clients` | Clientes; POST crea usuario de negocio + negocio + plan |
 | GET | `/admin/clients/:id` | Ficha del cliente: negocio, responsable, plan, canchas y actividad |
+| GET | `/admin/clients/:id/courts/:courtId/availability` · `/admin/clients/:id/reservations?date=` | Turnos y agenda del cliente |
+| POST | `/admin/clients/:id/reservations` · `/:reservationId/cancel` | Reservar y cancelar en nombre del negocio |
+| GET | `/admin/clients/:id/customers` · `/refunds` | Clientes y devoluciones del negocio |
 | GET · PATCH | `/admin/clients/:id/courts` · `/:courtId` | Canchas del cliente con horarios, tarifas y fotos; el super admin puede editarlas (mismas reglas que el negocio) |
 | PATCH | `/admin/clients/:id/subscription` | Cambiar plan o activar/suspender |
 | GET | `/admin/users?role=&search=` | Usuarios |
@@ -109,7 +117,8 @@ Las rutas `/business/*` requieren rol `ADMIN_NEGOCIO`, y las `/admin/*`, rol `SU
 - **Fechas:** ISO 8601 en UTC. La agenda por día usa la zona del negocio (`APP_UTC_OFFSET`, por defecto `-05:00`).
 - **Enums fijos** (`UserRole`, `Sport`, `DayOfWeek`, `CourtPhotoSlot`, `ReservationStatus`, `PaymentStatus`, `PaymentConcept`): en MAYÚSCULAS_CON_GUION_BAJO. La app Flutter los mapea a sus enums.
 - **Catálogos editables** (`Amenity` = servicios, `PaymentMethod` = métodos de pago): la API recibe y devuelve su `code` (`PARQUEADERO`, `NEQUI`…). Los nombres visibles salen de `GET /catalogs`. Si un método tiene `requiresReference`, el pago exige referencia.
-- **`amountPaid`** de una reserva es la suma de sus pagos **aprobados**; el saldo lo calcula la app.
+- **Reservas:** el valor es `subtotal` (tarifas) − `discount` = `totalPrice`; `amountPaid` suma los pagos **aprobados** y `balance` es lo que falta. Un pago al reservar es `TOTAL` si cubre el total y `ANTICIPO` si no; por defecto en `EFECTIVO`.
+- **Clientes:** cada negocio tiene los suyos; teléfono y cédula son únicos por negocio. Si al reservar llega un teléfono o cédula ya registrados, se usa ese cliente y se conservan sus datos.
 - **Planes:** al crear su negocio, el admin recibe el plan con precio 0 (si existe), para que pueda habilitar su primera cancha.
 
 ## Pruebas

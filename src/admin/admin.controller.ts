@@ -12,6 +12,8 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import type { AuthPayload } from '../common/auth/auth-payload.js';
+import { CurrentUser } from '../common/auth/current-user.decorator.js';
 import { Roles } from '../common/auth/roles.decorator.js';
 import { PageQueryDto } from '../common/dto/page.dto.js';
 import {
@@ -25,6 +27,21 @@ import {
 } from '../generated/prisma/enums.js';
 import { CourtsService } from '../courts/courts.service.js';
 import { CourtDto, UpdateCourtDto } from '../courts/dto/court.dto.js';
+import { CustomersService } from '../customers/customers.service.js';
+import {
+  CustomerDto,
+  CustomerSearchDto,
+} from '../customers/dto/customer.dto.js';
+import { RefundDto, RefundsService } from '../refunds/refunds.service.js';
+import {
+  AvailabilityDto,
+  AvailabilityQueryDto,
+  CancelReservationDto,
+  CreateReservationDto,
+  DayQueryDto,
+  ReservationDto,
+} from '../reservations/dto/reservation.dto.js';
+import { ReservationsService } from '../reservations/reservations.service.js';
 import { ClientsService } from './clients.service.js';
 import { DashboardService } from './dashboard.service.js';
 import {
@@ -94,6 +111,9 @@ export class AdminController {
     private readonly usersService: UsersService,
     private readonly plansService: PlansService,
     private readonly courtsService: CourtsService,
+    private readonly reservationsService: ReservationsService,
+    private readonly customersService: CustomersService,
+    private readonly refundsService: RefundsService,
   ) {}
 
   @Get('dashboard')
@@ -140,6 +160,77 @@ export class AdminController {
   ): Promise<CourtDto> {
     await this.clientsService.requireClient(id);
     return this.courtsService.updateForBusiness(id, courtId, dto);
+  }
+
+  @Get('clients/:id/courts/:courtId/availability')
+  @ApiOperation({ summary: 'Turnos de un día de una cancha del cliente' })
+  async clientCourtAvailability(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('courtId', ParseUUIDPipe) courtId: string,
+    @Query() query: AvailabilityQueryDto,
+  ): Promise<AvailabilityDto> {
+    await this.clientsService.requireClient(id);
+    return this.reservationsService.availability(id, courtId, query.date);
+  }
+
+  @Get('clients/:id/reservations')
+  @ApiOperation({ summary: 'Agenda de un día del cliente (todas sus canchas)' })
+  async clientReservations(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() query: DayQueryDto,
+  ): Promise<ReservationDto[]> {
+    await this.clientsService.requireClient(id);
+    return this.reservationsService.listForDay(id, query.date);
+  }
+
+  @Post('clients/:id/reservations')
+  @ApiOperation({
+    summary: 'Crear una reserva para el cliente (mismas reglas que el negocio)',
+  })
+  async createClientReservation(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CreateReservationDto,
+  ): Promise<ReservationDto> {
+    await this.clientsService.requireClient(id);
+    return this.reservationsService.createForBusiness(id, dto);
+  }
+
+  @Post('clients/:id/reservations/:reservationId/cancel')
+  @ApiOperation({
+    summary: 'Cancelar una reserva del cliente con su motivo',
+  })
+  async cancelClientReservation(
+    @CurrentUser() user: AuthPayload,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('reservationId', ParseUUIDPipe) reservationId: string,
+    @Body() dto: CancelReservationDto,
+  ): Promise<ReservationDto> {
+    await this.clientsService.requireClient(id);
+    return this.reservationsService.cancelForBusiness(
+      id,
+      reservationId,
+      dto,
+      user.sub,
+    );
+  }
+
+  @Get('clients/:id/customers')
+  @ApiOperation({ summary: 'Buscar clientes (personas) del negocio' })
+  async clientCustomers(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() query: CustomerSearchDto,
+  ): Promise<CustomerDto[]> {
+    await this.clientsService.requireClient(id);
+    return this.customersService.search(id, query.search);
+  }
+
+  @Get('clients/:id/refunds')
+  @ApiOperation({ summary: 'Devoluciones del negocio' })
+  async clientRefunds(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<RefundDto[]> {
+    await this.clientsService.requireClient(id);
+    return this.refundsService.listForBusiness(id);
   }
 
   @Post('clients')

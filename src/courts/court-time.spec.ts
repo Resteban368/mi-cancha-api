@@ -1,6 +1,7 @@
 import { DayOfWeek } from '../generated/prisma/enums.js';
 import {
   DAYS,
+  daySlots,
   fitsSchedule,
   priceFor,
   rateErrors,
@@ -222,6 +223,32 @@ describe('court-time', () => {
       expect(
         priceFor(slot('2026-10-17T10:00:00', '2026-10-17T11:30:00'), 12.5, []),
       ).toBe(18.75);
+    });
+  });
+
+  describe('daySlots', () => {
+    it('arma turnos completos desde la apertura, en hora local', () => {
+      const slots = daySlots('2026-10-12', week('06:00', '09:30'), 60, OFFSET);
+      expect(slots.map((s) => s.start.toISOString())).toEqual([
+        '2026-10-12T11:00:00.000Z',
+        '2026-10-12T12:00:00.000Z',
+        '2026-10-12T13:00:00.000Z',
+      ]);
+    });
+
+    it('incluye la madrugada del día siguiente si el horario pasa de medianoche', () => {
+      const slots = daySlots('2026-10-16', week('22:00', '01:00'), 90, OFFSET);
+      // Viernes 22:00–23:30 y 23:30–01:00 del sábado.
+      expect(slots.map((s) => s.end.toISOString())).toEqual([
+        '2026-10-17T04:30:00.000Z',
+        '2026-10-17T06:00:00.000Z',
+      ]);
+    });
+
+    it('no hay turnos en días cerrados', () => {
+      const schedules = week('06:00', '23:00');
+      schedules[6] = { dayOfWeek: DayOfWeek.SUNDAY, isOpen: false };
+      expect(daySlots('2026-10-18', schedules, 60, OFFSET)).toEqual([]);
     });
   });
 });

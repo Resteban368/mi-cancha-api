@@ -128,7 +128,7 @@ function toPaymentDto(p: PaymentWithReservation): PaymentDto {
   return {
     id: p.id,
     customerName: p.customerName,
-    amount: p.amount,
+    amount: Number(p.amount),
     method: p.method.code,
     concept: p.concept,
     receivedAt: p.receivedAt,

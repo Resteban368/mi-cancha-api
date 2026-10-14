@@ -16,6 +16,12 @@ const dateTime = new Intl.DateTimeFormat('es-CO', {
   minute: '2-digit',
   timeZone: 'America/Bogota',
 });
+const longDay = new Intl.DateTimeFormat('es-CO', {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+  timeZone: 'America/Bogota',
+});
 const time = new Intl.DateTimeFormat('es-CO', {
   hour: 'numeric',
   minute: '2-digit',
@@ -48,6 +54,13 @@ export const formatDate = (iso: string) => date.format(new Date(iso));
 /** "14 oct, 7:00 p. m." en hora de Colombia. */
 export const formatDateTime = (iso: string) => dateTime.format(new Date(iso));
 export const formatTime = (iso: string) => time.format(new Date(iso));
+/** "lunes, 20 de octubre" en hora de Colombia. */
+export const formatLongDay = (iso: string) => longDay.format(new Date(iso));
+
+/** Fecha de hoy (YYYY-MM-DD) en hora de Colombia. */
+export function todayInBogota(): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date());
+}
 
 /** "2026-10" → "oct" */
 export const formatMonthShort = (month: string) =>
@@ -126,6 +139,7 @@ export const PAYMENT_STATUS: Record<string, { label: string; tone: 'neutral' | '
   PENDING: { label: 'Pendiente', tone: 'warn' },
   APPROVED: { label: 'Aprobado', tone: 'success' },
   REJECTED: { label: 'Rechazado', tone: 'danger' },
+  REFUNDED: { label: 'Devuelto', tone: 'neutral' },
 };
 
 export const PAYMENT_CONCEPT_LABELS: Record<string, string> = {
