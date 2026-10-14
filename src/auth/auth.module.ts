@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtModule, JwtSignOptions } from '@nestjs/jwt';
+import { ActiveSubscriptionGuard } from '../common/auth/active-subscription.guard.js';
 import { JwtAuthGuard } from '../common/auth/jwt-auth.guard.js';
 import { RolesGuard } from '../common/auth/roles.guard.js';
 import { AuthController } from './auth.controller.js';
@@ -27,9 +28,11 @@ import { SocialTokenVerifier } from './social-token.verifier.js';
   providers: [
     AuthService,
     SocialTokenVerifier,
-    // El orden importa: primero se autentica y luego se autorizan los roles.
+    // El orden importa: se autentica, se autorizan los roles y, para los
+    // negocios, se exige plan activo en cualquier escritura.
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
+    { provide: APP_GUARD, useClass: ActiveSubscriptionGuard },
   ],
 })
 export class AuthModule {}

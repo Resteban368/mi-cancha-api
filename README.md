@@ -100,6 +100,8 @@ Para regenerarlos a mano: `npm run db:erd`. No los edites directamente.
 
 Las rutas `/business/*` requieren rol `ADMIN_NEGOCIO`, y las `/admin/*`, rol `SUPER_ADMIN`.
 
+**Plan inactivo = solo lectura.** Si la suscripción del negocio está suspendida o no tiene plan, el `ADMIN_NEGOCIO` puede hacer `GET` de todo, pero cualquier `POST`, `PUT`, `PATCH` o `DELETE` responde 403 con `code: SUBSCRIPTION_INACTIVE`. Lo aplica un guard global (`ActiveSubscriptionGuard`), así que cubre también los endpoints futuros. El super admin no se ve afectado; la app puede saber el estado con `GET /business/account` (`subscription.isActive`).
+
 ## Convenciones
 
 - **Dinero:** precios de canchas y reservas con hasta 2 decimales, en la moneda de la cancha (`currency`, ISO 4217, por defecto `COP`). Planes y pagos siguen en enteros COP.
