@@ -7,10 +7,8 @@ import {
 } from '../../test/support/prisma-mock.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { FileStorage } from '../storage/file-storage.js';
-import {
-  BusinessImagesService,
-  MAX_IMAGE_BYTES,
-} from './business-images.service.js';
+import { MAX_IMAGE_BYTES } from '../storage/image-upload.js';
+import { BusinessImagesService } from './business-images.service.js';
 import { BusinessesService } from './businesses.service.js';
 
 const PNG_MAGIC = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];

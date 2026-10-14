@@ -14,8 +14,8 @@ erDiagram
     String phone "opcional"
     UserRole role
     Boolean verified
-    String googleSub UK "opcional"
-    String appleSub UK "opcional"
+    String googleSub UK "opcional · Identificador de la cuenta de Google del jugador."
+    String appleSub UK "opcional · Identificador de la cuenta de Apple del jugador."
     DateTime createdAt
     DateTime updatedAt
   }
@@ -43,10 +43,40 @@ erDiagram
     String businessId FK
     String name
     Sport sport
-    Int hourlyPrice "Precio por hora en pesos colombianos (COP, sin decimales)."
-    Boolean active
+    Boolean isCovered "true = cubierta o con techo; false = al aire libre."
+    String currency "Código ISO 4217 de la moneda de los precios (COP, USD…)."
+    Decimal basePricePerHour "Precio por hora cuando ninguna tarifa (CourtRate) cubre la franja."
+    Int slotDuration "Duración de cada turno en minutos: 30, 60, 90 o 120."
+    Boolean isActive
     DateTime createdAt
     DateTime updatedAt
+  }
+  CourtSchedule {
+    String id PK
+    String courtId FK
+    DayOfWeek dayOfWeek
+    Boolean isOpen
+    String openTime "opcional · Hora local HH:mm; null si está cerrado."
+    String closeTime "opcional · Hora local HH:mm; null si está cerrado."
+  }
+  CourtRate {
+    String id PK
+    String courtId FK
+    String name
+    Decimal pricePerHour
+    DayOfWeek[] days "Días en los que empieza la franja."
+    String startTime "Hora local HH:mm. Si endTime es menor, la franja termina al día siguiente."
+    String endTime
+    Int sortOrder
+  }
+  CourtPhoto {
+    String id PK
+    String courtId FK
+    CourtPhotoSlot slot
+    String storagePath "Ruta del archivo en el almacenamiento, p. ej. mi-cancha/courts/<cancha>/<id>.jpg"
+    String contentType
+    Int sizeBytes
+    DateTime createdAt
   }
   Reservation {
     String id PK
@@ -61,7 +91,7 @@ erDiagram
     String contactNote "opcional"
     String tag "opcional"
     Boolean isRecurring
-    Int totalPrice "Valor total en COP."
+    Decimal totalPrice "Valor total en la moneda de la cancha."
     ReservationStatus status
     DateTime createdAt
     DateTime updatedAt
@@ -120,6 +150,9 @@ erDiagram
   User ||--o| Business : "business"
   Business ||--o| BusinessProfileImage : "profileImage"
   Business ||--o{ Court : "courts"
+  Court ||--o{ CourtSchedule : "schedules"
+  Court ||--o{ CourtRate : "rates"
+  Court ||--o{ CourtPhoto : "photos"
   Business ||--o{ Reservation : "reservations"
   Court ||--o{ Reservation : "reservations"
   User |o--o{ Reservation : "reservations"
@@ -133,12 +166,116 @@ erDiagram
 
 **Leyenda:** PK llave primaria · FK llave foránea · UK única · `||` exactamente uno · `|o` cero o uno · `o{` cero o muchos · `}o--o{` muchos a muchos.
 
+## Tablas
+
+### User
+
+Cualquier persona que inicia sesión: super admin, administrador de negocio o jugador (según role).
+Los negocios entran con email y contraseña; los jugadores con Google o Apple.
+
+- **Business**: Puede tener un Business (campo business); la llave foránea está en Business.
+- **Reservation**: Tiene cero o muchos Reservation (campo reservations). Cada Reservation apunta a este User.
+
+### Business
+
+La sede deportiva de un cliente. Cada administrador de negocio tiene exactamente una.
+
+- **User**: Pertenece siempre a un User mediante ownerId; un User tiene como máximo un Business. Si se borra el User, se borra también su Business.
+- **Amenity**: Muchos a muchos con Amenity: cada Business puede tener varios Amenity y cada Amenity puede estar en varios Business (campo amenities).
+- **Court**: Tiene cero o muchos Court (campo courts). Cada Court apunta a este Business.
+- **Reservation**: Tiene cero o muchos Reservation (campo reservations). Cada Reservation apunta a este Business.
+- **Payment**: Tiene cero o muchos Payment (campo payments). Cada Payment apunta a este Business.
+- **Subscription**: Puede tener un Subscription (campo subscription); la llave foránea está en Subscription.
+- **BusinessProfileImage**: Puede tener un BusinessProfileImage (campo profileImage); la llave foránea está en BusinessProfileImage.
+
+### BusinessProfileImage
+
+Foto de portada del negocio. Una por negocio; el archivo vive en Koofr.
+
+- **Business**: Pertenece siempre a un Business mediante businessId; un Business tiene como máximo un BusinessProfileImage. Si se borra el Business, se borra también su BusinessProfileImage.
+
+### Court
+
+Cancha que el negocio alquila por turnos. Solo recibe reservas si está activa (isActive) y
+completa (tiene las fotos MAIN, SURFACE y LIGHTING). El límite del plan cuenta las activas.
+
+- **Business**: Pertenece siempre a un Business mediante businessId; un Business puede tener varios Court. Si se borra el Business, se borran también sus Court.
+- **CourtSchedule**: Tiene cero o muchos CourtSchedule (campo schedules). Cada CourtSchedule apunta a este Court.
+- **CourtRate**: Tiene cero o muchos CourtRate (campo rates). Cada CourtRate apunta a este Court.
+- **CourtPhoto**: Tiene cero o muchos CourtPhoto (campo photos). Cada CourtPhoto apunta a este Court.
+- **Reservation**: Tiene cero o muchos Reservation (campo reservations). Cada Reservation apunta a este Court.
+
+### CourtSchedule
+
+Horario de una cancha para un día de la semana. Siempre hay 7 por cancha.
+Si closeTime es menor que openTime, la cancha cierra al día siguiente (p. ej. 18:00 a 02:00).
+
+- **Court**: Pertenece siempre a un Court mediante courtId; un Court puede tener varios CourtSchedule. Si se borra el Court, se borran también sus CourtSchedule.
+
+### CourtRate
+
+Tarifa de una franja horaria (p. ej. nocturna). Reemplaza al precio base en esa franja;
+una reserva que cruza franjas se cobra por fracciones. Las tarifas no se pueden cruzar.
+
+- **Court**: Pertenece siempre a un Court mediante courtId; un Court puede tener varios CourtRate. Si se borra el Court, se borran también sus CourtRate.
+
+### CourtPhoto
+
+Foto de una cancha en una posición fija. El archivo vive en Koofr.
+
+- **Court**: Pertenece siempre a un Court mediante courtId; un Court puede tener varios CourtPhoto. Si se borra el Court, se borran también sus CourtPhoto.
+
+### Reservation
+
+Un turno reservado en una cancha. La crea el negocio desde la app (o un jugador, en el futuro).
+
+- **Business**: Pertenece siempre a un Business mediante businessId; un Business puede tener varios Reservation. Si se borra el Business, se borran también sus Reservation.
+- **Court**: Pertenece siempre a un Court mediante courtId; un Court puede tener varios Reservation. No se puede borrar un Court mientras tenga Reservation.
+- **User**: Puede pertenecer a un User mediante playerId; un User puede tener varios Reservation. Si se borra el User, el Reservation se conserva sin User.
+- **Payment**: Tiene cero o muchos Payment (campo payments). Cada Payment apunta a este Reservation.
+
+### Payment
+
+Dinero recibido por el negocio, normalmente ligado a una reserva. Los pagos por transferencia
+quedan pendientes hasta que el negocio los aprueba o rechaza.
+
+- **Business**: Pertenece siempre a un Business mediante businessId; un Business puede tener varios Payment. Si se borra el Business, se borran también sus Payment.
+- **Reservation**: Puede pertenecer a un Reservation mediante reservationId; un Reservation puede tener varios Payment. Si se borra el Reservation, el Payment se conserva sin Reservation.
+- **PaymentMethod**: Pertenece siempre a un PaymentMethod mediante methodId; un PaymentMethod puede tener varios Payment. No se puede borrar un PaymentMethod mientras tenga Payment.
+
+### Amenity
+
+Catálogo editable desde el panel: servicios que ofrece un negocio.
+
+- **Business**: Muchos a muchos con Business: cada Amenity puede tener varios Business y cada Business puede estar en varios Amenity (campo businesses).
+
+### PaymentMethod
+
+Catálogo editable desde el panel: medios con los que se recibe un pago.
+
+- **Payment**: Tiene cero o muchos Payment (campo payments). Cada Payment apunta a este PaymentMethod.
+
+### Plan
+
+Plan de suscripción de Mi Cancha (Gratis, Básico, Pro): precio mensual y cuántas canchas permite.
+
+- **Subscription**: Tiene cero o muchos Subscription (campo subscriptions). Cada Subscription apunta a este Plan.
+
+### Subscription
+
+Plan que tiene contratado un negocio, su estado (activo o suspendido) y la fecha del próximo cobro.
+
+- **Business**: Pertenece siempre a un Business mediante businessId; un Business tiene como máximo un Subscription. Si se borra el Business, se borra también su Subscription.
+- **Plan**: Pertenece siempre a un Plan mediante planId; un Plan puede tener varios Subscription. No se puede borrar un Plan mientras tenga Subscription.
+
 ## Enums
 
 | Enum | Valores |
 |---|---|
 | `UserRole` | `SUPER_ADMIN`, `ADMIN_NEGOCIO`, `JUGADOR` |
 | `Sport` | `FUTBOL`, `PADEL`, `BALONCESTO`, `VOLEIBOL` |
+| `DayOfWeek` | `MONDAY`, `TUESDAY`, `WEDNESDAY`, `THURSDAY`, `FRIDAY`, `SATURDAY`, `SUNDAY` |
+| `CourtPhotoSlot` | `MAIN`, `SURFACE`, `LIGHTING`, `EXTRA_1`, `EXTRA_2` |
 | `ReservationStatus` | `CONFIRMED`, `COMPLETED`, `NO_SHOW`, `CANCELLED` |
 | `PaymentConcept` | `ANTICIPO`, `SALDO`, `TOTAL` |
 | `PaymentStatus` | `PENDING`, `APPROVED`, `REJECTED` |
@@ -146,3 +283,5 @@ erDiagram
 ## Únicos compuestos
 
 - Court: (businessId, name)
+- CourtSchedule: (courtId, dayOfWeek)
+- CourtPhoto: (courtId, slot)

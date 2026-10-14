@@ -1,41 +1,19 @@
-import {
-  BadRequestException,
-  Injectable,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { FileStorage } from '../storage/file-storage.js';
+import { type UploadedImage, validateImage } from '../storage/image-upload.js';
 import { BusinessesService } from './businesses.service.js';
 import { BusinessDto } from './dto/business.dto.js';
 
-/** Vercel corta los cuerpos en 4,5 MB: 4 MB deja margen para el multipart. */
-export const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
-
 /** Carpeta de las fotos de perfil dentro de STORAGE_ROOT. */
 const PROFILE_FOLDER = 'business-profile';
-
-export interface UploadedImage {
-  buffer: Buffer;
-  size: number;
-}
 
 export interface StoredImage {
   data: Buffer;
   contentType: string;
 }
-
-/** Tipos aceptados, reconocidos por su firma y no por el nombre o el mimetype del cliente. */
-const IMAGE_TYPES = [
-  { contentType: 'image/jpeg', extension: 'jpg', magic: [0xff, 0xd8, 0xff] },
-  {
-    contentType: 'image/png',
-    extension: 'png',
-    magic: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
-  },
-];
 
 @Injectable()
 export class BusinessImagesService {
@@ -59,29 +37,17 @@ export class BusinessImagesService {
     ownerId: string,
     file: UploadedImage | undefined,
   ): Promise<BusinessDto> {
-    if (!file?.size) {
-      throw new BadRequestException('Adjunta la imagen en el campo "image"');
-    }
-    if (file.size > MAX_IMAGE_BYTES) {
-      throw new BadRequestException('La imagen no puede superar 4 MB');
-    }
-    const type = IMAGE_TYPES.find(({ magic }) =>
-      magic.every((byte, i) => file.buffer[i] === byte),
-    );
-    if (!type) {
-      throw new BadRequestException('La imagen debe ser JPG o PNG');
-    }
-
+    const upload = validateImage(file);
     const businessId = await this.businesses.requireBusinessId(ownerId);
     const id = randomUUID();
-    const storagePath = `${this.root}/${PROFILE_FOLDER}/${businessId}/${id}.${type.extension}`;
-    await this.storage.put(storagePath, file.buffer, type.contentType);
+    const storagePath = `${this.root}/${PROFILE_FOLDER}/${businessId}/${id}.${upload.extension}`;
+    await this.storage.put(storagePath, upload.buffer, upload.contentType);
 
     const image = {
       id,
       storagePath,
-      contentType: type.contentType,
-      sizeBytes: file.size,
+      contentType: upload.contentType,
+      sizeBytes: upload.size,
     };
     let previous: { storagePath: string } | null;
     try {

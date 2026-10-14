@@ -31,7 +31,7 @@ export class DashboardService {
       this.prisma.subscription.count({ where: { isActive: true } }),
       this.prisma.business.count({ where: { createdAt: { gte: last30Days } } }),
       this.prisma.user.groupBy({ by: ['role'], _count: { _all: true } }),
-      this.prisma.court.count({ where: { active: true } }),
+      this.prisma.court.count({ where: { isActive: true } }),
       this.prisma.reservation.count({
         where: { createdAt: { gte: last30Days } },
       }),

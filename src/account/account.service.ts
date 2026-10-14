@@ -24,7 +24,7 @@ export class AccountService {
         business: {
           include: {
             subscription: { include: { plan: true } },
-            _count: { select: { courts: { where: { active: true } } } },
+            _count: { select: { courts: { where: { isActive: true } } } },
           },
         },
       },

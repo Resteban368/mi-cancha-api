@@ -165,9 +165,13 @@ export class ClientCourtDto {
   name: string;
   @ApiProperty({ enum: Sport })
   sport: Sport;
-  /** Precio por hora en COP. */
-  hourlyPrice: number;
-  active: boolean;
+  isCovered: boolean;
+  /** Código ISO 4217 de los precios. */
+  currency: string;
+  basePricePerHour: number;
+  isActive: boolean;
+  /** Tiene las 3 fotos obligatorias. */
+  isComplete: boolean;
 }
 
 export class ClientStatsDto {
@@ -187,6 +191,7 @@ export class ClientReservationDto {
   courtName: string;
   customerName: string;
   totalPrice: number;
+  currency: string;
   @ApiProperty({ enum: ReservationStatus })
   status: ReservationStatus;
 }

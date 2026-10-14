@@ -29,6 +29,25 @@ enum Sport {
   VOLEIBOL
 }
 
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+/// Posiciones fijas de las fotos de una cancha. MAIN, SURFACE y LIGHTING son obligatorias.
+enum CourtPhotoSlot {
+  MAIN
+  SURFACE
+  LIGHTING
+  EXTRA_1
+  EXTRA_2
+}
+
 enum ReservationStatus {
   CONFIRMED
   COMPLETED
@@ -48,6 +67,8 @@ enum PaymentStatus {
   REJECTED
 }
 
+/// Cualquier persona que inicia sesión: super admin, administrador de negocio o jugador (según role).
+/// Los negocios entran con email y contraseña; los jugadores con Google o Apple.
 model User {
   id           String   @id @default(uuid())
   email        String?  @unique
@@ -56,7 +77,9 @@ model User {
   phone        String?
   role         UserRole
   verified     Boolean  @default(false)
+  /// Identificador de la cuenta de Google del jugador.
   googleSub    String?  @unique
+  /// Identificador de la cuenta de Apple del jugador.
   appleSub     String?  @unique
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -65,6 +88,7 @@ model User {
   reservations Reservation[]
 }
 
+/// La sede deportiva de un cliente. Cada administrador de negocio tiene exactamente una.
 model Business {
   id           String    @id @default(uuid())
   ownerId      String    @unique
@@ -97,23 +121,84 @@ model BusinessProfileImage {
   updatedAt   DateTime @updatedAt
 }
 
+/// Cancha que el negocio alquila por turnos. Solo recibe reservas si está activa (isActive) y
+/// completa (tiene las fotos MAIN, SURFACE y LIGHTING). El límite del plan cuenta las activas.
 model Court {
-  id          String   @id @default(uuid())
-  businessId  String
-  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  name        String
-  sport       Sport
-  /// Precio por hora en pesos colombianos (COP, sin decimales).
-  hourlyPrice Int
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id               String   @id @default(uuid())
+  businessId       String
+  business         Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name             String
+  sport            Sport
+  /// true = cubierta o con techo; false = al aire libre.
+  isCovered        Boolean  @default(false)
+  /// Código ISO 4217 de la moneda de los precios (COP, USD…).
+  currency         String   @default("COP")
+  /// Precio por hora cuando ninguna tarifa (CourtRate) cubre la franja.
+  basePricePerHour Decimal  @db.Decimal(12, 2)
+  /// Duración de cada turno en minutos: 30, 60, 90 o 120.
+  slotDuration     Int      @default(60)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
+  schedules    CourtSchedule[]
+  rates        CourtRate[]
+  photos       CourtPhoto[]
   reservations Reservation[]
 
   @@unique([businessId, name])
 }
 
+/// Horario de una cancha para un día de la semana. Siempre hay 7 por cancha.
+/// Si closeTime es menor que openTime, la cancha cierra al día siguiente (p. ej. 18:00 a 02:00).
+model CourtSchedule {
+  id        String    @id @default(uuid())
+  courtId   String
+  court     Court     @relation(fields: [courtId], references: [id], onDelete: Cascade)
+  dayOfWeek DayOfWeek
+  isOpen    Boolean
+  /// Hora local HH:mm; null si está cerrado.
+  openTime  String?
+  /// Hora local HH:mm; null si está cerrado.
+  closeTime String?
+
+  @@unique([courtId, dayOfWeek])
+}
+
+/// Tarifa de una franja horaria (p. ej. nocturna). Reemplaza al precio base en esa franja;
+/// una reserva que cruza franjas se cobra por fracciones. Las tarifas no se pueden cruzar.
+model CourtRate {
+  id           String      @id @default(uuid())
+  courtId      String
+  court        Court       @relation(fields: [courtId], references: [id], onDelete: Cascade)
+  name         String
+  pricePerHour Decimal     @db.Decimal(12, 2)
+  /// Días en los que empieza la franja.
+  days         DayOfWeek[]
+  /// Hora local HH:mm. Si endTime es menor, la franja termina al día siguiente.
+  startTime    String
+  endTime      String
+  sortOrder    Int         @default(0)
+
+  @@index([courtId])
+}
+
+/// Foto de una cancha en una posición fija. El archivo vive en Koofr.
+model CourtPhoto {
+  id          String         @id @default(uuid())
+  courtId     String
+  court       Court          @relation(fields: [courtId], references: [id], onDelete: Cascade)
+  slot        CourtPhotoSlot
+  /// Ruta del archivo en el almacenamiento, p. ej. mi-cancha/courts/<cancha>/<id>.jpg
+  storagePath String
+  contentType String
+  sizeBytes   Int
+  createdAt   DateTime       @default(now())
+
+  @@unique([courtId, slot])
+}
+
+/// Un turno reservado en una cancha. La crea el negocio desde la app (o un jugador, en el futuro).
 model Reservation {
   id             String            @id @default(uuid())
   businessId     String
@@ -130,8 +215,8 @@ model Reservation {
   contactNote    String?
   tag            String?
   isRecurring    Boolean           @default(false)
-  /// Valor total en COP.
-  totalPrice     Int
+  /// Valor total en la moneda de la cancha.
+  totalPrice     Decimal           @db.Decimal(12, 2)
   status         ReservationStatus @default(CONFIRMED)
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
@@ -142,6 +227,8 @@ model Reservation {
   @@index([courtId, start, end])
 }
 
+/// Dinero recibido por el negocio, normalmente ligado a una reserva. Los pagos por transferencia
+/// quedan pendientes hasta que el negocio los aprueba o rechaza.
 model Payment {
   id                   String         @id @default(uuid())
   businessId           String
@@ -196,6 +283,7 @@ model PaymentMethod {
   payments Payment[]
 }
 
+/// Plan de suscripción de Mi Cancha (Gratis, Básico, Pro): precio mensual y cuántas canchas permite.
 model Plan {
   id           String @id @default(uuid())
   name         String @unique
@@ -208,6 +296,7 @@ model Plan {
   subscriptions Subscription[]
 }
 
+/// Plan que tiene contratado un negocio, su estado (activo o suspendido) y la fecha del próximo cobro.
 model Subscription {
   id          String   @id @default(uuid())
   businessId  String   @unique

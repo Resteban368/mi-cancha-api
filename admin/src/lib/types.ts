@@ -73,7 +73,16 @@ export interface ClientDetail {
     isActive: boolean;
     autoBilling: boolean;
   } | null;
-  courts: { id: string; name: string; sport: Sport; hourlyPrice: number; active: boolean }[];
+  courts: {
+    id: string;
+    name: string;
+    sport: Sport;
+    isCovered: boolean;
+    currency: string;
+    basePricePerHour: number;
+    isActive: boolean;
+    isComplete: boolean;
+  }[];
   stats: {
     reservationsTotal: number;
     reservationsLast30Days: number;
@@ -88,6 +97,7 @@ export interface ClientDetail {
     courtName: string;
     customerName: string;
     totalPrice: number;
+    currency: string;
     status: ReservationStatus;
   }[];
   recentPayments: {

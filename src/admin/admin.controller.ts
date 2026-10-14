@@ -15,6 +15,8 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Roles } from '../common/auth/roles.decorator.js';
 import { PageQueryDto } from '../common/dto/page.dto.js';
 import {
+  CourtPhotoSlot,
+  DayOfWeek,
   PaymentConcept,
   PaymentStatus,
   ReservationStatus,
@@ -51,6 +53,16 @@ const SYSTEM_ENUMS: SystemEnumDto[] = [
     name: 'Sport',
     description: 'Deportes de las canchas',
     values: Object.values(Sport),
+  },
+  {
+    name: 'DayOfWeek',
+    description: 'Días de la semana de horarios y tarifas',
+    values: Object.values(DayOfWeek),
+  },
+  {
+    name: 'CourtPhotoSlot',
+    description: 'Posiciones de las fotos de una cancha',
+    values: Object.values(CourtPhotoSlot),
   },
   {
     name: 'ReservationStatus',

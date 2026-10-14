@@ -2,7 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import {
   IsBoolean,
   IsEnum,
-  IsInt,
+  IsNumber,
   IsISO8601,
   IsOptional,
   IsString,
@@ -69,11 +69,11 @@ export class CreateReservationDto {
   @IsBoolean()
   isRecurring?: boolean;
 
-  /** Valor total en COP. Si se omite se calcula con el precio por hora de la cancha. */
+  /** Valor total en la moneda de la cancha. Si se omite se calcula con sus tarifas y su precio base. */
   @IsOptional()
-  @IsInt()
+  @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
-  @Max(100_000_000)
+  @Max(1_000_000_000)
   totalPrice?: number;
 }
 
@@ -97,8 +97,10 @@ export class ReservationDto {
   contactNote: string | null;
   tag: string | null;
   isRecurring: boolean;
-  /** Valor total en COP. */
+  /** Valor total en la moneda de la cancha. */
   totalPrice: number;
+  /** Código ISO 4217, p. ej. COP. */
+  currency: string;
   /** Suma de los pagos aprobados. */
   amountPaid: number;
   @ApiProperty({ enum: ReservationStatus })

@@ -20,10 +20,10 @@ import { CurrentUser } from '../common/auth/current-user.decorator.js';
 import { Roles } from '../common/auth/roles.decorator.js';
 import { UserRole } from '../generated/prisma/enums.js';
 import {
-  BusinessImagesService,
   MAX_IMAGE_BYTES,
   type UploadedImage,
-} from './business-images.service.js';
+} from '../storage/image-upload.js';
+import { BusinessImagesService } from './business-images.service.js';
 import { BusinessesService } from './businesses.service.js';
 import { BusinessDto, SaveBusinessDto } from './dto/business.dto.js';
 

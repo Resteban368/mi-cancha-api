@@ -9,6 +9,12 @@ import { BusinessesService } from '../businesses/businesses.service.js';
 import { dayRange } from '../common/utils/day-range.js';
 import { Prisma } from '../generated/prisma/client.js';
 import { PaymentStatus, ReservationStatus } from '../generated/prisma/enums.js';
+import {
+  fitsSchedule,
+  priceFor,
+  reservationIntervals,
+} from '../courts/court-time.js';
+import { courtInclude, REQUIRED_PHOTOS } from '../courts/courts.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
   CreateReservationDto,
@@ -22,8 +28,11 @@ const BLOCKING_STATUSES: ReservationStatus[] = [
   ReservationStatus.COMPLETED,
 ];
 
+/** Una reserva no puede durar más de un día. */
+const MAX_RESERVATION_MINUTES = 24 * 60;
+
 const reservationInclude = {
-  court: { select: { name: true, sport: true } },
+  court: { select: { name: true, sport: true, currency: true } },
   payments: {
     where: { status: PaymentStatus.APPROVED },
     select: { amount: true },
@@ -79,16 +88,42 @@ export class ReservationsService {
         'La hora de fin debe ser posterior al inicio',
       );
     }
+    const minutes = (end.getTime() - start.getTime()) / 60_000;
+    if (minutes > MAX_RESERVATION_MINUTES) {
+      throw new BadRequestException(
+        'Una reserva no puede durar más de 24 horas',
+      );
+    }
 
     // Serializable evita que dos reservas simultáneas pasen la validación de cruce.
     const reservation = await this.prisma.$transaction(
       async (tx) => {
         const court = await tx.court.findFirst({
           where: { id: dto.courtId, businessId },
+          include: courtInclude,
         });
         if (!court) throw new NotFoundException('La cancha no existe');
-        if (!court.active) {
+        if (!court.isActive) {
           throw new ConflictException('La cancha está desactivada');
+        }
+        const missing = REQUIRED_PHOTOS.filter(
+          (slot) => !court.photos.some((p) => p.slot === slot),
+        );
+        if (missing.length) {
+          throw new ConflictException(
+            `La cancha está incompleta: le faltan las fotos ${missing.join(', ')}`,
+          );
+        }
+        if (minutes % court.slotDuration !== 0) {
+          throw new BadRequestException(
+            `La reserva debe durar múltiplos de ${court.slotDuration} minutos`,
+          );
+        }
+        const interval = reservationIntervals(start, end, this.utcOffset);
+        if (!fitsSchedule(interval, court.schedules)) {
+          throw new BadRequestException(
+            'La reserva está fuera del horario de la cancha',
+          );
         }
 
         const overlapping = await tx.reservation.findFirst({
@@ -106,7 +141,6 @@ export class ReservationsService {
           );
         }
 
-        const hours = (end.getTime() - start.getTime()) / 3_600_000;
         return tx.reservation.create({
           data: {
             businessId,
@@ -119,7 +153,16 @@ export class ReservationsService {
             contactNote: dto.contactNote,
             tag: dto.tag,
             isRecurring: dto.isRecurring ?? false,
-            totalPrice: dto.totalPrice ?? Math.round(court.hourlyPrice * hours),
+            totalPrice:
+              dto.totalPrice ??
+              priceFor(
+                interval,
+                Number(court.basePricePerHour),
+                court.rates.map((r) => ({
+                  ...r,
+                  pricePerHour: Number(r.pricePerHour),
+                })),
+              ),
           },
           include: reservationInclude,
         });
@@ -170,7 +213,8 @@ function toReservationDto(r: ReservationWithRelations): ReservationDto {
     contactNote: r.contactNote,
     tag: r.tag,
     isRecurring: r.isRecurring,
-    totalPrice: r.totalPrice,
+    totalPrice: Number(r.totalPrice),
+    currency: r.court.currency,
     amountPaid: r.payments.reduce((sum, p) => sum + p.amount, 0),
     status: r.status,
   };

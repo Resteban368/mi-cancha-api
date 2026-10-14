@@ -13,6 +13,7 @@ import {
   ReservationStatus,
   UserRole,
 } from '../generated/prisma/enums.js';
+import { REQUIRED_PHOTOS } from '../courts/courts.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
   ClientDetailDto,
@@ -30,7 +31,7 @@ const clientInclude = {
   subscription: {
     include: { plan: { select: { id: true, name: true, monthlyPrice: true } } },
   },
-  _count: { select: { courts: { where: { active: true } } } },
+  _count: { select: { courts: { where: { isActive: true } } } },
 } satisfies Prisma.BusinessInclude;
 
 type ClientRecord = Prisma.BusinessGetPayload<{
@@ -65,10 +66,13 @@ const detailInclude = {
       id: true,
       name: true,
       sport: true,
-      hourlyPrice: true,
-      active: true,
+      isCovered: true,
+      currency: true,
+      basePricePerHour: true,
+      isActive: true,
+      photos: { select: { slot: true } },
     },
-    orderBy: [{ active: 'desc' }, { name: 'asc' }],
+    orderBy: [{ isActive: 'desc' }, { name: 'asc' }],
   },
 } satisfies Prisma.BusinessInclude;
 
@@ -163,7 +167,7 @@ export class ClientsService {
         where: { businessId },
         orderBy: { start: 'desc' },
         take: RECENT_ITEMS,
-        include: { court: { select: { name: true } } },
+        include: { court: { select: { name: true, currency: true } } },
       }),
       this.prisma.payment.findMany({
         where: { businessId },
@@ -201,7 +205,14 @@ export class ClientsService {
         isActive: subscription.isActive,
         autoBilling: subscription.autoBilling,
       },
-      courts: business.courts,
+      courts: business.courts.map(({ photos, basePricePerHour, ...court }) => {
+        const slots = new Set(photos.map((p) => p.slot));
+        return {
+          ...court,
+          basePricePerHour: Number(basePricePerHour),
+          isComplete: REQUIRED_PHOTOS.every((s) => slots.has(s)),
+        };
+      }),
       stats: {
         reservationsTotal,
         reservationsLast30Days,
@@ -215,7 +226,8 @@ export class ClientsService {
         end: r.end,
         courtName: r.court.name,
         customerName: r.customerName,
-        totalPrice: r.totalPrice,
+        totalPrice: Number(r.totalPrice),
+        currency: r.court.currency,
         status: r.status,
       })),
       recentPayments: payments.map((p) => ({

@@ -19,6 +19,7 @@ import {
   formatCop,
   formatDate,
   formatDateTime,
+  formatMoney,
   formatNumber,
   formatTime,
   PAYMENT_CONCEPT_LABELS,
@@ -75,7 +76,7 @@ function ClientDetailView({
   onChanged: () => void;
 }) {
   const { owner, subscription, stats } = data;
-  const activeCourts = data.courts.filter((c) => c.active).length;
+  const activeCourts = data.courts.filter((c) => c.isActive).length;
 
   return (
     <div className="flex flex-col gap-6">
@@ -196,7 +197,7 @@ function ClientDetailView({
               <tr>
                 <Th>Cancha</Th>
                 <Th>Deporte</Th>
-                <Th align="right">Precio por hora</Th>
+                <Th align="right">Precio base / hora</Th>
                 <Th>Estado</Th>
               </tr>
             </thead>
@@ -204,14 +205,22 @@ function ClientDetailView({
               {data.courts.map((court) => (
                 <tr key={court.id}>
                   <Td className="font-medium">{court.name}</Td>
-                  <Td>{SPORT_LABELS[court.sport] ?? court.sport}</Td>
+                  <Td>
+                    {SPORT_LABELS[court.sport] ?? court.sport}
+                    <span className="block text-xs text-fg-3">
+                      {court.isCovered ? 'Cubierta' : 'Al aire libre'}
+                    </span>
+                  </Td>
                   <Td align="right" className="tabular">
-                    {formatCop(court.hourlyPrice)}
+                    {formatMoney(court.basePricePerHour, court.currency)}
                   </Td>
                   <Td>
-                    <Badge tone={court.active ? 'success' : 'neutral'}>
-                      {court.active ? 'Activa' : 'Inactiva'}
-                    </Badge>
+                    <div className="flex flex-wrap gap-1.5">
+                      <Badge tone={court.isActive ? 'success' : 'neutral'}>
+                        {court.isActive ? 'Activa' : 'Inactiva'}
+                      </Badge>
+                      {!court.isComplete && <Badge tone="warn">Faltan fotos</Badge>}
+                    </div>
                   </Td>
                 </tr>
               ))}
@@ -247,7 +256,7 @@ function ClientDetailView({
                       </Td>
                       <Td>{r.customerName}</Td>
                       <Td align="right" className="tabular">
-                        {formatCop(r.totalPrice)}
+                        {formatMoney(r.totalPrice, r.currency)}
                       </Td>
                       <Td>
                         <Badge tone={status?.tone}>{status?.label ?? r.status}</Badge>

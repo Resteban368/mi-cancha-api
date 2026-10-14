@@ -78,28 +78,33 @@ Para regenerarlos a mano: `npm run db:erd`. No los edites directamente.
 | POST | `/auth/google` · `/auth/apple` | Login de jugador con el token del proveedor |
 | GET | `/auth/me` | Usuario autenticado |
 | GET · PUT | `/business/profile` | Perfil del negocio (PUT crea o actualiza) |
-| GET · POST · PATCH · DELETE | `/business/courts` | Canchas (respeta el límite del plan; DELETE desactiva) |
+| PUT · DELETE | `/business/profile/image` | Foto de portada del negocio (multipart `image`, JPG/PNG ≤ 4 MB) |
+| GET · POST · PATCH · DELETE | `/business/courts` · `/:id` | Canchas con horarios y tarifas (respeta el límite del plan; DELETE desactiva) |
+| PUT · DELETE | `/business/courts/:id/photos/:slot` | Fotos de la cancha por posición: `MAIN`, `SURFACE`, `LIGHTING` (obligatorias), `EXTRA_1`, `EXTRA_2` |
 | GET | `/business/reservations?date=YYYY-MM-DD` | Agenda del día |
-| POST · PATCH `:id/status` | `/business/reservations` | Crear reserva (valida cruces) y cambiar estado |
+| POST · PATCH `:id/status` | `/business/reservations` | Crear reserva (valida horario, turno y cruces; calcula el precio con las tarifas) y cambiar estado |
 | GET · POST | `/business/payments?status=` | Pagos; los registrados por el negocio quedan aprobados |
 | PATCH | `/business/payments/:id/approve` · `/reject` | Validar pagos pendientes |
 | GET | `/business/account` | Perfil del admin y suscripción |
 | GET | `/catalogs` | Servicios y métodos de pago activos (para la app) |
 | GET | `/admin/dashboard` | Métricas de la plataforma |
 | GET · POST | `/admin/clients` | Clientes; POST crea usuario de negocio + negocio + plan |
+| GET | `/admin/clients/:id` | Ficha del cliente: negocio, responsable, plan, canchas y actividad |
 | PATCH | `/admin/clients/:id/subscription` | Cambiar plan o activar/suspender |
 | GET | `/admin/users?role=&search=` | Usuarios |
 | GET · POST · PATCH · DELETE | `/admin/plans` | Planes |
 | GET · POST · PATCH | `/admin/catalogs/amenities` · `/payment-methods` | Catálogos editables |
 | GET | `/admin/enums` | Enums fijos (solo lectura) |
+| GET | `/images/business-profile/:id` · `/images/courts/:id` | Imágenes públicas (sin token, caché inmutable) |
 
 Las rutas `/business/*` requieren rol `ADMIN_NEGOCIO`, y las `/admin/*`, rol `SUPER_ADMIN`.
 
 ## Convenciones
 
-- **Dinero:** enteros en COP, sin decimales.
+- **Dinero:** precios de canchas y reservas con hasta 2 decimales, en la moneda de la cancha (`currency`, ISO 4217, por defecto `COP`). Planes y pagos siguen en enteros COP.
+- **Canchas:** 7 horarios (uno por día, `MONDAY`…`SUNDAY`); si `closeTime` < `openTime` cierra al día siguiente. Las tarifas (`rates`) no se pueden cruzar; donde ninguna aplica rige `basePricePerHour` y una reserva que cruza franjas se cobra por fracciones. Solo reciben reservas si `isActive` y tienen las fotos `MAIN`, `SURFACE` y `LIGHTING` (`isBookable`). Con el límite del plan alcanzado se permite una sola cancha inactiva más; el error es 403 con `code: PLAN_LIMIT_REACHED`.
 - **Fechas:** ISO 8601 en UTC. La agenda por día usa la zona del negocio (`APP_UTC_OFFSET`, por defecto `-05:00`).
-- **Enums fijos** (`UserRole`, `Sport`, `ReservationStatus`, `PaymentStatus`, `PaymentConcept`): en MAYÚSCULAS_CON_GUION_BAJO. La app Flutter los mapea a sus enums.
+- **Enums fijos** (`UserRole`, `Sport`, `DayOfWeek`, `CourtPhotoSlot`, `ReservationStatus`, `PaymentStatus`, `PaymentConcept`): en MAYÚSCULAS_CON_GUION_BAJO. La app Flutter los mapea a sus enums.
 - **Catálogos editables** (`Amenity` = servicios, `PaymentMethod` = métodos de pago): la API recibe y devuelve su `code` (`PARQUEADERO`, `NEQUI`…). Los nombres visibles salen de `GET /catalogs`. Si un método tiene `requiresReference`, el pago exige referencia.
 - **`amountPaid`** de una reserva es la suma de sus pagos **aprobados**; el saldo lo calcula la app.
 - **Planes:** al crear su negocio, el admin recibe el plan con precio 0 (si existe), para que pueda habilitar su primera cancha.

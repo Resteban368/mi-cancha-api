@@ -29,6 +29,20 @@ const monthLong = new Intl.DateTimeFormat('es-CO', {
 });
 
 export const formatCop = (value: number) => cop.format(value);
+
+/** Monto en la moneda indicada (ISO 4217); los decimales solo si los tiene. */
+export function formatMoney(value: number, currency: string): string {
+  try {
+    return new Intl.NumberFormat('es-CO', {
+      style: 'currency',
+      currency,
+      minimumFractionDigits: Number.isInteger(value) ? 0 : 2,
+      maximumFractionDigits: 2,
+    }).format(value);
+  } catch {
+    return `${value} ${currency}`;
+  }
+}
 export const formatNumber = (value: number) => number.format(value);
 export const formatDate = (iso: string) => date.format(new Date(iso));
 /** "14 oct, 7:00 p. m." en hora de Colombia. */

@@ -106,6 +106,99 @@ function comment(field: Field): string {
   return notes.length ? ` "${notes.join(' · ')}"` : '';
 }
 
+interface TableInfo {
+  description: string;
+  fields: { name: string; type: string; keys: string; note: string }[];
+  relations: { target: string; text: string }[];
+}
+
+/** Lo que muestra el panel al tocar una tabla: para qué sirve, campos y relaciones. */
+function buildTableInfo(models: readonly Model[]): Record<string, TableInfo> {
+  return Object.fromEntries(
+    models.map((model) => {
+      const foreignKeys = new Set(
+        model.fields.flatMap((f) => f.relationFromFields ?? []),
+      );
+      const fields = model.fields
+        .filter((f) => f.kind !== 'object')
+        .map((f) => ({
+          name: f.name,
+          type: attributeType(f),
+          keys: keys(f, foreignKeys).trim(),
+          note: [f.isRequired ? '' : 'opcional', f.documentation ?? '']
+            .filter(Boolean)
+            .join(' · '),
+        }));
+      const relations = model.fields
+        .filter((f) => f.kind === 'object')
+        .map((f) => ({
+          target: f.type,
+          text: describeRelation(models, model, f),
+        }));
+      return [
+        model.name,
+        {
+          description: model.documentation ?? 'Sin descripción.',
+          fields,
+          relations,
+        },
+      ];
+    }),
+  );
+}
+
+function describeRelation(
+  models: readonly Model[],
+  model: Model,
+  field: Field,
+): string {
+  const target = field.type;
+  const back = models
+    .find((m) => m.name === target)
+    ?.fields.find((f) => f.relationName === field.relationName && f !== field);
+
+  if (field.isList && back?.isList) {
+    return `Muchos a muchos con ${target}: cada ${model.name} puede tener varios ${target} y cada ${target} puede estar en varios ${model.name} (campo ${field.name}).`;
+  }
+  if (field.isList) {
+    return `Tiene cero o muchos ${target} (campo ${field.name}). Cada ${target} apunta a este ${model.name}.`;
+  }
+  if (field.relationFromFields?.length) {
+    const fk = field.relationFromFields.join(', ');
+    const link = field.isRequired
+      ? `Pertenece siempre a un ${target}`
+      : `Puede pertenecer a un ${target}`;
+    const cardinality = back?.isList
+      ? `un ${target} puede tener varios ${model.name}`
+      : `un ${target} tiene como máximo un ${model.name}`;
+    return `${link} mediante ${fk}; ${cardinality}. ${onDeleteText(model.name, target, field, !!back?.isList)}`;
+  }
+  return `Puede tener un ${target} (campo ${field.name}); la llave foránea está en ${target}.`;
+}
+
+function onDeleteText(
+  model: string,
+  target: string,
+  field: Field,
+  many: boolean,
+): string {
+  const action =
+    field.relationOnDelete ?? (field.isRequired ? 'Restrict' : 'SetNull');
+  switch (action) {
+    case 'Cascade':
+      return many
+        ? `Si se borra el ${target}, se borran también sus ${model}.`
+        : `Si se borra el ${target}, se borra también su ${model}.`;
+    case 'SetNull':
+      return `Si se borra el ${target}, el ${model} se conserva sin ${target}.`;
+    case 'Restrict':
+    case 'NoAction':
+      return `No se puede borrar un ${target} mientras tenga ${model}.`;
+    default:
+      return `Al borrar el ${target}: ${action}.`;
+  }
+}
+
 function compoundUniqueNotes(models: readonly Model[]): string[] {
   return models.flatMap((model) =>
     model.uniqueFields
@@ -128,6 +221,14 @@ function buildMarkdown(
   const uniques = compoundUniqueNotes(models)
     .map((note) => `- ${note}`)
     .join('\n');
+  const tables = Object.entries(buildTableInfo(models))
+    .map(
+      ([name, info]) =>
+        `### ${name}\n\n${info.description}\n\n${info.relations
+          .map((r) => `- **${r.target}**: ${r.text}`)
+          .join('\n')}`,
+    )
+    .join('\n\n');
 
   return `<!-- Archivo generado por prisma/erd/generator.ts. No editar a mano: se regenera con \`prisma generate\`. -->
 
@@ -140,6 +241,10 @@ ${diagram}
 \`\`\`
 
 **Leyenda:** PK llave primaria · FK llave foránea · UK única · \`||\` exactamente uno · \`|o\` cero o uno · \`o{\` cero o muchos · \`}o--o{\` muchos a muchos.
+
+## Tablas
+
+${tables}
 
 ## Enums
 
@@ -165,6 +270,17 @@ function buildHtml(
   const uniques = compoundUniqueNotes(models)
     .map((note) => `<li>${escapeHtml(note)}</li>`)
     .join('');
+  const tableButtons = models
+    .map(
+      (m) =>
+        `<button type="button" class="chip" data-table="${m.name}">${m.name}</button>`,
+    )
+    .join('');
+  // `<` escapado para que ningún texto del schema pueda cerrar el <script>.
+  const tableInfo = JSON.stringify(buildTableInfo(models)).replace(
+    /</g,
+    '\\u003c',
+  );
 
   return `<!doctype html>
 <!-- Archivo generado por prisma/erd/generator.ts. No editar a mano. -->
@@ -192,15 +308,46 @@ function buildHtml(
     .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
     .card ul { margin: 0; padding-left: 18px; font-family: ui-monospace, monospace; font-size: .85rem; }
     code, li { word-break: break-word; }
+    .layout { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+    @media (min-width: 1100px) { .layout { grid-template-columns: minmax(0, 1fr) 380px; } .panel { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow: auto; } }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+    .chip { font: inherit; font-size: .85rem; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--card); color: var(--fg); cursor: pointer; }
+    .chip:hover, .chip[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+    .panel { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; align-self: start; }
+    .panel h2 { margin: 0 0 6px; color: var(--accent); }
+    .panel h4 { margin: 16px 0 6px; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+    .panel p { margin: 0; }
+    .panel .hint { color: var(--muted); }
+    .panel table { width: 100%; border-collapse: collapse; font-size: .83rem; }
+    .panel td { padding: 5px 4px; border-top: 1px solid var(--border); vertical-align: top; }
+    .panel td:first-child { font-family: ui-monospace, monospace; white-space: nowrap; }
+    .panel .muted { color: var(--muted); }
+    .panel ul.rel { margin: 0; padding-left: 0; list-style: none; display: grid; gap: 8px; font-size: .88rem; }
+    .panel ul.rel li { border-left: 3px solid var(--accent); padding-left: 8px; }
+    .link { font: inherit; padding: 0; border: 0; background: none; color: var(--accent); cursor: pointer; text-decoration: underline; }
+    .zoom { display: flex; gap: 6px; margin-bottom: 8px; }
+    .diagram.fit svg { width: 100% !important; max-width: 100% !important; height: auto; }
+    .diagram g.er-clickable { cursor: pointer; }
+    .diagram g.er-selected rect { stroke: var(--accent) !important; stroke-width: 3px !important; }
+    .diagram g.er-related rect { stroke: var(--accent) !important; stroke-width: 1.5px !important; stroke-dasharray: 4 3; }
   </style>
 </head>
 <body>
   <main>
     <h1>Mi Cancha · Base de datos</h1>
     <p class="sub">${models.length} tablas · ${enums.length} enums · generado desde <code>prisma/schema.prisma</code></p>
-    <div class="diagram"><pre class="mermaid">
+    <div class="layout">
+      <div>
+        <div class="chips" role="toolbar" aria-label="Tablas">${tableButtons}</div>
+        <div class="zoom"><button type="button" class="chip" id="fit" aria-pressed="true">Ajustar al ancho</button><button type="button" class="chip" id="full" aria-pressed="false">Tamaño real</button></div>
+        <div class="diagram fit"><pre class="mermaid">
 ${escapeHtml(diagram)}
-    </pre></div>
+        </pre></div>
+      </div>
+      <aside class="panel" id="panel" aria-live="polite">
+        <p class="hint">Toca una tabla en el diagrama (o arriba) para ver para qué sirve, sus campos y cómo se relaciona con las demás.</p>
+      </aside>
+    </div>
     <p class="legend">PK llave primaria · FK llave foránea · UK única · líneas: <code>||</code> uno · <code>|o</code> cero o uno · <code>o{</code> muchos · <code>}o--o{</code> muchos a muchos</p>
     <h2>Enums</h2>
     <div class="grid">
@@ -210,8 +357,61 @@ ${enumCards}
   </main>
   <script type="module">
     import mermaid from '${MERMAID_CDN}';
+    const TABLES = ${tableInfo};
+    const names = Object.keys(TABLES).sort((a, b) => b.length - a.length);
+    const panel = document.getElementById('panel');
+    const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+    const nodes = new Map();
+
     const dark = matchMedia('(prefers-color-scheme: dark)').matches;
-    mermaid.initialize({ startOnLoad: true, theme: dark ? 'dark' : 'default', er: { useMaxWidth: false } });
+    mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', er: { useMaxWidth: false } });
+    await mermaid.run({ querySelector: '.mermaid' });
+
+    // Cada entidad del SVG es un <g> cuyo id incluye el nombre de la tabla.
+    for (const g of document.querySelectorAll('.diagram svg g[id]')) {
+      const name = names.find((n) => g.id.includes('-' + n + '-') || g.id.endsWith('-' + n));
+      if (!name || nodes.has(name) || !g.querySelector('rect, path')) continue;
+      nodes.set(name, g);
+      g.classList.add('er-clickable');
+      g.addEventListener('click', () => show(name));
+    }
+
+    document.querySelectorAll('.chip[data-table]').forEach((b) => b.addEventListener('click', () => show(b.dataset.table)));
+    const diagram = document.querySelector('.diagram');
+    const setFit = (fit) => {
+      diagram.classList.toggle('fit', fit);
+      document.getElementById('fit').setAttribute('aria-pressed', String(fit));
+      document.getElementById('full').setAttribute('aria-pressed', String(!fit));
+    };
+    document.getElementById('fit').addEventListener('click', () => setFit(true));
+    document.getElementById('full').addEventListener('click', () => setFit(false));
+    panel.addEventListener('click', (e) => {
+      const t = e.target.closest('[data-goto]');
+      if (t) show(t.dataset.goto);
+    });
+
+    function show(name) {
+      const info = TABLES[name];
+      const related = new Set(info.relations.map((r) => r.target));
+      for (const [n, g] of nodes) {
+        g.classList.toggle('er-selected', n === name);
+        g.classList.toggle('er-related', related.has(n) && n !== name);
+      }
+      document.querySelectorAll('.chip[data-table]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.table === name)));
+      nodes.get(name)?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      const fields = info.fields.map((f) =>
+        '<tr><td>' + esc(f.name) + '</td><td>' + esc(f.type) + (f.keys ? ' <b>' + esc(f.keys) + '</b>' : '') +
+        (f.note ? '<div class="muted">' + esc(f.note) + '</div>' : '') + '</td></tr>').join('');
+      const relations = info.relations.length
+        ? '<ul class="rel">' + info.relations.map((r) =>
+            '<li><button type="button" class="link" data-goto="' + esc(r.target) + '">' + esc(r.target) + '</button> · ' + esc(r.text) + '</li>').join('') + '</ul>'
+        : '<p class="muted">No se relaciona con otras tablas.</p>';
+      panel.innerHTML =
+        '<h2>' + esc(name) + '</h2><p>' + esc(info.description) + '</p>' +
+        '<h4>Relaciones</h4>' + relations +
+        '<h4>Campos</h4><table>' + fields + '</table>';
+      if (matchMedia('(max-width: 1099px)').matches) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   </script>
 </body>
 </html>

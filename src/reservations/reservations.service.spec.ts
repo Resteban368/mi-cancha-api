@@ -10,7 +10,13 @@ import {
   PrismaMock,
 } from '../../test/support/prisma-mock.js';
 import { BusinessesService } from '../businesses/businesses.service.js';
-import { ReservationStatus, Sport } from '../generated/prisma/enums.js';
+import { DAYS } from '../courts/court-time.js';
+import {
+  CourtPhotoSlot,
+  DayOfWeek,
+  ReservationStatus,
+  Sport,
+} from '../generated/prisma/enums.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { ReservationsService } from './reservations.service.js';
 
@@ -19,8 +25,30 @@ const court = {
   businessId: 'biz-1',
   name: 'Sintética 1',
   sport: Sport.FUTBOL,
-  hourlyPrice: 120_000,
-  active: true,
+  currency: 'COP',
+  basePricePerHour: 100_000,
+  slotDuration: 30,
+  isActive: true,
+  schedules: DAYS.map((dayOfWeek) => ({
+    dayOfWeek,
+    isOpen: dayOfWeek !== DayOfWeek.SUNDAY,
+    openTime: '06:00',
+    closeTime: '23:00',
+  })),
+  rates: [
+    {
+      name: 'Nocturna',
+      pricePerHour: 120_000,
+      days: DAYS.slice(0, 5),
+      startTime: '19:00',
+      endTime: '23:00',
+    },
+  ],
+  photos: [
+    { slot: CourtPhotoSlot.MAIN },
+    { slot: CourtPhotoSlot.SURFACE },
+    { slot: CourtPhotoSlot.LIGHTING },
+  ],
 };
 
 const baseDto = {
@@ -49,7 +77,7 @@ function storedReservation(overrides: Record<string, unknown> = {}) {
     status: ReservationStatus.CONFIRMED,
     createdAt: new Date(),
     updatedAt: new Date(),
-    court: { name: court.name, sport: court.sport },
+    court: { name: court.name, sport: court.sport, currency: 'COP' },
     payments: [{ amount: 50_000 }, { amount: 30_000 }],
     ...overrides,
   };
@@ -135,16 +163,50 @@ describe('ReservationsService', () => {
       });
     });
 
-    it('calcula el precio con la tarifa por hora cuando no se envía', async () => {
+    it('calcula el precio por fracciones de tarifa cuando no se envía', async () => {
       prisma.court.findFirst.mockResolvedValue(court);
       prisma.reservation.findFirst.mockResolvedValue(null);
       prisma.reservation.create.mockResolvedValue(storedReservation());
 
-      await service.create('owner-1', baseDto);
+      // Martes 18:30–20:00: 30 min a precio base y 1 h nocturna.
+      await service.create('owner-1', {
+        ...baseDto,
+        start: '2026-10-13T18:30:00-05:00',
+        end: '2026-10-13T20:00:00-05:00',
+      });
 
       const { data } = prisma.reservation.create.mock.calls[0][0];
-      expect(data.totalPrice).toBe(180_000);
+      expect(data.totalPrice).toBe(170_000);
       expect(data.businessId).toBe('biz-1');
+    });
+
+    it('rechaza canchas inactivas o sin las fotos obligatorias', async () => {
+      prisma.court.findFirst.mockResolvedValue({ ...court, isActive: false });
+      await expect(service.create('owner-1', baseDto)).rejects.toThrow(
+        'La cancha está desactivada',
+      );
+
+      prisma.court.findFirst.mockResolvedValue({ ...court, photos: [] });
+      await expect(service.create('owner-1', baseDto)).rejects.toThrow(
+        'le faltan las fotos MAIN, SURFACE, LIGHTING',
+      );
+    });
+
+    it('rechaza reservas fuera del horario o que no respetan el turno', async () => {
+      prisma.court.findFirst.mockResolvedValue(court);
+      await expect(
+        service.create('owner-1', {
+          ...baseDto,
+          start: '2026-10-18T10:00:00-05:00', // domingo cerrado
+          end: '2026-10-18T11:00:00-05:00',
+        }),
+      ).rejects.toThrow('fuera del horario');
+      await expect(
+        service.create('owner-1', {
+          ...baseDto,
+          end: '2026-10-13T19:45:00-05:00',
+        }),
+      ).rejects.toThrow('múltiplos de 30 minutos');
     });
   });
 

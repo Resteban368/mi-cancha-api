@@ -9,6 +9,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import bcrypt from 'bcryptjs';
 import { PrismaClient } from '../src/generated/prisma/client.js';
 import {
+  DayOfWeek,
   PaymentConcept,
   PaymentStatus,
   ReservationStatus,
@@ -232,18 +233,70 @@ async function seedDemo() {
   await prisma.reservation.deleteMany({ where: { businessId: business.id } });
 
   const courtSeeds = [
-    { name: 'Sintética 1', sport: Sport.FUTBOL, hourlyPrice: 120_000 },
-    { name: 'Sintética 2', sport: Sport.FUTBOL, hourlyPrice: 110_000 },
-    { name: 'Pádel 1', sport: Sport.PADEL, hourlyPrice: 90_000 },
-    { name: 'Pádel 2', sport: Sport.PADEL, hourlyPrice: 90_000 },
-    { name: 'Cancha Múltiple', sport: Sport.BALONCESTO, hourlyPrice: 80_000 },
+    {
+      name: 'Sintética 1',
+      sport: Sport.FUTBOL,
+      basePricePerHour: 120_000,
+      isCovered: false,
+    },
+    {
+      name: 'Sintética 2',
+      sport: Sport.FUTBOL,
+      basePricePerHour: 110_000,
+      isCovered: false,
+    },
+    {
+      name: 'Pádel 1',
+      sport: Sport.PADEL,
+      basePricePerHour: 90_000,
+      isCovered: true,
+    },
+    {
+      name: 'Pádel 2',
+      sport: Sport.PADEL,
+      basePricePerHour: 90_000,
+      isCovered: true,
+    },
+    {
+      name: 'Cancha Múltiple',
+      sport: Sport.BALONCESTO,
+      basePricePerHour: 80_000,
+      isCovered: true,
+    },
   ];
+  // Abiertas de 06:00 a 23:00 entre semana y de 07:00 a 22:00 el fin de semana.
+  const weekend: DayOfWeek[] = [DayOfWeek.SATURDAY, DayOfWeek.SUNDAY];
+  const schedules = Object.values(DayOfWeek).map((dayOfWeek) => ({
+    dayOfWeek,
+    isOpen: true,
+    openTime: weekend.includes(dayOfWeek) ? '07:00' : '06:00',
+    closeTime: weekend.includes(dayOfWeek) ? '22:00' : '23:00',
+  }));
   const courts: Record<string, string> = {};
   for (const court of courtSeeds) {
+    // Tarifa nocturna entre semana: 20 % sobre el precio base.
+    const rates = [
+      {
+        name: 'Nocturna L-V',
+        pricePerHour: court.basePricePerHour * 1.2,
+        days: Object.values(DayOfWeek).filter((d) => !weekend.includes(d)),
+        startTime: '18:00',
+        endTime: '23:00',
+      },
+    ];
+    const details = {
+      schedules: { deleteMany: {}, create: schedules },
+      rates: { deleteMany: {}, create: rates },
+    };
     const saved = await prisma.court.upsert({
       where: { businessId_name: { businessId: business.id, name: court.name } },
-      update: { ...court, active: true },
-      create: { ...court, businessId: business.id },
+      update: { ...court, isActive: true, ...details },
+      create: {
+        ...court,
+        businessId: business.id,
+        schedules: { create: schedules },
+        rates: { create: rates },
+      },
     });
     courts[court.name] = saved.id;
   }

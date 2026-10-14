@@ -162,8 +162,11 @@ describe('ClientsService', () => {
             id: 'c1',
             name: 'Cancha 1',
             sport: 'FUTBOL',
-            hourlyPrice: 90_000,
-            active: true,
+            isCovered: false,
+            currency: 'COP',
+            basePricePerHour: 90_000,
+            isActive: true,
+            photos: [{ slot: 'MAIN' }],
           },
         ],
       });
@@ -178,7 +181,7 @@ describe('ClientsService', () => {
           id: 'r1',
           start: now,
           end: now,
-          court: { name: 'Cancha 1' },
+          court: { name: 'Cancha 1', currency: 'COP' },
           customerName: 'Camilo',
           totalPrice: 90_000,
           status: 'CONFIRMED',
@@ -211,6 +214,10 @@ describe('ClientsService', () => {
       });
       expect(detail.recentReservations[0].courtName).toBe('Cancha 1');
       expect(detail.recentPayments[0].method).toBe('Nequi');
+      expect(detail.courts[0]).toMatchObject({
+        basePricePerHour: 90_000,
+        isComplete: false,
+      });
     });
   });
 });

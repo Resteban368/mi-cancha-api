@@ -46,6 +46,7 @@ export function createPrismaMock() {
     amenity: modelMock(),
     paymentMethod: modelMock(),
     businessProfileImage: modelMock(),
+    courtPhoto: modelMock(),
     $queryRaw: vi.fn(),
     $transaction: vi.fn(),
   };
