@@ -7,3 +7,5 @@ coverage
 /admin/dist
 /admin/node_modules
 .env.neon
+.vercel
+/public/admin

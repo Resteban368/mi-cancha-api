@@ -30,4 +30,9 @@ async function bootstrap() {
     `Mi Cancha API escuchando en ${await app.getUrl()}/${API_PREFIX}`,
   );
 }
-await bootstrap();
+// Sin await de nivel superior: en Vercel el runtime importa este módulo y espera a
+// que termine de cargar antes de interceptar app.listen(); con await se bloquean.
+bootstrap().catch((error: unknown) => {
+  console.error('No se pudo iniciar la API', error);
+  process.exit(1);
+});

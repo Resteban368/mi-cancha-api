@@ -11,7 +11,7 @@ cp .env.example .env        # y define un JWT_SECRET propio (mín. 32 caracteres
 npm run db:up               # Postgres 17 en Docker (puerto 5433)
 npm run db:migrate          # aplica las migraciones
 npm run db:seed             # datos de demo
-npm run build:admin         # compila el panel de super admin
+npm run build:admin         # compila el panel en public/admin
 npm run start:dev
 ```
 
@@ -22,7 +22,7 @@ npm run start:dev
 
 ## Panel de super admin (`admin/`)
 
-SPA en React + Vite + Tailwind que Nest sirve en `/admin`. Solo entran cuentas `SUPER_ADMIN`.
+SPA en React + Vite + Tailwind servida en `/admin`: se compila en `public/admin`, que en Vercel sirve el CDN y en local sirve Nest. Solo entran cuentas `SUPER_ADMIN`.
 
 - **Dashboard:** clientes, usuarios por rol, ingreso mensual recurrente, canchas, altas por mes.
 - **Clientes:** listado con búsqueda; alta de cliente (usuario de negocio + negocio + plan); cambio de plan y suspensión.
@@ -51,6 +51,16 @@ npm run start:neon
 `start:dev` usa la base local de Docker (`.env`) y `start:neon` usa Neon (`.env.neon`). Las dos usan el puerto 3000: corre una a la vez, o cambia el puerto con `PORT=3001 npm run start:neon`.
 
 `SEED_MODE=minimal` exige `SEED_SUPER_ADMIN_PASSWORD` (mín. 12 caracteres). Sin `SEED_MODE`, el seed carga los datos demo: úsalo solo en local.
+
+## Despliegue en Vercel
+
+Proyecto Vercel **`mi-cancha-api`** (equipo `banestecodes-7711's projects`), conectado al repo de GitHub: cada push a `main` despliega a producción.
+
+- Producción: https://mi-cancha-api.vercel.app — API en `/api/v1`, panel en `/admin` (Swagger desactivado en producción).
+- NestJS se detecta solo (`src/main.ts` → una Vercel Function con Fluid compute, región `iad1`, junto a Neon en `us-east-1`).
+- `vercel.json`: compila el panel en `public/admin` (lo sirve el CDN) y reescribe las rutas del panel a su `index.html`.
+- Variables de producción (sensibles): `DATABASE_URL` (Neon con pooler), `JWT_SECRET`, `JWT_EXPIRES_IN`, `APP_UTC_OFFSET`.
+- Las migraciones **no** corren en el build: aplícalas a Neon antes de desplegar cambios de schema (ver «Base de datos en Neon»).
 
 ## Diagrama de la base de datos
 

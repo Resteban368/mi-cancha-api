@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm run build:admin && npm run build",
+  "regions": ["iad1"],
+  "rewrites": [
+    { "source": "/admin", "destination": "/admin/index.html" },
+    { "source": "/admin/:path((?!assets/|brand/).*)", "destination": "/admin/index.html" }
+  ]
+}

@@ -17,9 +17,10 @@ import { ReservationsModule } from './reservations/reservations.module.js';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
-    // Panel de super admin (admin/ → npm run build:admin), servido en /admin.
+    // Panel de super admin (npm run build:admin → public/admin), servido en /admin
+    // en local. En Vercel lo sirve el CDN desde public/ y esto no interviene.
     ServeStaticModule.forRoot({
-      rootPath: join(import.meta.dirname, '..', 'admin', 'dist'),
+      rootPath: join(process.cwd(), 'public', 'admin'),
       serveRoot: '/admin',
     }),
     PrismaModule,
