@@ -242,6 +242,14 @@ export class ClientsService {
     };
   }
 
+  /** Lanza 404 si el cliente (negocio) no existe. */
+  async requireClient(businessId: string): Promise<void> {
+    const count = await this.prisma.business.count({
+      where: { id: businessId },
+    });
+    if (!count) throw new NotFoundException('El cliente no existe');
+  }
+
   /** Crea el usuario de negocio, su negocio y la suscripción al plan elegido. */
   async create(dto: CreateClientDto): Promise<ClientDto> {
     const email = dto.email.toLowerCase();

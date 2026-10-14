@@ -48,6 +48,48 @@ export type ReservationStatus = 'CONFIRMED' | 'COMPLETED' | 'NO_SHOW' | 'CANCELL
 export type PaymentStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 export type PaymentConcept = 'ANTICIPO' | 'SALDO' | 'TOTAL';
 
+export type DayOfWeek =
+  | 'MONDAY'
+  | 'TUESDAY'
+  | 'WEDNESDAY'
+  | 'THURSDAY'
+  | 'FRIDAY'
+  | 'SATURDAY'
+  | 'SUNDAY';
+export type CourtPhotoSlot = 'MAIN' | 'SURFACE' | 'LIGHTING' | 'EXTRA_1' | 'EXTRA_2';
+
+export interface CourtSchedule {
+  dayOfWeek: DayOfWeek;
+  isOpen: boolean;
+  openTime: string | null;
+  closeTime: string | null;
+}
+
+export interface CourtRate {
+  name: string;
+  pricePerHour: number;
+  days: DayOfWeek[];
+  startTime: string;
+  endTime: string;
+}
+
+export interface Court {
+  id: string;
+  name: string;
+  sport: Sport;
+  isCovered: boolean;
+  isActive: boolean;
+  isComplete: boolean;
+  isBookable: boolean;
+  missingPhotos: CourtPhotoSlot[];
+  currency: string;
+  basePricePerHour: number;
+  slotDuration: number;
+  schedules: CourtSchedule[];
+  rates: CourtRate[];
+  photos: { slot: CourtPhotoSlot; url: string }[];
+}
+
 export interface ClientDetail {
   id: string;
   name: string;

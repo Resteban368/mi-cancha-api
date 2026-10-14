@@ -9,5 +9,6 @@ import { CourtsService } from './courts.service.js';
   imports: [BusinessesModule],
   controllers: [CourtsController, CourtPhotosController],
   providers: [CourtsService, CourtPhotosService],
+  exports: [CourtsService],
 })
 export class CourtsModule {}

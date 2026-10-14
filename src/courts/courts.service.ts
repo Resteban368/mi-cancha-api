@@ -53,6 +53,11 @@ export class CourtsService {
 
   async findAll(ownerId: string): Promise<CourtDto[]> {
     const businessId = await this.businesses.requireBusinessId(ownerId);
+    return this.listForBusiness(businessId);
+  }
+
+  /** Canchas de un negocio por su id (también lo usa el super admin). */
+  async listForBusiness(businessId: string): Promise<CourtDto[]> {
     const courts = await this.prisma.court.findMany({
       where: { businessId },
       include: courtInclude,
@@ -96,6 +101,15 @@ export class CourtsService {
     dto: UpdateCourtDto,
   ): Promise<CourtDto> {
     const businessId = await this.businesses.requireBusinessId(ownerId);
+    return this.updateForBusiness(businessId, courtId, dto);
+  }
+
+  /** Edita una cancha de un negocio por su id (también lo usa el super admin). */
+  async updateForBusiness(
+    businessId: string,
+    courtId: string,
+    dto: UpdateCourtDto,
+  ): Promise<CourtDto> {
     const court = await this.findOwnedCourt(businessId, courtId);
     assertValidTimes(dto.schedules, dto.rates);
     if (dto.isActive && !court.isActive) {

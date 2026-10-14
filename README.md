@@ -90,6 +90,7 @@ Para regenerarlos a mano: `npm run db:erd`. No los edites directamente.
 | GET | `/admin/dashboard` | Métricas de la plataforma |
 | GET · POST | `/admin/clients` | Clientes; POST crea usuario de negocio + negocio + plan |
 | GET | `/admin/clients/:id` | Ficha del cliente: negocio, responsable, plan, canchas y actividad |
+| GET · PATCH | `/admin/clients/:id/courts` · `/:courtId` | Canchas del cliente con horarios, tarifas y fotos; el super admin puede editarlas (mismas reglas que el negocio) |
 | PATCH | `/admin/clients/:id/subscription` | Cambiar plan o activar/suspender |
 | GET | `/admin/users?role=&search=` | Usuarios |
 | GET · POST · PATCH · DELETE | `/admin/plans` | Planes |

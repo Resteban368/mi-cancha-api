@@ -72,6 +72,49 @@ export const SPORT_LABELS: Record<string, string> = {
   VOLEIBOL: 'Voleibol',
 };
 
+export const DAYS = [
+  'MONDAY',
+  'TUESDAY',
+  'WEDNESDAY',
+  'THURSDAY',
+  'FRIDAY',
+  'SATURDAY',
+  'SUNDAY',
+] as const;
+
+export const DAY_LABELS: Record<string, string> = {
+  MONDAY: 'Lunes',
+  TUESDAY: 'Martes',
+  WEDNESDAY: 'Miércoles',
+  THURSDAY: 'Jueves',
+  FRIDAY: 'Viernes',
+  SATURDAY: 'Sábado',
+  SUNDAY: 'Domingo',
+};
+
+export const DAY_SHORT: Record<string, string> = {
+  MONDAY: 'L',
+  TUESDAY: 'M',
+  WEDNESDAY: 'X',
+  THURSDAY: 'J',
+  FRIDAY: 'V',
+  SATURDAY: 'S',
+  SUNDAY: 'D',
+};
+
+export const PHOTO_SLOT_LABELS: Record<string, string> = {
+  MAIN: 'Principal',
+  SURFACE: 'Superficie',
+  LIGHTING: 'Iluminación',
+  EXTRA_1: 'Extra 1',
+  EXTRA_2: 'Extra 2',
+};
+
+/** "18:00"–"02:00" → "18:00 – 02:00 (+1)" cuando termina al día siguiente. */
+export function formatSpan(start: string, end: string): string {
+  return `${start} – ${end}${end <= start ? ' (+1 día)' : ''}`;
+}
+
 export const RESERVATION_STATUS: Record<string, { label: string; tone: 'neutral' | 'success' | 'danger' | 'warn' }> = {
   CONFIRMED: { label: 'Confirmada', tone: 'success' },
   COMPLETED: { label: 'Jugada', tone: 'neutral' },

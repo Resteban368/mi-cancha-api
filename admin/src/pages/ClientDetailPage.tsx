@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router';
 import { StatTile } from '../components/charts/StatTile';
+import { ClientCourts } from '../components/ClientCourts';
 import { ArrowLeftIcon, ImageIcon, MapPinIcon } from '../components/icons';
 import {
   Badge,
@@ -25,7 +26,6 @@ import {
   PAYMENT_CONCEPT_LABELS,
   PAYMENT_STATUS,
   RESERVATION_STATUS,
-  SPORT_LABELS,
 } from '../lib/format';
 import { useToast } from '../lib/toast';
 import type { ClientDetail, Plan } from '../lib/types';
@@ -185,49 +185,11 @@ function ClientDetailView({
         onChanged={onChanged}
       />
 
-      <Card
-        title="Canchas"
-        description={`${activeCourts} activa(s)${subscription ? ` de ${subscription.plan.courtLimit} que permite el plan` : ''}`}
-      >
-        {data.courts.length === 0 ? (
-          <EmptyState title="Aún no ha registrado canchas" />
-        ) : (
-          <Table>
-            <thead>
-              <tr>
-                <Th>Cancha</Th>
-                <Th>Deporte</Th>
-                <Th align="right">Precio base / hora</Th>
-                <Th>Estado</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.courts.map((court) => (
-                <tr key={court.id}>
-                  <Td className="font-medium">{court.name}</Td>
-                  <Td>
-                    {SPORT_LABELS[court.sport] ?? court.sport}
-                    <span className="block text-xs text-fg-3">
-                      {court.isCovered ? 'Cubierta' : 'Al aire libre'}
-                    </span>
-                  </Td>
-                  <Td align="right" className="tabular">
-                    {formatMoney(court.basePricePerHour, court.currency)}
-                  </Td>
-                  <Td>
-                    <div className="flex flex-wrap gap-1.5">
-                      <Badge tone={court.isActive ? 'success' : 'neutral'}>
-                        {court.isActive ? 'Activa' : 'Inactiva'}
-                      </Badge>
-                      {!court.isComplete && <Badge tone="warn">Faltan fotos</Badge>}
-                    </div>
-                  </Td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        )}
-      </Card>
+      <ClientCourts
+        clientId={data.id}
+        courtLimit={subscription?.plan.courtLimit ?? null}
+        onChanged={onChanged}
+      />
 
       <div className="flex flex-col gap-6">
         <Card title="Últimas reservas" description="Las 10 más recientes por fecha de juego">

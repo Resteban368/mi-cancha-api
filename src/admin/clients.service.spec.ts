@@ -220,4 +220,13 @@ describe('ClientsService', () => {
       });
     });
   });
+
+  it('requireClient lanza 404 si el negocio no existe', async () => {
+    prisma.business.count.mockResolvedValue(0);
+    await expect(service.requireClient('biz-x')).rejects.toThrow(
+      NotFoundException,
+    );
+    prisma.business.count.mockResolvedValue(1);
+    await expect(service.requireClient('biz-1')).resolves.toBeUndefined();
+  });
 });

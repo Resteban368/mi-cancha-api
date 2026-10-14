@@ -23,6 +23,8 @@ import {
   Sport,
   UserRole,
 } from '../generated/prisma/enums.js';
+import { CourtsService } from '../courts/courts.service.js';
+import { CourtDto, UpdateCourtDto } from '../courts/dto/court.dto.js';
 import { ClientsService } from './clients.service.js';
 import { DashboardService } from './dashboard.service.js';
 import {
@@ -91,6 +93,7 @@ export class AdminController {
     private readonly clientsService: ClientsService,
     private readonly usersService: UsersService,
     private readonly plansService: PlansService,
+    private readonly courtsService: CourtsService,
   ) {}
 
   @Get('dashboard')
@@ -112,6 +115,31 @@ export class AdminController {
   })
   findClient(@Param('id', ParseUUIDPipe) id: string): Promise<ClientDetailDto> {
     return this.clientsService.findOne(id);
+  }
+
+  @Get('clients/:id/courts')
+  @ApiOperation({
+    summary: 'Canchas del cliente con horarios, tarifas y fotos',
+  })
+  async findClientCourts(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<CourtDto[]> {
+    await this.clientsService.requireClient(id);
+    return this.courtsService.listForBusiness(id);
+  }
+
+  @Patch('clients/:id/courts/:courtId')
+  @ApiOperation({
+    summary:
+      'Editar una cancha del cliente (mismas reglas que el negocio; schedules y rates reemplazan la lista)',
+  })
+  async updateClientCourt(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('courtId', ParseUUIDPipe) courtId: string,
+    @Body() dto: UpdateCourtDto,
+  ): Promise<CourtDto> {
+    await this.clientsService.requireClient(id);
+    return this.courtsService.updateForBusiness(id, courtId, dto);
   }
 
   @Post('clients')
