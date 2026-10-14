@@ -1,0 +1,9 @@
+node_modules
+.env
+dist
+coverage
+/src/generated/prisma
+*.tsbuildinfo
+/admin/dist
+/admin/node_modules
+.env.neon

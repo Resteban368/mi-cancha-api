@@ -1,0 +1,166 @@
+<!doctype html>
+<!-- Archivo generado por prisma/erd/generator.ts. No editar a mano. -->
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mi Cancha · Diagrama ER</title>
+  <style>
+    :root { --bg: #f7f8fa; --fg: #1d2330; --muted: #5b6475; --card: #fff; --border: #dde1e8; --accent: #1f8a4c; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #12151b; --fg: #e6e9ef; --muted: #9aa3b2; --card: #1b2029; --border: #2c333f; --accent: #4cc27f; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 24px 16px 48px; background: var(--bg); color: var(--fg); font: 15px/1.5 system-ui, -apple-system, sans-serif; }
+    main { max-width: 1400px; margin: 0 auto; }
+    h1 { margin: 0 0 4px; font-size: 1.6rem; }
+    h2 { margin: 32px 0 12px; font-size: 1.15rem; }
+    h3 { margin: 0 0 6px; font-size: .95rem; color: var(--accent); }
+    p.sub { margin: 0 0 20px; color: var(--muted); }
+    .diagram { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; overflow: auto; }
+    .diagram svg { max-width: none; height: auto; }
+    .legend { color: var(--muted); font-size: .85rem; margin-top: 8px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+    .card ul { margin: 0; padding-left: 18px; font-family: ui-monospace, monospace; font-size: .85rem; }
+    code, li { word-break: break-word; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Mi Cancha · Base de datos</h1>
+    <p class="sub">9 tablas · 5 enums · generado desde <code>prisma/schema.prisma</code></p>
+    <div class="diagram"><pre class="mermaid">
+erDiagram
+  User {
+    String id PK
+    String email UK "opcional"
+    String passwordHash "opcional"
+    String displayName
+    String phone "opcional"
+    UserRole role
+    Boolean verified
+    String googleSub UK "opcional"
+    String appleSub UK "opcional"
+    DateTime createdAt
+    DateTime updatedAt
+  }
+  Business {
+    String id PK
+    String ownerId FK, UK
+    String name
+    String address
+    String neighborhood
+    String description "opcional"
+    DateTime createdAt
+    DateTime updatedAt
+  }
+  Court {
+    String id PK
+    String businessId FK
+    String name
+    Sport sport
+    Int hourlyPrice "Precio por hora en pesos colombianos (COP, sin decimales)."
+    Boolean active
+    DateTime createdAt
+    DateTime updatedAt
+  }
+  Reservation {
+    String id PK
+    String businessId FK
+    String courtId FK
+    String playerId FK "opcional"
+    DateTime start
+    DateTime end
+    String customerName
+    String customerDetail "opcional"
+    String phone
+    String contactNote "opcional"
+    String tag "opcional"
+    Boolean isRecurring
+    Int totalPrice "Valor total en COP."
+    ReservationStatus status
+    DateTime createdAt
+    DateTime updatedAt
+  }
+  Payment {
+    String id PK
+    String businessId FK
+    String reservationId FK "opcional"
+    String customerName
+    Int amount "Monto en COP."
+    String methodId FK
+    PaymentConcept concept
+    PaymentStatus status
+    String reference "opcional"
+    String note "opcional"
+    String rejectionReason "opcional"
+    Boolean registeredByBusiness
+    DateTime receivedAt
+    DateTime updatedAt
+  }
+  Amenity {
+    String id PK
+    String code UK "Código estable que usan la API y la app (p. ej. PARQUEADERO)."
+    String name
+    Boolean active
+    Int sortOrder
+    DateTime createdAt
+    DateTime updatedAt
+  }
+  PaymentMethod {
+    String id PK
+    String code UK "Código estable que usan la API y la app (p. ej. NEQUI)."
+    String name
+    Boolean requiresReference "Si al registrar el pago se exige número de referencia o comprobante."
+    Boolean active
+    Int sortOrder
+    DateTime createdAt
+    DateTime updatedAt
+  }
+  Plan {
+    String id PK
+    String name UK
+    Int monthlyPrice "Precio mensual en COP."
+    Int courtLimit
+    Json benefits "Lista de { title, detail }."
+  }
+  Subscription {
+    String id PK
+    String businessId FK, UK
+    String planId FK
+    DateTime since
+    DateTime nextPayment
+    Boolean isActive
+    Boolean autoBilling
+  }
+  User ||--o| Business : "business"
+  Business ||--o{ Court : "courts"
+  Business ||--o{ Reservation : "reservations"
+  Court ||--o{ Reservation : "reservations"
+  User |o--o{ Reservation : "reservations"
+  Business ||--o{ Payment : "payments"
+  Reservation |o--o{ Payment : "payments"
+  PaymentMethod ||--o{ Payment : "payments"
+  Amenity }o--o{ Business : "AmenityToBusiness"
+  Business ||--o| Subscription : "subscription"
+  Plan ||--o{ Subscription : "subscriptions"
+    </pre></div>
+    <p class="legend">PK llave primaria · FK llave foránea · UK única · líneas: <code>||</code> uno · <code>|o</code> cero o uno · <code>o{</code> muchos · <code>}o--o{</code> muchos a muchos</p>
+    <h2>Enums</h2>
+    <div class="grid">
+      <div class="card"><h3>UserRole</h3><ul><li>SUPER_ADMIN</li><li>ADMIN_NEGOCIO</li><li>JUGADOR</li></ul></div>
+      <div class="card"><h3>Sport</h3><ul><li>FUTBOL</li><li>PADEL</li><li>BALONCESTO</li><li>VOLEIBOL</li></ul></div>
+      <div class="card"><h3>ReservationStatus</h3><ul><li>CONFIRMED</li><li>COMPLETED</li><li>NO_SHOW</li><li>CANCELLED</li></ul></div>
+      <div class="card"><h3>PaymentConcept</h3><ul><li>ANTICIPO</li><li>SALDO</li><li>TOTAL</li></ul></div>
+      <div class="card"><h3>PaymentStatus</h3><ul><li>PENDING</li><li>APPROVED</li><li>REJECTED</li></ul></div>
+    </div>
+    <h2>Únicos compuestos</h2><ul><li>Court: (businessId, name)</li></ul>
+  </main>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.esm.min.mjs';
+    const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+    mermaid.initialize({ startOnLoad: true, theme: dark ? 'dark' : 'default', er: { useMaxWidth: false } });
+  </script>
+</body>
+</html>

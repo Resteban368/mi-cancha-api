@@ -1,0 +1,207 @@
+// Modelo de datos de Mi Cancha.
+// Los enums reflejan las entidades de la app Flutter (mi_cancha/lib/**/domain/entities).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+// Diagrama ER en docs/database (ERD.md + erd.html); se actualiza en cada generate.
+generator erd {
+  provider = "node prisma/erd/generator.ts"
+  output   = "../docs/database"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN_NEGOCIO
+  JUGADOR
+}
+
+enum Sport {
+  FUTBOL
+  PADEL
+  BALONCESTO
+  VOLEIBOL
+}
+
+enum ReservationStatus {
+  CONFIRMED
+  COMPLETED
+  NO_SHOW
+  CANCELLED
+}
+
+enum PaymentConcept {
+  ANTICIPO
+  SALDO
+  TOTAL
+}
+
+enum PaymentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String?  @unique
+  passwordHash String?
+  displayName  String
+  phone        String?
+  role         UserRole
+  verified     Boolean  @default(false)
+  googleSub    String?  @unique
+  appleSub     String?  @unique
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  business     Business?
+  reservations Reservation[]
+}
+
+model Business {
+  id           String    @id @default(uuid())
+  ownerId      String    @unique
+  owner        User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name         String
+  address      String
+  neighborhood String
+  description  String?
+  amenities    Amenity[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  courts       Court[]
+  reservations Reservation[]
+  payments     Payment[]
+  subscription Subscription?
+}
+
+model Court {
+  id          String   @id @default(uuid())
+  businessId  String
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name        String
+  sport       Sport
+  /// Precio por hora en pesos colombianos (COP, sin decimales).
+  hourlyPrice Int
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  reservations Reservation[]
+
+  @@unique([businessId, name])
+}
+
+model Reservation {
+  id             String            @id @default(uuid())
+  businessId     String
+  business       Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  courtId        String
+  court          Court             @relation(fields: [courtId], references: [id], onDelete: Restrict)
+  playerId       String?
+  player         User?             @relation(fields: [playerId], references: [id], onDelete: SetNull)
+  start          DateTime
+  end            DateTime
+  customerName   String
+  customerDetail String?
+  phone          String
+  contactNote    String?
+  tag            String?
+  isRecurring    Boolean           @default(false)
+  /// Valor total en COP.
+  totalPrice     Int
+  status         ReservationStatus @default(CONFIRMED)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  payments Payment[]
+
+  @@index([businessId, start])
+  @@index([courtId, start, end])
+}
+
+model Payment {
+  id                   String         @id @default(uuid())
+  businessId           String
+  business             Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  reservationId        String?
+  reservation          Reservation?   @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+  customerName         String
+  /// Monto en COP.
+  amount               Int
+  methodId             String
+  method               PaymentMethod  @relation(fields: [methodId], references: [id], onDelete: Restrict)
+  concept              PaymentConcept
+  status               PaymentStatus  @default(PENDING)
+  reference            String?
+  note                 String?
+  rejectionReason      String?
+  registeredByBusiness Boolean        @default(false)
+  receivedAt           DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+
+  @@index([businessId, status, receivedAt])
+  @@index([methodId])
+}
+
+/// Catálogo editable desde el panel: servicios que ofrece un negocio.
+model Amenity {
+  id        String   @id @default(uuid())
+  /// Código estable que usan la API y la app (p. ej. PARQUEADERO).
+  code      String   @unique
+  name      String
+  active    Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  businesses Business[]
+}
+
+/// Catálogo editable desde el panel: medios con los que se recibe un pago.
+model PaymentMethod {
+  id                String   @id @default(uuid())
+  /// Código estable que usan la API y la app (p. ej. NEQUI).
+  code              String   @unique
+  name              String
+  /// Si al registrar el pago se exige número de referencia o comprobante.
+  requiresReference Boolean  @default(true)
+  active            Boolean  @default(true)
+  sortOrder         Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  payments Payment[]
+}
+
+model Plan {
+  id           String @id @default(uuid())
+  name         String @unique
+  /// Precio mensual en COP.
+  monthlyPrice Int
+  courtLimit   Int
+  /// Lista de { title, detail }.
+  benefits     Json   @default("[]")
+
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id          String   @id @default(uuid())
+  businessId  String   @unique
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  planId      String
+  plan        Plan     @relation(fields: [planId], references: [id])
+  since       DateTime @default(now())
+  nextPayment DateTime
+  isActive    Boolean  @default(true)
+  autoBilling Boolean  @default(true)
+}

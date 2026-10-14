@@ -1,0 +1,53 @@
+import { vi, type Mock } from 'vitest';
+
+type ModelMock = Record<
+  | 'findUnique'
+  | 'findUniqueOrThrow'
+  | 'findFirst'
+  | 'findMany'
+  | 'create'
+  | 'update'
+  | 'updateMany'
+  | 'count'
+  | 'delete'
+  | 'groupBy',
+  Mock
+>;
+
+function modelMock(): ModelMock {
+  return {
+    findUnique: vi.fn(),
+    findUniqueOrThrow: vi.fn(),
+    findFirst: vi.fn(),
+    findMany: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    updateMany: vi.fn(),
+    count: vi.fn(),
+    delete: vi.fn(),
+    groupBy: vi.fn(),
+  };
+}
+
+/** Doble de PrismaService: los modelos son mocks y $transaction ejecuta el callback con el mismo doble. */
+export function createPrismaMock() {
+  const prisma = {
+    user: modelMock(),
+    business: modelMock(),
+    court: modelMock(),
+    reservation: modelMock(),
+    payment: modelMock(),
+    plan: modelMock(),
+    subscription: modelMock(),
+    amenity: modelMock(),
+    paymentMethod: modelMock(),
+    $queryRaw: vi.fn(),
+    $transaction: vi.fn(),
+  };
+  prisma.$transaction.mockImplementation(
+    (callback: (tx: typeof prisma) => unknown) => callback(prisma),
+  );
+  return prisma;
+}
+
+export type PrismaMock = ReturnType<typeof createPrismaMock>;
