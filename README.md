@@ -91,6 +91,7 @@ Para regenerarlos a mano: `npm run db:erd`. No los edites directamente.
 | GET · PATCH | `/business/customers/:id` | Ficha con reservas y pagos · editar nombre, teléfono, cédula, `preferredSport` y `notes` |
 | POST | `/business/customers` | Registrar un cliente sin reserva |
 | GET | `/business/refunds` | Devoluciones (pagos devueltos al cancelar) |
+| GET | `/business/dashboard?period=` | Métricas del negocio: reservas, cobrado, por cobrar, ocupación, días y horas con más movimiento, top 5 clientes, métodos de pago y deportes, con comparación contra el período anterior. `period`: `TODAY`, `LAST_7_DAYS`, `LAST_30_DAYS`, `THIS_MONTH` o `CUSTOM` (`from`, `to`, máx. 366 días); filtros `sport` y `courtId` |
 | GET · POST | `/business/payments?status=` | Pagos; los registrados por el negocio quedan aprobados |
 | PATCH | `/business/payments/:id/approve` · `/reject` | Validar pagos pendientes |
 | GET | `/business/account` | Perfil del admin y suscripción |
@@ -102,6 +103,7 @@ Para regenerarlos a mano: `npm run db:erd`. No los edites directamente.
 | POST | `/admin/clients/:id/reservations` · `/:reservationId/cancel` | Reservar y cancelar en nombre del negocio |
 | GET · POST · PATCH | `/admin/clients/:id/customers` · `/:customerId` | Cartera de clientes del negocio (mismo formato), alta y edición |
 | GET | `/admin/clients/:id/refunds` | Devoluciones del negocio |
+| GET | `/admin/clients/:id/dashboard` | El mismo dashboard del negocio, para el super admin |
 | GET · PATCH | `/admin/clients/:id/courts` · `/:courtId` | Canchas del cliente con horarios, tarifas y fotos; el super admin puede editarlas (mismas reglas que el negocio) |
 | PATCH | `/admin/clients/:id/subscription` | Cambiar plan o activar/suspender |
 | GET | `/admin/users?role=&search=` | Usuarios |

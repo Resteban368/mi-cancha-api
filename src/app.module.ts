@@ -5,6 +5,7 @@ import { join, sep } from 'node:path';
 import { AccountModule } from './account/account.module.js';
 import { AdminModule } from './admin/admin.module.js';
 import { AuthModule } from './auth/auth.module.js';
+import { BusinessDashboardModule } from './business-dashboard/business-dashboard.module.js';
 import { BusinessesModule } from './businesses/businesses.module.js';
 import { CatalogsModule } from './catalogs/catalogs.module.js';
 import { validateEnv } from './config/env.validation.js';
@@ -49,6 +50,7 @@ import { StorageModule } from './storage/storage.module.js';
     ReservationsModule,
     CustomersModule,
     RefundsModule,
+    BusinessDashboardModule,
     PaymentsModule,
     AccountModule,
     CatalogsModule,
