@@ -193,4 +193,71 @@ describe('ReservationsService', () => {
       service.cancel('owner-1', 'res-1', { reason: 'X' }),
     ).rejects.toThrow('Solo se pueden cancelar');
   });
+
+  describe('list', () => {
+    const page = { page: 2, pageSize: 10 };
+
+    it('con date devuelve la agenda del día, en hora local y ordenada', async () => {
+      prisma.reservation.findMany.mockResolvedValue([]);
+      await expect(
+        service.list('owner-1', { ...page, date: '2030-10-21' }),
+      ).resolves.toEqual([]);
+      expect(prisma.reservation.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            businessId: 'biz-1',
+            start: {
+              gte: new Date('2030-10-21T05:00:00.000Z'),
+              lt: new Date('2030-10-22T05:00:00.000Z'),
+            },
+          }),
+          orderBy: { start: 'asc' },
+        }),
+      );
+      expect(prisma.reservation.count).not.toHaveBeenCalled();
+    });
+
+    it('sin date pagina con rango, estado, cancha y búsqueda', async () => {
+      prisma.reservation.findMany.mockResolvedValue([]);
+      prisma.reservation.count.mockResolvedValue(35);
+
+      const result = await service.list('owner-1', {
+        ...page,
+        from: '2030-10-01',
+        to: '2030-10-31',
+        status: ReservationStatus.CANCELLED,
+        courtId: 'court-1',
+        search: '1.075',
+      });
+
+      expect(result).toEqual({ items: [], total: 35, page: 2, pageSize: 10 });
+      const args = prisma.reservation.findMany.mock.calls[0][0];
+      expect(args).toMatchObject({
+        orderBy: { start: 'desc' },
+        skip: 10,
+        take: 10,
+      });
+      expect(args.where).toMatchObject({
+        status: ReservationStatus.CANCELLED,
+        courtId: 'court-1',
+        start: {
+          gte: new Date('2030-10-01T05:00:00.000Z'),
+          lt: new Date('2030-11-01T05:00:00.000Z'),
+        },
+      });
+      expect(args.where.OR).toContainEqual({
+        customer: { documentId: { contains: '1075' } },
+      });
+    });
+
+    it('rechaza un rango invertido', async () => {
+      await expect(
+        service.list('owner-1', {
+          ...page,
+          from: '2030-10-31',
+          to: '2030-10-01',
+        }),
+      ).rejects.toThrow('from no puede ser posterior a to');
+    });
+  });
 });

@@ -38,8 +38,9 @@ import {
   AvailabilityQueryDto,
   CancelReservationDto,
   CreateReservationDto,
-  DayQueryDto,
   ReservationDto,
+  ReservationPageDto,
+  ReservationsQueryDto,
 } from '../reservations/dto/reservation.dto.js';
 import { ReservationsService } from '../reservations/reservations.service.js';
 import { ClientsService } from './clients.service.js';
@@ -174,13 +175,16 @@ export class AdminController {
   }
 
   @Get('clients/:id/reservations')
-  @ApiOperation({ summary: 'Agenda de un día del cliente (todas sus canchas)' })
+  @ApiOperation({
+    summary:
+      'Reservas del cliente: con date, la agenda de ese día; sin date, paginadas con filtros',
+  })
   async clientReservations(
     @Param('id', ParseUUIDPipe) id: string,
-    @Query() query: DayQueryDto,
-  ): Promise<ReservationDto[]> {
+    @Query() query: ReservationsQueryDto,
+  ): Promise<ReservationDto[] | ReservationPageDto> {
     await this.clientsService.requireClient(id);
-    return this.reservationsService.listForDay(id, query.date);
+    return this.reservationsService.listForBusiness(id, query);
   }
 
   @Post('clients/:id/reservations')

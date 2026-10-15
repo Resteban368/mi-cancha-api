@@ -82,7 +82,7 @@ Para regenerarlos a mano: `npm run db:erd`. No los edites directamente.
 | GET · POST · PATCH · DELETE | `/business/courts` · `/:id` | Canchas con horarios y tarifas (respeta el límite del plan; DELETE desactiva) |
 | PUT · DELETE | `/business/courts/:id/photos/:slot` | Fotos de la cancha por posición: `MAIN`, `SURFACE`, `LIGHTING` (obligatorias), `EXTRA_1`, `EXTRA_2` |
 | GET | `/business/courts/:id/availability?date=YYYY-MM-DD` | Turnos del día: `AVAILABLE`, `BOOKED` o `PAST`, con su precio |
-| GET | `/business/reservations?date=YYYY-MM-DD` · `/:id` | Agenda del día y detalle |
+| GET | `/business/reservations` · `/:id` | Con `date=YYYY-MM-DD`, la agenda de ese día (lista). Sin `date`, todas paginadas (`page`, `pageSize`), de la más reciente a la más antigua. Filtros: `from`, `to`, `status`, `courtId`, `customerId`, `search` (nombre, teléfono o cédula) |
 | POST | `/business/reservations` | Reservar: `start` (inicio de un turno), `slots` (1 a 5), `customerId` o `customer {name, phone, documentId}`, `discount` y `payment` opcionales |
 | POST | `/business/reservations/:id/cancel` | Cancelar con `{ reason }`: libera el turno, devuelve los pagos aprobados y rechaza los pendientes |
 | PATCH | `/business/reservations/:id/status` | `CONFIRMED`, `COMPLETED` o `NO_SHOW` |

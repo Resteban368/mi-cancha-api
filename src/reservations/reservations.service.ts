@@ -7,6 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { BusinessesService } from '../businesses/businesses.service.js';
 import { CatalogsService } from '../catalogs/catalogs.service.js';
+import { Page, pageArgs } from '../common/dto/page.dto.js';
 import { dayRange } from '../common/utils/day-range.js';
 import {
   daySlots,
@@ -23,6 +24,7 @@ import {
 } from '../courts/courts.service.js';
 import {
   CustomersService,
+  normalizeDocument,
   toCustomerDto,
 } from '../customers/customers.service.js';
 import { Prisma } from '../generated/prisma/client.js';
@@ -38,6 +40,7 @@ import {
   CreateReservationDto,
   MAX_SLOTS,
   ReservationDto,
+  ReservationsQueryDto,
   UpdateReservationStatusDto,
 } from './dto/reservation.dto.js';
 
@@ -78,9 +81,12 @@ export class ReservationsService {
 
   // ---------- Administrador de negocio (por ownerId) ----------
 
-  async findForDay(ownerId: string, date: string): Promise<ReservationDto[]> {
+  async list(
+    ownerId: string,
+    query: ReservationsQueryDto,
+  ): Promise<ReservationDto[] | Page<ReservationDto>> {
     const businessId = await this.businesses.requireBusinessId(ownerId);
-    return this.listForDay(businessId, date);
+    return this.listForBusiness(businessId, query);
   }
 
   async findOne(ownerId: string, id: string): Promise<ReservationDto> {
@@ -136,17 +142,85 @@ export class ReservationsService {
 
   // ---------- Núcleo por negocio (también lo usa el super admin) ----------
 
-  async listForDay(
+  /**
+   * Con `date`: agenda de ese día (lista ordenada por hora). Sin `date`: página
+   * de reservas de la más reciente a la más antigua. Los demás filtros aplican
+   * en ambos casos.
+   */
+  async listForBusiness(
     businessId: string,
-    date: string,
-  ): Promise<ReservationDto[]> {
-    const { from, to } = dayRange(date, this.utcOffset);
-    const reservations = await this.prisma.reservation.findMany({
-      where: { businessId, start: { gte: from, lt: to } },
-      include: reservationInclude,
-      orderBy: { start: 'asc' },
-    });
-    return reservations.map(toReservationDto);
+    query: ReservationsQueryDto,
+  ): Promise<ReservationDto[] | Page<ReservationDto>> {
+    const where = this.listWhere(businessId, query);
+    if (query.date) {
+      const reservations = await this.prisma.reservation.findMany({
+        where,
+        include: reservationInclude,
+        orderBy: { start: 'asc' },
+      });
+      return reservations.map(toReservationDto);
+    }
+    const [items, total] = await Promise.all([
+      this.prisma.reservation.findMany({
+        where,
+        include: reservationInclude,
+        orderBy: { start: 'desc' },
+        ...pageArgs(query),
+      }),
+      this.prisma.reservation.count({ where }),
+    ]);
+    return {
+      items: items.map(toReservationDto),
+      total,
+      page: query.page,
+      pageSize: query.pageSize,
+    };
+  }
+
+  private listWhere(
+    businessId: string,
+    query: ReservationsQueryDto,
+  ): Prisma.ReservationWhereInput {
+    let start: Prisma.DateTimeFilter | undefined;
+    if (query.date) {
+      const { from, to } = dayRange(query.date, this.utcOffset);
+      start = { gte: from, lt: to };
+    } else if (query.from || query.to) {
+      if (query.from && query.to && query.from > query.to) {
+        throw new BadRequestException('from no puede ser posterior a to');
+      }
+      start = {
+        ...(query.from && {
+          gte: dayRange(query.from, this.utcOffset).from,
+        }),
+        ...(query.to && { lt: dayRange(query.to, this.utcOffset).to }),
+      };
+    }
+
+    const term = query.search?.trim();
+    const digits = term?.replace(/\D/g, '');
+    return {
+      businessId,
+      start,
+      status: query.status,
+      courtId: query.courtId,
+      customerId: query.customerId,
+      ...(term && {
+        OR: [
+          { customerName: { contains: term, mode: 'insensitive' } },
+          ...(digits
+            ? [
+                { phone: { contains: digits } },
+                {
+                  customer: {
+                    documentId: { contains: normalizeDocument(term) },
+                  },
+                },
+              ]
+            : []),
+        ],
+      }),
+    };
   }
 
   /** Turnos del día con su estado y precio. */

@@ -2,6 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   IsBoolean,
+  IsEnum,
   IsIn,
   IsInt,
   IsISO8601,
@@ -17,6 +18,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { CATALOG_CODE_PATTERN } from '../../catalogs/dto/catalog.dto.js';
+import { PageQueryDto } from '../../common/dto/page.dto.js';
 import {
   CustomerDto,
   CustomerInputDto,
@@ -39,6 +41,54 @@ export class DayQueryDto {
   })
   @IsISO8601({ strict: true })
   date: string;
+}
+
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const DATE_MESSAGE = 'debe tener formato YYYY-MM-DD';
+
+/**
+ * Filtros del listado. Con `date` devuelve la agenda de ese día como lista
+ * (sin paginar); sin `date`, una página `{ items, total, page, pageSize }`.
+ */
+export class ReservationsQueryDto extends PageQueryDto {
+  /** Un día en hora del negocio. @example 2026-10-15 */
+  @IsOptional()
+  @Matches(DATE_PATTERN, { message: `date ${DATE_MESSAGE}` })
+  @IsISO8601({ strict: true })
+  date?: string;
+
+  /** Desde este día, inclusive. @example 2026-10-01 */
+  @IsOptional()
+  @Matches(DATE_PATTERN, { message: `from ${DATE_MESSAGE}` })
+  @IsISO8601({ strict: true })
+  from?: string;
+
+  /** Hasta este día, inclusive. @example 2026-10-31 */
+  @IsOptional()
+  @Matches(DATE_PATTERN, { message: `to ${DATE_MESSAGE}` })
+  @IsISO8601({ strict: true })
+  to?: string;
+
+  @ApiProperty({ enum: ReservationStatus, required: false })
+  @IsOptional()
+  @IsEnum(ReservationStatus)
+  status?: ReservationStatus;
+
+  @IsOptional()
+  @IsUUID()
+  courtId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  customerId?: string;
+}
+
+export class ReservationPageDto {
+  @ApiProperty({ type: () => [ReservationDto] })
+  items: ReservationDto[];
+  total: number;
+  page: number;
+  pageSize: number;
 }
 
 export class ReservationPaymentInputDto {

@@ -8,7 +8,14 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiExtraModels,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+  getSchemaPath,
+} from '@nestjs/swagger';
 import type { AuthPayload } from '../common/auth/auth-payload.js';
 import { CurrentUser } from '../common/auth/current-user.decorator.js';
 import { Roles } from '../common/auth/roles.decorator.js';
@@ -18,8 +25,9 @@ import {
   AvailabilityQueryDto,
   CancelReservationDto,
   CreateReservationDto,
-  DayQueryDto,
   ReservationDto,
+  ReservationPageDto,
+  ReservationsQueryDto,
   UpdateReservationStatusDto,
 } from './dto/reservation.dto.js';
 import { ReservationsService } from './reservations.service.js';
@@ -32,12 +40,24 @@ export class ReservationsController {
   constructor(private readonly reservationsService: ReservationsService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Agenda de un día (todas las canchas)' })
-  findForDay(
+  @ApiOperation({
+    summary:
+      'Reservas del negocio: con date, la agenda de ese día (lista); sin date, todas paginadas (más recientes primero)',
+  })
+  @ApiExtraModels(ReservationPageDto)
+  @ApiOkResponse({
+    schema: {
+      oneOf: [
+        { type: 'array', items: { $ref: getSchemaPath(ReservationDto) } },
+        { $ref: getSchemaPath(ReservationPageDto) },
+      ],
+    },
+  })
+  list(
     @CurrentUser() user: AuthPayload,
-    @Query() query: DayQueryDto,
-  ): Promise<ReservationDto[]> {
-    return this.reservationsService.findForDay(user.sub, query.date);
+    @Query() query: ReservationsQueryDto,
+  ): Promise<ReservationDto[] | ReservationPageDto> {
+    return this.reservationsService.list(user.sub, query);
   }
 
   @Get(':id')
