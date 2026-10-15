@@ -88,6 +88,27 @@ export const HistoryIcon = (p: IconProps) => (
 export const EditIcon = (p: IconProps) => (
   <Icon {...p}><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></Icon>
 );
+export const ClockIcon = (p: IconProps) => (
+  <Icon {...p}><circle cx="12" cy="12" r="9" /><path d="M12 6v6l4 2" /></Icon>
+);
+export const TagIcon = (p: IconProps) => (
+  <Icon {...p}><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><circle cx="7" cy="7" r="1.5" /></Icon>
+);
+export const UserPlusIcon = (p: IconProps) => (
+  <Icon {...p}><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="8.5" cy="7" r="4" /><path d="M20 8v6M23 11h-6" /></Icon>
+);
+export const CheckCircleIcon = (p: IconProps) => (
+  <Icon {...p}><circle cx="12" cy="12" r="9" /><path d="M8.5 12.5l2.5 2.5 5-5" /></Icon>
+);
+export const SparklesIcon = (p: IconProps) => (
+  <Icon {...p}><path d="M12 2l1.9 4.8L18 8.7l-4.1 1.9L12 15.4l-1.9-4.8L6 8.7l4.1-1.9L12 2zM19 15l.9 2.3L22 18.2l-2.1.9-.9 2.3-.9-2.3-2.1-.9 2.1-.9.9-2.3z" /></Icon>
+);
+export const SunIcon = (p: IconProps) => (
+  <Icon {...p}><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" /></Icon>
+);
+export const ShieldCheckIcon = (p: IconProps) => (
+  <Icon {...p}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><path d="M9 12l2 2 4-4" /></Icon>
+);
 
 /** Ícono de la app (assets/logo.png). Las esquinas se redondean como ícono de app. */
 export function BrandMark({ size = 32 }: { size?: number }) {

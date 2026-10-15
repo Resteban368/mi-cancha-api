@@ -245,6 +245,7 @@ model Reservation {
   refunds  Refund[]
 
   @@index([businessId, start])
+  @@index([customerId, status])
   @@index([courtId, start, end])
 }
 
@@ -272,6 +273,10 @@ model Customer {
 
   @@unique([businessId, phone])
   @@unique([businessId, documentId])
+  // Búsqueda por fragmentos (ILIKE '%texto%') con trigramas (extensión pg_trgm).
+  @@index([name(ops: raw("gin_trgm_ops"))], type: Gin)
+  @@index([phone(ops: raw("gin_trgm_ops"))], type: Gin)
+  @@index([documentId(ops: raw("gin_trgm_ops"))], type: Gin)
 }
 
 /// Devolución de un pago aprobado al cancelar su reserva. El pago queda REFUNDED.

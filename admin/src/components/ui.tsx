@@ -339,7 +339,7 @@ export function Modal({
   onClose: () => void;
   children: ReactNode;
   footer?: ReactNode;
-  size?: 'md' | 'lg';
+  size?: 'md' | 'lg' | 'xl' | '2xl';
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
@@ -377,7 +377,13 @@ export function Modal({
         aria-labelledby={titleId}
         className={cx(
           'relative flex max-h-[92vh] w-full flex-col rounded-t-2xl border border-border bg-surface shadow-xl sm:rounded-2xl',
-          size === 'lg' ? 'sm:max-w-2xl' : 'sm:max-w-lg',
+          size === '2xl'
+            ? 'sm:max-w-5xl'
+            : size === 'xl'
+              ? 'sm:max-w-4xl'
+              : size === 'lg'
+                ? 'sm:max-w-2xl'
+                : 'sm:max-w-lg',
         )}
       >
         <header className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">

@@ -80,89 +80,79 @@ describe('CustomersService.findPaginated', () => {
   let service: CustomersService;
   const now = new Date('2026-10-15T12:00:00Z');
 
-  const reservation = (
-    status: ReservationStatus,
-    start: string,
-    totalPrice: number,
-    paid = 0,
-  ) => ({
-    status,
-    start: new Date(start),
-    totalPrice,
-    court: { name: 'Sintética 1', sport: Sport.FUTBOL },
-    payments: paid ? [{ amount: paid, status: PaymentStatus.APPROVED }] : [],
-  });
-
-  const customer = (
-    id: string,
-    name: string,
-    createdAt: string,
-    reservations: ReturnType<typeof reservation>[],
-  ) => ({
-    id,
-    name,
-    phone: `+57311000000${id.slice(-1)}`,
-    documentId: `10${id.slice(-1)}`,
+  const row = (overrides: Record<string, unknown> = {}) => ({
+    id: 'c-1',
+    name: 'Andrés',
+    phone: '+573110000001',
+    documentId: '101',
     preferredSport: null,
     notes: null,
-    createdAt: new Date(createdAt),
-    reservations,
+    createdAt: new Date('2026-08-01'),
+    reservations: 5,
+    completed: 3,
+    noShow: 1,
+    totalSpent: 360_000,
+    balance: 40_000.004,
+    lastVisit: new Date('2026-10-01T23:00:00Z'),
+    ...overrides,
   });
 
   beforeEach(() => {
     prisma = createPrismaMock();
     service = new CustomersService(prisma as unknown as PrismaService);
     prisma.court.findFirst.mockResolvedValue({ currency: 'COP' });
-    prisma.customer.findMany.mockResolvedValue([
-      // 5 reservas: frecuente, debe 40.000 de la confirmada.
-      customer('c-1', 'Andrés', '2026-08-01', [
-        ...Array.from({ length: 3 }, () =>
-          reservation(
-            ReservationStatus.COMPLETED,
-            '2026-10-01T23:00:00Z',
-            100_000,
-            100_000,
-          ),
-        ),
-        reservation(ReservationStatus.NO_SHOW, '2026-10-05T23:00:00Z', 100_000),
-        reservation(
-          ReservationStatus.CONFIRMED,
-          '2026-10-20T23:00:00Z',
-          100_000,
-          60_000,
-        ),
-        reservation(
-          ReservationStatus.CANCELLED,
-          '2026-10-21T23:00:00Z',
-          100_000,
-        ),
-      ]),
-      // Nueva este mes, 1 reserva jugada.
-      customer('c-2', 'Beatriz', '2026-10-10', [
-        reservation(
-          ReservationStatus.COMPLETED,
-          '2026-10-12T23:00:00Z',
-          80_000,
-          80_000,
-        ),
-      ]),
-      // Registrada el mes anterior, sin reservas.
-      customer('c-3', 'Camila', '2026-09-20', []),
-    ]);
   });
 
-  it('calcula nivel, asistencia, invertido, saldo, última visita y el resumen', async () => {
+  it('arma la página y el resumen con lo que calcula la base de datos', async () => {
+    prisma.$queryRaw
+      .mockResolvedValueOnce([
+        row(),
+        row({
+          id: 'c-2',
+          name: 'Camila',
+          reservations: 0,
+          completed: 0,
+          noShow: 0,
+          totalSpent: 0,
+          balance: 0,
+          lastVisit: null,
+          preferredSport: 'PADEL',
+        }),
+      ])
+      .mockResolvedValueOnce([
+        {
+          totalCustomers: 3,
+          newThisMonth: 2,
+          newLastMonth: 1,
+          loyalCustomers: 1,
+          totalReservations: 6,
+          pendingBalance: 40_000,
+          filtered: 2,
+        },
+      ])
+      .mockResolvedValueOnce([{ customerId: 'c-1', courtName: 'Sintética 1' }])
+      .mockResolvedValueOnce([
+        { customerId: 'c-1', sport: Sport.PADEL, count: 1 },
+        { customerId: 'c-1', sport: Sport.FUTBOL, count: 4 },
+      ]);
+
     const result = await service.findPaginated(
       'biz-1',
-      { page: 1, pageSize: 10 },
+      { page: 2, pageSize: 2 },
       now,
     );
 
-    expect(result.items.map((c) => c.name)).toEqual([
-      'Andrés',
-      'Beatriz',
-      'Camila',
-    ]);
+    expect(result).toMatchObject({ total: 2, page: 2, pageSize: 2 });
+    expect(result.overview).toEqual({
+      totalCustomers: 3,
+      newThisMonth: 2,
+      newVsLastMonthPct: 100,
+      loyalCustomers: 1,
+      loyalPct: 33,
+      totalReservations: 6,
+      pendingBalance: 40_000,
+      currency: 'COP',
+    });
     expect(result.items[0].metrics).toEqual({
       reservations: 5,
       level: 'FREQUENT',
@@ -175,53 +165,75 @@ describe('CustomersService.findPaginated', () => {
       },
       favoriteSport: Sport.FUTBOL,
     });
-    expect(result.items[2].metrics).toMatchObject({
+    expect(result.items[1].metrics).toMatchObject({
       level: 'NEW',
       attendancePct: null,
       lastVisit: null,
-      favoriteSport: null,
-    });
-    expect(result.overview).toEqual({
-      totalCustomers: 3,
-      newThisMonth: 1,
-      newVsLastMonthPct: 0,
-      loyalCustomers: 1,
-      loyalPct: 33,
-      totalReservations: 6,
-      pendingBalance: 40_000,
-      currency: 'COP',
+      favoriteSport: Sport.PADEL, // el elegido por el negocio
     });
   });
 
-  it('filtra por segmento y búsqueda, ordena y pagina', async () => {
-    const withBalance = await service.findPaginated(
+  it('no consulta canchas ni deportes si la página viene vacía', async () => {
+    prisma.$queryRaw
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          totalCustomers: 0,
+          newThisMonth: 0,
+          newLastMonth: 0,
+          loyalCustomers: 0,
+          totalReservations: 0,
+          pendingBalance: 0,
+          filtered: 0,
+        },
+      ]);
+    const result = await service.findPaginated(
       'biz-1',
-      { page: 1, pageSize: 10, segment: 'WITH_BALANCE' },
+      { page: 1, pageSize: 20 },
       now,
     );
-    expect(withBalance.items.map((c) => c.name)).toEqual(['Andrés']);
+    expect(result.items).toEqual([]);
+    expect(result.overview.newVsLastMonthPct).toBeNull();
+    expect(prisma.$queryRaw).toHaveBeenCalledTimes(2);
+  });
 
-    const recent = await service.findPaginated(
+  it('envía a SQL búsqueda, segmento, orden y página', async () => {
+    prisma.$queryRaw.mockResolvedValueOnce([]).mockResolvedValueOnce([
+      {
+        totalCustomers: 0,
+        newThisMonth: 0,
+        newLastMonth: 0,
+        loyalCustomers: 0,
+        totalReservations: 0,
+        pendingBalance: 0,
+        filtered: 0,
+      },
+    ]);
+    await service.findPaginated(
       'biz-1',
-      { page: 1, pageSize: 10, segment: 'NEW', sort: 'NAME' },
+      {
+        page: 3,
+        pageSize: 10,
+        search: '1.02_%',
+        segment: 'LOYAL',
+        sort: 'TOP_SPENDERS',
+      },
       now,
     );
-    expect(recent.items.map((c) => c.name)).toEqual(['Beatriz', 'Camila']);
-
-    const byDocument = await service.findPaginated(
-      'biz-1',
-      { page: 1, pageSize: 10, search: '1.02' },
-      now,
+    const page = prisma.$queryRaw.mock.calls[0][0];
+    const sql = page.sql.replace(/\s+/g, ' ');
+    expect(sql).toContain('"name" ILIKE ?');
+    expect(sql).toContain('"phone" LIKE ?');
+    expect(sql).toContain('"documentId" LIKE ?');
+    expect(sql).toContain('"reservations" >= ?');
+    expect(sql).toContain(
+      'ORDER BY m."totalSpent" DESC, m."name" COLLATE "es-x-icu" ASC',
     );
-    expect(byDocument.items.map((c) => c.name)).toEqual(['Beatriz']);
-
-    const second = await service.findPaginated(
-      'biz-1',
-      { page: 2, pageSize: 2, sort: 'TOP_SPENDERS' },
-      now,
-    );
-    expect(second).toMatchObject({ total: 3, page: 2, pageSize: 2 });
-    expect(second.items.map((c) => c.name)).toEqual(['Camila']);
+    // Los comodines que escribe el usuario se escapan.
+    expect(page.values).toContain('%1.02\\_\\%%');
+    expect(page.values).toContain('%102%');
+    expect(page.values).toContain(5);
+    expect(page.values.slice(-2)).toEqual([10, 20]);
   });
 });
 

@@ -11,7 +11,17 @@ import {
 } from '../generated/prisma/enums.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
+  type CustomerMetricsRow,
+  lastVisitCourtsQuery,
+  type ListParams,
+  type OverviewRow,
+  overviewQuery,
+  pageQuery,
+  sportsQuery,
+} from './customers.query.js';
+import {
   computeMetrics,
+  levelFor,
   type CustomerMetrics,
   NEW_CUSTOMER_DAYS,
   type ReservationForMetrics,
@@ -23,14 +33,11 @@ import {
   CustomerInputDto,
   CustomerMetricsDto,
   CustomerPageDto,
-  CustomersOverviewDto,
-  type CustomerSort,
   UpdateCustomerDto,
   CustomerPaymentItemDto,
   CustomerQueryDto,
   CustomerRefundItemDto,
   CustomerReservationItemDto,
-  CustomerSummaryDto,
 } from './dto/customer.dto.js';
 
 const SEARCH_LIMIT = 20;
@@ -78,11 +85,32 @@ export class CustomersService {
   ): Promise<CustomerPageDto> {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 20;
-    const [customers, court] = await Promise.all([
-      this.prisma.customer.findMany({
-        where: { businessId },
-        include: { reservations: { select: reservationMetricsSelect } },
-      }),
+    const term = query.search?.trim();
+    const digits = term?.replace(/\D/g, '');
+    const params: ListParams = {
+      businessId,
+      now,
+      search: term || undefined,
+      digits: digits || undefined,
+      document: term ? normalizeDocument(term) : undefined,
+      segment: query.segment ?? 'ALL',
+      newSince: addDays(now, -NEW_CUSTOMER_DAYS),
+      thisMonth: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)),
+      lastMonth: new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1),
+      ),
+    };
+
+    const [rows, [overview], court] = await Promise.all([
+      this.prisma.$queryRaw<CustomerMetricsRow[]>(
+        pageQuery(
+          params,
+          query.sort ?? 'MOST_RESERVATIONS',
+          pageSize,
+          (page - 1) * pageSize,
+        ),
+      ),
+      this.prisma.$queryRaw<OverviewRow[]>(overviewQuery(params)),
       this.prisma.court.findFirst({
         where: { businessId },
         select: { currency: true },
@@ -90,41 +118,68 @@ export class CustomersService {
       }),
     ]);
 
-    const all: CustomerSummaryDto[] = customers.map((c) =>
-      toSummaryDto(c, computeMetrics(c.reservations.map(toMetricsInput), now)),
+    const ids = rows.map((r) => r.id);
+    const [courts, sports] = ids.length
+      ? await Promise.all([
+          this.prisma.$queryRaw<{ customerId: string; courtName: string }[]>(
+            lastVisitCourtsQuery(ids, now),
+          ),
+          this.prisma.$queryRaw<
+            { customerId: string; sport: Sport; count: number }[]
+          >(sportsQuery(ids)),
+        ])
+      : [[], []];
+    const courtByCustomer = new Map(
+      courts.map((c) => [c.customerId, c.courtName]),
     );
 
-    const newSince = addDays(now, -NEW_CUSTOMER_DAYS);
-    const term = query.search?.trim().toLowerCase();
-    const digits = term?.replace(/\D/g, '');
-    const document = term && normalizeDocument(term);
-    const segment = query.segment ?? 'ALL';
-    const filtered = all.filter((c) => {
-      if (
-        term &&
-        !c.name.toLowerCase().includes(term) &&
-        !(digits && c.phone.includes(digits)) &&
-        !(digits && document && c.documentId.includes(document))
-      ) {
-        return false;
-      }
-      switch (segment) {
-        case 'LOYAL':
-          return c.metrics.level === 'FREQUENT' || c.metrics.level === 'VIP';
-        case 'WITH_BALANCE':
-          return c.metrics.balance > 0;
-        case 'NEW':
-          return c.createdAt >= newSince;
-        default:
-          return true;
-      }
-    });
-    filtered.sort(SORTERS[query.sort ?? 'MOST_RESERVATIONS']);
-
     return {
-      overview: overviewOf(all, now, court?.currency ?? 'COP'),
-      items: filtered.slice((page - 1) * pageSize, page * pageSize),
-      total: filtered.length,
+      overview: {
+        totalCustomers: overview.totalCustomers,
+        newThisMonth: overview.newThisMonth,
+        newVsLastMonthPct: overview.newLastMonth
+          ? Math.round(
+              ((overview.newThisMonth - overview.newLastMonth) /
+                overview.newLastMonth) *
+                100,
+            )
+          : null,
+        loyalCustomers: overview.loyalCustomers,
+        loyalPct: overview.totalCustomers
+          ? Math.round(
+              (overview.loyalCustomers / overview.totalCustomers) * 100,
+            )
+          : 0,
+        totalReservations: overview.totalReservations,
+        pendingBalance: round2(overview.pendingBalance),
+        currency: court?.currency ?? 'COP',
+      },
+      items: rows.map((r) => ({
+        id: r.id,
+        name: r.name,
+        phone: r.phone,
+        documentId: r.documentId,
+        preferredSport: r.preferredSport as Sport | null,
+        notes: r.notes,
+        createdAt: r.createdAt,
+        metrics: {
+          reservations: r.reservations,
+          level: levelFor(r.reservations),
+          attendancePct:
+            r.completed + r.noShow
+              ? Math.round((r.completed / (r.completed + r.noShow)) * 100)
+              : null,
+          totalSpent: round2(r.totalSpent),
+          balance: round2(r.balance),
+          lastVisit: r.lastVisit
+            ? { date: r.lastVisit, courtName: courtByCustomer.get(r.id) ?? '' }
+            : null,
+          favoriteSport:
+            (r.preferredSport as Sport | null) ??
+            mostPlayed(sports.filter((s) => s.customerId === r.id)),
+        },
+      })),
+      total: overview.filtered,
       page,
       pageSize,
     };
@@ -489,14 +544,6 @@ export function toCustomerDto(c: Customer): CustomerDto {
   };
 }
 
-const reservationMetricsSelect = {
-  status: true,
-  start: true,
-  totalPrice: true,
-  court: { select: { name: true, sport: true } },
-  payments: { select: { amount: true, status: true } },
-} satisfies Prisma.ReservationSelect;
-
 function toMetricsInput(r: {
   status: ReservationStatus;
   start: Date;
@@ -529,63 +576,16 @@ function metricsDto(c: Customer, m: CustomerMetrics): CustomerMetricsDto {
   };
 }
 
-function toSummaryDto(c: Customer, m: CustomerMetrics): CustomerSummaryDto {
-  return { ...toCustomerDto(c), metrics: metricsDto(c, m) };
+/** Deporte con más reservas; en empate, el primero alfabéticamente. */
+function mostPlayed(rows: { sport: Sport; count: number }[]): Sport | null {
+  const sorted = [...rows].sort(
+    (a, b) => b.count - a.count || a.sport.localeCompare(b.sport),
+  );
+  return sorted[0]?.sport ?? null;
 }
 
-const SORTERS: Record<
-  CustomerSort,
-  (a: CustomerSummaryDto, b: CustomerSummaryDto) => number
-> = {
-  MOST_RESERVATIONS: (a, b) =>
-    b.metrics.reservations - a.metrics.reservations || byName(a, b),
-  TOP_SPENDERS: (a, b) =>
-    b.metrics.totalSpent - a.metrics.totalSpent || byName(a, b),
-  LAST_VISIT: (a, b) =>
-    (b.metrics.lastVisit?.date.getTime() ?? 0) -
-      (a.metrics.lastVisit?.date.getTime() ?? 0) || byName(a, b),
-  HIGHEST_BALANCE: (a, b) =>
-    b.metrics.balance - a.metrics.balance || byName(a, b),
-  NAME: byName,
-  NEWEST: (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
-};
-
-function byName(a: CustomerSummaryDto, b: CustomerSummaryDto): number {
-  return a.name.localeCompare(b.name, 'es');
-}
-
-function overviewOf(
-  all: CustomerSummaryDto[],
-  now: Date,
-  currency: string,
-): CustomersOverviewDto {
-  const thisMonth = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
-  );
-  const lastMonth = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1),
-  );
-  const newThisMonth = all.filter((c) => c.createdAt >= thisMonth).length;
-  const newLastMonth = all.filter(
-    (c) => c.createdAt >= lastMonth && c.createdAt < thisMonth,
-  ).length;
-  const loyal = all.filter(
-    (c) => c.metrics.level === 'FREQUENT' || c.metrics.level === 'VIP',
-  ).length;
-  return {
-    totalCustomers: all.length,
-    newThisMonth,
-    newVsLastMonthPct: newLastMonth
-      ? Math.round(((newThisMonth - newLastMonth) / newLastMonth) * 100)
-      : null,
-    loyalCustomers: loyal,
-    loyalPct: all.length ? Math.round((loyal / all.length) * 100) : 0,
-    totalReservations: all.reduce((sum, c) => sum + c.metrics.reservations, 0),
-    pendingBalance:
-      Math.round(all.reduce((sum, c) => sum + c.metrics.balance, 0) * 100) /
-      100,
-    currency,
-  };
+function round2(value: number): number {
+  return Math.round(value * 100) / 100;
 }
 
 function cleanNotes(notes: string | null | undefined): string | null {
