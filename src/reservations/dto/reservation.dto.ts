@@ -116,8 +116,16 @@ export class ReservationPaymentInputDto {
 }
 
 export class CreateReservationDto {
+  /** Cancha elegida. Envía esto o `sport`. */
+  @IsOptional()
   @IsUUID()
-  courtId: string;
+  courtId?: string;
+
+  /** Cualquier cancha libre de este deporte: la API asigna la primera por nombre. Envía esto o `courtId`. */
+  @ApiProperty({ enum: Sport, required: false })
+  @IsOptional()
+  @IsEnum(Sport)
+  sport?: Sport;
 
   /** Inicio del primer turno (debe coincidir con un turno de GET …/availability). @example 2026-10-20T19:00:00-05:00 */
   @IsISO8601({ strict: true })
@@ -201,6 +209,12 @@ export class CancelReservationDto {
 
 export class AvailabilityQueryDto extends DayQueryDto {}
 
+export class SportAvailabilityQueryDto extends DayQueryDto {
+  @ApiProperty({ enum: Sport })
+  @IsEnum(Sport)
+  sport: Sport;
+}
+
 export class SlotDto {
   start: Date;
   end: Date;
@@ -219,6 +233,37 @@ export class AvailabilityDto {
   maxSlots: number;
   @ApiProperty({ type: [SlotDto] })
   slots: SlotDto[];
+}
+
+export class AvailabilityCourtDto {
+  id: string;
+  name: string;
+  @ApiProperty({ enum: Sport })
+  sport: Sport;
+  isCovered: boolean;
+  /** Minutos de cada turno. */
+  slotDuration: number;
+  currency: string;
+  /** Foto principal (MAIN). */
+  photoUrl: string | null;
+}
+
+export class CourtSlotsDto {
+  court: AvailabilityCourtDto;
+  /** Turnos AVAILABLE del día. */
+  availableCount: number;
+  @ApiProperty({ type: [SlotDto] })
+  slots: SlotDto[];
+}
+
+export class SportAvailabilityDto {
+  date: string;
+  @ApiProperty({ enum: Sport })
+  sport: Sport;
+  maxSlots: number;
+  /** Una por cancha activa y con sus fotos, ordenadas por nombre. */
+  @ApiProperty({ type: [CourtSlotsDto] })
+  courts: CourtSlotsDto[];
 }
 
 export class ReservationPaymentDto {

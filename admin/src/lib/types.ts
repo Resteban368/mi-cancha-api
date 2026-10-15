@@ -349,6 +349,25 @@ export interface Availability {
   slots: AvailabilitySlot[];
 }
 
+export interface SportAvailability {
+  date: string;
+  sport: Sport;
+  maxSlots: number;
+  courts: {
+    court: {
+      id: string;
+      name: string;
+      sport: Sport;
+      isCovered: boolean;
+      slotDuration: number;
+      currency: string;
+      photoUrl: string | null;
+    };
+    availableCount: number;
+    slots: AvailabilitySlot[];
+  }[];
+}
+
 export interface Refund {
   id: string;
   amount: number;

@@ -80,7 +80,10 @@ describe('ReservationsService', () => {
         },
         {
           provide: ConfigService,
-          useValue: { getOrThrow: vi.fn().mockReturnValue('-05:00') },
+          useValue: {
+            getOrThrow: vi.fn().mockReturnValue('-05:00'),
+            get: vi.fn().mockReturnValue(undefined),
+          },
         },
       ],
     }).compile();
@@ -258,6 +261,85 @@ describe('ReservationsService', () => {
           to: '2030-10-01',
         }),
       ).rejects.toThrow('from no puede ser posterior a to');
+    });
+  });
+
+  describe('por deporte', () => {
+    const courtB = { ...court, id: 'court-2', name: 'Sintética 2' };
+    const incomplete = {
+      ...court,
+      id: 'court-3',
+      name: 'Sintética 3',
+      photos: [],
+    };
+    const now = new Date('2030-10-21T12:00:00Z'); // lunes 07:00 en Colombia
+
+    it('trae una tarjeta por cancha reservable con sus turnos y libres', async () => {
+      prisma.court.findMany.mockResolvedValue([court, courtB, incomplete]);
+      prisma.reservation.findMany.mockResolvedValue([
+        {
+          courtId: 'court-1',
+          start: new Date('2030-10-21T18:00:00-05:00'),
+          end: new Date('2030-10-21T20:00:00-05:00'),
+        },
+      ]);
+
+      const result = await service.sportAvailability(
+        'biz-1',
+        Sport.FUTBOL,
+        '2030-10-21',
+        now,
+      );
+
+      expect(prisma.court.findMany.mock.calls[0][0].where).toEqual({
+        businessId: 'biz-1',
+        sport: Sport.FUTBOL,
+        isActive: true,
+      });
+      expect(result.courts.map((c) => c.court.name)).toEqual([
+        'Sintética 1',
+        'Sintética 2',
+      ]);
+      // 06:00–23:00 = 17 turnos; a las 07:00 ya pasó el de las 06:00.
+      const [a, b] = result.courts;
+      expect(a.slots).toHaveLength(17);
+      expect(a.slots[0].status).toBe('PAST');
+      expect(a.slots.filter((x) => x.status === 'BOOKED')).toHaveLength(2);
+      expect(a.availableCount).toBe(14);
+      expect(b.availableCount).toBe(16);
+    });
+
+    it('asigna la primera cancha libre del deporte', async () => {
+      prisma.court.findMany.mockResolvedValue([court, courtB]);
+      prisma.reservation.findFirst
+        .mockResolvedValueOnce({ id: 'ocupada' })
+        .mockResolvedValueOnce(null);
+      prisma.reservation.create.mockRejectedValue(new Error('stop'));
+      const { courtId: _c, ...byCourt } = dto;
+
+      await expect(
+        service.create('owner-1', { ...byCourt, sport: Sport.FUTBOL }),
+      ).rejects.toThrow('stop');
+
+      expect(prisma.reservation.create.mock.calls[0][0].data.courtId).toBe(
+        'court-2',
+      );
+    });
+
+    it('responde 409 si todas las canchas del deporte están ocupadas', async () => {
+      prisma.court.findMany.mockResolvedValue([court, courtB]);
+      prisma.reservation.findFirst.mockResolvedValue({ id: 'ocupada' });
+      const { courtId: _c, ...byCourt } = dto;
+
+      await expect(
+        service.create('owner-1', { ...byCourt, sport: Sport.FUTBOL }),
+      ).rejects.toThrow('No hay canchas de fútbol libres en ese horario');
+    });
+
+    it('exige courtId o sport, no ambos', async () => {
+      await expect(
+        service.create('owner-1', { ...dto, sport: Sport.FUTBOL }),
+      ).rejects.toThrow('courtId');
     });
   });
 });

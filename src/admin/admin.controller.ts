@@ -45,6 +45,8 @@ import {
   ReservationDto,
   ReservationPageDto,
   ReservationsQueryDto,
+  SportAvailabilityDto,
+  SportAvailabilityQueryDto,
 } from '../reservations/dto/reservation.dto.js';
 import { ReservationsService } from '../reservations/reservations.service.js';
 import { ClientsService } from './clients.service.js';
@@ -176,6 +178,22 @@ export class AdminController {
   ): Promise<AvailabilityDto> {
     await this.clientsService.requireClient(id);
     return this.reservationsService.availability(id, courtId, query.date);
+  }
+
+  @Get('clients/:id/availability')
+  @ApiOperation({
+    summary: 'Turnos de un día de todas las canchas de un deporte del cliente',
+  })
+  async clientSportAvailability(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() query: SportAvailabilityQueryDto,
+  ): Promise<SportAvailabilityDto> {
+    await this.clientsService.requireClient(id);
+    return this.reservationsService.sportAvailability(
+      id,
+      query.sport,
+      query.date,
+    );
   }
 
   @Get('clients/:id/reservations')

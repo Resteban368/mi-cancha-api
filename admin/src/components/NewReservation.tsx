@@ -8,7 +8,7 @@ import {
   todayInBogota,
 } from '../lib/format';
 import { useToast } from '../lib/toast';
-import type { Availability, Catalogs, Court, Customer } from '../lib/types';
+import type { Catalogs, Court, Customer, Sport, SportAvailability } from '../lib/types';
 import { useApi, useDebounced } from '../lib/useApi';
 import { Badge, Button, ErrorBanner, Field, Input, Modal, Select, Skeleton, Switch } from './ui';
 
@@ -30,11 +30,13 @@ export function NewReservationModal({
   const notify = useToast();
   const courts = useApi<Court[]>(`/admin/clients/${clientId}/courts`);
   const catalogs = useApi<Catalogs>('/catalogs');
-  const bookable = courts.data?.filter((c) => c.isBookable) ?? [];
+  // Deportes con al menos una cancha reservable.
+  const sports = [...new Set(courts.data?.filter((c) => c.isBookable).map((c) => c.sport) ?? [])];
 
-  const [courtId, setCourtId] = useState('');
+  const [sportChoice, setSportChoice] = useState<Sport | ''>('');
   const [date, setDate] = useState(todayInBogota);
-  const [start, setStart] = useState<string | null>(null);
+  const [selection, setSelection] = useState<{ courtId: string; start: string } | null>(null);
+  const [anyCourt, setAnyCourt] = useState(false);
   const [slotCount, setSlotCount] = useState(1);
   const [customerMode, setCustomerMode] = useState<'search' | 'new'>('search');
   const [search, setSearch] = useState('');
@@ -46,17 +48,18 @@ export function NewReservationModal({
   const [error, setError] = useState<string>();
   const [saving, setSaving] = useState(false);
 
-  const court = bookable.find((c) => c.id === courtId) ?? bookable[0];
-  const availability = useApi<Availability>(
-    court ? `/admin/clients/${clientId}/courts/${court.id}/availability?date=${date}` : null,
+  const sport = sportChoice || sports[0];
+  const availability = useApi<SportAvailability>(
+    sport ? `/admin/clients/${clientId}/availability?date=${date}&sport=${sport}` : null,
   );
   const debouncedSearch = useDebounced(search.trim());
   const customers = useApi<Customer[]>(
     `/admin/clients/${clientId}/customers?search=${encodeURIComponent(debouncedSearch)}`,
   );
 
-  const slots = availability.data?.slots ?? [];
-  const startIndex = slots.findIndex((s) => s.start === start);
+  const selectedCourt = availability.data?.courts.find((c) => c.court.id === selection?.courtId);
+  const slots = selectedCourt?.slots ?? [];
+  const startIndex = slots.findIndex((s) => s.start === selection?.start);
   // Turnos seguidos libres desde el inicio elegido (máximo de la API).
   let maxCount = 0;
   if (startIndex !== -1) {
@@ -70,26 +73,26 @@ export function NewReservationModal({
   const chosen = startIndex === -1 ? [] : slots.slice(startIndex, startIndex + Math.min(slotCount, maxCount));
   const subtotal = chosen.reduce((sum, s) => sum + s.price, 0);
   const total = Math.max(0, subtotal - (Number(discount) || 0));
-  const currency = availability.data?.currency ?? court?.currency ?? 'COP';
+  const currency = selectedCourt?.court.currency ?? 'COP';
   const method = catalogs.data?.paymentMethods.find((m) => m.code === payment.method);
 
-  function pickStart(value: string) {
-    setStart(value);
+  function resetSelection() {
+    setSelection(null);
     setSlotCount(1);
   }
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
-    if (!court || !start) return setError('Elige la cancha y un turno disponible');
+    if (!selection || !selectedCourt) return setError('Elige un turno disponible');
     if (customerMode === 'search' && !customer) return setError('Elige un cliente o crea uno nuevo');
     setSaving(true);
     setError(undefined);
     try {
-      await api(`/admin/clients/${clientId}/reservations`, {
+      const created = await api<{ courtName: string }>(`/admin/clients/${clientId}/reservations`, {
         method: 'POST',
         body: {
-          courtId: court.id,
-          start,
+          ...(anyCourt ? { sport } : { courtId: selection.courtId }),
+          start: selection.start,
           slots: chosen.length,
           ...(customerMode === 'search'
             ? { customerId: customer!.id }
@@ -104,7 +107,7 @@ export function NewReservationModal({
           }),
         },
       });
-      notify('Reserva creada');
+      notify(`Reserva creada en ${created.courtName}`);
       onCreated();
     } catch (e) {
       setError(errorMessage(e));
@@ -134,24 +137,24 @@ export function NewReservationModal({
         {error && <ErrorBanner message={error} />}
 
         <section className="grid gap-4 sm:grid-cols-2">
-          <Field label="Cancha" hint="Solo canchas activas y con sus fotos">
+          <Field label="Deporte" hint="Se muestran todas sus canchas activas y con fotos">
             {(id) =>
               courts.loading && !courts.data ? (
                 <Skeleton className="h-10" />
               ) : (
                 <Select
                   id={id}
-                  value={court?.id ?? ''}
-                  disabled={!bookable.length}
+                  value={sport ?? ''}
+                  disabled={!sports.length}
                   onChange={(e) => {
-                    setCourtId(e.target.value);
-                    setStart(null);
+                    setSportChoice(e.target.value as Sport);
+                    resetSelection();
                   }}
                 >
-                  {!bookable.length && <option value="">No hay canchas reservables</option>}
-                  {bookable.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} · {SPORT_LABELS[c.sport]}
+                  {!sports.length && <option value="">No hay canchas reservables</option>}
+                  {sports.map((s) => (
+                    <option key={s} value={s}>
+                      {SPORT_LABELS[s]}
                     </option>
                   ))}
                 </Select>
@@ -168,61 +171,86 @@ export function NewReservationModal({
                 value={date}
                 onChange={(e) => {
                   setDate(e.target.value);
-                  setStart(null);
+                  resetSelection();
                 }}
               />
             )}
           </Field>
         </section>
 
-        {court && (
+        {sport && (
           <section>
-            <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-fg-3">Turno</h3>
-            <p className="mb-3 text-xs text-fg-3">
-              {formatLongDay(`${date}T12:00:00-05:00`)} · turnos de {court.slotDuration} min
-            </p>
+            <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-fg-3">Cancha y turno</h3>
+            <p className="mb-3 text-xs text-fg-3">{formatLongDay(`${date}T12:00:00-05:00`)}</p>
             {availability.error && <ErrorBanner message={availability.error} onRetry={availability.reload} />}
             {availability.loading && !availability.data ? (
-              <Skeleton className="h-24" />
-            ) : slots.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-fg-3">
-                La cancha está cerrada ese día.
-              </p>
+              <Skeleton className="h-40" />
             ) : (
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
-                {slots.map((slot, i) => {
-                  const selected = startIndex !== -1 && i >= startIndex && i < startIndex + chosen.length;
-                  const free = slot.status === 'AVAILABLE';
+              <div className="flex flex-col gap-3">
+                {availability.data?.courts.map(({ court, availableCount, slots: courtSlots }) => {
+                  const isSelectedCourt = selection?.courtId === court.id;
                   return (
-                    <button
-                      key={slot.start}
-                      type="button"
-                      disabled={!free}
-                      aria-pressed={selected}
-                      onClick={() => pickStart(slot.start)}
-                      className={`rounded-lg border px-2 py-2 text-center text-sm transition ${
-                        selected
-                          ? 'border-accent bg-accent text-accent-fg'
-                          : free
-                            ? 'border-border bg-surface hover:border-accent'
-                            : 'cursor-not-allowed border-border bg-surface-2 text-fg-3 line-through'
-                      }`}
+                    <div
+                      key={court.id}
+                      className={`rounded-xl border p-3 ${isSelectedCourt ? 'border-accent' : 'border-border'}`}
                     >
-                      <span className="block font-medium tabular">{formatTime(slot.start)}</span>
-                      <span className="block text-[11px] opacity-80">
-                        {slot.status === 'BOOKED'
-                          ? 'Reservado'
-                          : slot.status === 'PAST'
-                            ? 'Pasado'
-                            : formatMoney(slot.price, currency)}
-                      </span>
-                    </button>
+                      <div className="mb-2 flex items-center justify-between gap-3">
+                        <div>
+                          <p className="font-medium">{court.name}</p>
+                          <p className="text-xs text-fg-3">
+                            {court.isCovered ? 'Cubierta' : 'Al aire libre'} · turnos de {court.slotDuration} min
+                          </p>
+                        </div>
+                        <Badge tone={availableCount ? 'success' : 'neutral'}>
+                          {availableCount} libre{availableCount === 1 ? '' : 's'}
+                        </Badge>
+                      </div>
+                      {courtSlots.length === 0 ? (
+                        <p className="text-sm text-fg-3">Cerrada ese día.</p>
+                      ) : (
+                        <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+                          {courtSlots.map((slot, i) => {
+                            const selected =
+                              isSelectedCourt && startIndex !== -1 && i >= startIndex && i < startIndex + chosen.length;
+                            const free = slot.status === 'AVAILABLE';
+                            return (
+                              <button
+                                key={slot.start}
+                                type="button"
+                                disabled={!free}
+                                aria-pressed={selected}
+                                onClick={() => {
+                                  setSelection({ courtId: court.id, start: slot.start });
+                                  setSlotCount(1);
+                                }}
+                                className={`rounded-lg border px-1 py-1.5 text-center text-sm transition ${
+                                  selected
+                                    ? 'border-accent bg-accent text-accent-fg'
+                                    : free
+                                      ? 'border-border bg-surface hover:border-accent'
+                                      : 'cursor-not-allowed border-border bg-surface-2 text-fg-3 line-through'
+                                }`}
+                              >
+                                <span className="block font-medium tabular">{formatTime(slot.start)}</span>
+                                <span className="block text-[11px] opacity-80">
+                                  {slot.status === 'BOOKED'
+                                    ? 'Ocupado'
+                                    : slot.status === 'PAST'
+                                      ? 'Pasado'
+                                      : formatMoney(slot.price, court.currency)}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
               </div>
             )}
-            {start && maxCount > 0 && (
-              <div className="mt-3 flex flex-wrap items-center gap-3">
+            {selectedCourt && maxCount > 0 && (
+              <div className="mt-3 flex flex-wrap items-end gap-4">
                 <Field label="Duración">
                   {(id) => (
                     <Select
@@ -233,17 +261,21 @@ export function NewReservationModal({
                     >
                       {Array.from({ length: maxCount }, (_, i) => i + 1).map((n) => (
                         <option key={n} value={n}>
-                          {n} turno{n > 1 ? 's' : ''} · {(n * court.slotDuration) / 60} h
+                          {n} turno{n > 1 ? 's' : ''} · {(n * selectedCourt.court.slotDuration) / 60} h
                         </option>
                       ))}
                     </Select>
                   )}
                 </Field>
                 {chosen.length > 0 && (
-                  <p className="mt-6 text-sm text-fg-2">
-                    {formatTime(chosen[0].start)} a {formatTime(chosen.at(-1)!.end)}
+                  <p className="pb-2 text-sm text-fg-2">
+                    {selectedCourt.court.name} · {formatTime(chosen[0].start)} a {formatTime(chosen.at(-1)!.end)}
                   </p>
                 )}
+                <label className="flex items-center gap-2 pb-2 text-sm text-fg-2">
+                  <Switch checked={anyCourt} label="Asignar cualquier cancha libre" onChange={setAnyCourt} />
+                  Cualquier cancha de {SPORT_LABELS[sport]} libre a esa hora
+                </label>
               </div>
             )}
           </section>
@@ -388,7 +420,7 @@ export function NewReservationModal({
             </div>
           )}
         </section>
-        {!bookable.length && courts.data && (
+        {!sports.length && courts.data && (
           <Badge tone="warn">El negocio no tiene canchas activas con sus 3 fotos.</Badge>
         )}
       </form>

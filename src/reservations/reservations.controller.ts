@@ -28,6 +28,8 @@ import {
   ReservationDto,
   ReservationPageDto,
   ReservationsQueryDto,
+  SportAvailabilityDto,
+  SportAvailabilityQueryDto,
   UpdateReservationStatusDto,
 } from './dto/reservation.dto.js';
 import { ReservationsService } from './reservations.service.js';
@@ -128,6 +130,30 @@ export class CourtAvailabilityController {
     return this.reservationsService.availabilityForOwner(
       user.sub,
       id,
+      query.date,
+    );
+  }
+}
+
+@ApiTags('business / reservations')
+@ApiBearerAuth()
+@Roles([UserRole.ADMIN_NEGOCIO])
+@Controller('business/availability')
+export class SportAvailabilityController {
+  constructor(private readonly reservationsService: ReservationsService) {}
+
+  @Get()
+  @ApiOperation({
+    summary:
+      'Turnos de un día de todas las canchas reservables de un deporte (una tarjeta por cancha)',
+  })
+  availability(
+    @CurrentUser() user: AuthPayload,
+    @Query() query: SportAvailabilityQueryDto,
+  ): Promise<SportAvailabilityDto> {
+    return this.reservationsService.sportAvailabilityForOwner(
+      user.sub,
+      query.sport,
       query.date,
     );
   }

@@ -5,12 +5,17 @@ import { CustomersModule } from '../customers/customers.module.js';
 import {
   CourtAvailabilityController,
   ReservationsController,
+  SportAvailabilityController,
 } from './reservations.controller.js';
 import { ReservationsService } from './reservations.service.js';
 
 @Module({
   imports: [BusinessesModule, CustomersModule, CatalogsModule],
-  controllers: [ReservationsController, CourtAvailabilityController],
+  controllers: [
+    ReservationsController,
+    CourtAvailabilityController,
+    SportAvailabilityController,
+  ],
   providers: [ReservationsService],
   exports: [ReservationsService],
 })

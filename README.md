@@ -81,9 +81,10 @@ Para regenerarlos a mano: `npm run db:erd`. No los edites directamente.
 | PUT · DELETE | `/business/profile/image` | Foto de portada del negocio (multipart `image`, JPG/PNG ≤ 4 MB) |
 | GET · POST · PATCH · DELETE | `/business/courts` · `/:id` | Canchas con horarios y tarifas (respeta el límite del plan; DELETE desactiva) |
 | PUT · DELETE | `/business/courts/:id/photos/:slot` | Fotos de la cancha por posición: `MAIN`, `SURFACE`, `LIGHTING` (obligatorias), `EXTRA_1`, `EXTRA_2` |
-| GET | `/business/courts/:id/availability?date=YYYY-MM-DD` | Turnos del día: `AVAILABLE`, `BOOKED` o `PAST`, con su precio |
+| GET | `/business/availability?date=YYYY-MM-DD&sport=FUTBOL` | Turnos del día de **todas** las canchas reservables del deporte (una tarjeta por cancha, con `availableCount`) |
+| GET | `/business/courts/:id/availability?date=YYYY-MM-DD` | Turnos del día de una cancha: `AVAILABLE`, `BOOKED` o `PAST`, con su precio |
 | GET | `/business/reservations` · `/:id` | Con `date=YYYY-MM-DD`, la agenda de ese día (lista). Sin `date`, todas paginadas (`page`, `pageSize`), de la más reciente a la más antigua. Filtros: `from`, `to`, `status`, `courtId`, `customerId`, `search` (nombre, teléfono o cédula) |
-| POST | `/business/reservations` | Reservar: `start` (inicio de un turno), `slots` (1 a 5), `customerId` o `customer {name, phone, documentId}`, `discount` y `payment` opcionales |
+| POST | `/business/reservations` | Reservar: `courtId` (una cancha) o `sport` (la API asigna la primera cancha libre por nombre), `start` (inicio de un turno), `slots` (1 a 5), `customerId` o `customer {name, phone, documentId}`, `discount` y `payment` opcionales |
 | POST | `/business/reservations/:id/cancel` | Cancelar con `{ reason }`: libera el turno, devuelve los pagos aprobados y rechaza los pendientes |
 | PATCH | `/business/reservations/:id/status` | `CONFIRMED`, `COMPLETED` o `NO_SHOW` |
 | GET | `/business/customers?page=1` | Cartera paginada con `overview` (tarjetas) y métricas por cliente: nivel, reservas, asistencia, invertido, saldo y última visita. Filtros `search`, `segment` (`ALL`, `LOYAL`, `WITH_BALANCE`, `NEW`) y `sort` (`MOST_RESERVATIONS`, `TOP_SPENDERS`, `LAST_VISIT`, `HIGHEST_BALANCE`, `NAME`, `NEWEST`). Sin `page`: búsqueda rápida (máx. 20) |
@@ -97,7 +98,7 @@ Para regenerarlos a mano: `npm run db:erd`. No los edites directamente.
 | GET | `/admin/dashboard` | Métricas de la plataforma |
 | GET · POST | `/admin/clients` | Clientes; POST crea usuario de negocio + negocio + plan |
 | GET | `/admin/clients/:id` | Ficha del cliente: negocio, responsable, plan, canchas y actividad |
-| GET | `/admin/clients/:id/courts/:courtId/availability` · `/admin/clients/:id/reservations?date=` | Turnos y agenda del cliente |
+| GET | `/admin/clients/:id/availability?date=&sport=` · `/admin/clients/:id/courts/:courtId/availability` · `/admin/clients/:id/reservations` | Turnos por deporte o por cancha, y reservas del cliente |
 | POST | `/admin/clients/:id/reservations` · `/:reservationId/cancel` | Reservar y cancelar en nombre del negocio |
 | GET · POST · PATCH | `/admin/clients/:id/customers` · `/:customerId` | Cartera de clientes del negocio (mismo formato), alta y edición |
 | GET | `/admin/clients/:id/refunds` | Devoluciones del negocio |

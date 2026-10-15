@@ -8,6 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { BusinessesService } from '../businesses/businesses.service.js';
 import { CatalogsService } from '../catalogs/catalogs.service.js';
 import { Page, pageArgs } from '../common/dto/page.dto.js';
+import { courtPhotoUrl, publicApiUrl } from '../common/public-url.js';
 import { dayRange } from '../common/utils/day-range.js';
 import {
   daySlots,
@@ -29,9 +30,11 @@ import {
 } from '../customers/customers.service.js';
 import { Prisma } from '../generated/prisma/client.js';
 import {
+  CourtPhotoSlot,
   PaymentConcept,
   PaymentStatus,
   ReservationStatus,
+  type Sport,
 } from '../generated/prisma/enums.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
@@ -41,6 +44,8 @@ import {
   MAX_SLOTS,
   ReservationDto,
   ReservationsQueryDto,
+  SlotDto,
+  SportAvailabilityDto,
   UpdateReservationStatusDto,
 } from './dto/reservation.dto.js';
 
@@ -68,6 +73,7 @@ type ReservationWithRelations = Prisma.ReservationGetPayload<{
 @Injectable()
 export class ReservationsService {
   private readonly utcOffset: string;
+  private readonly publicApiUrl: string;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -77,6 +83,7 @@ export class ReservationsService {
     config: ConfigService,
   ) {
     this.utcOffset = config.getOrThrow<string>('APP_UTC_OFFSET');
+    this.publicApiUrl = publicApiUrl(config);
   }
 
   // ---------- Administrador de negocio (por ownerId) ----------
@@ -92,6 +99,15 @@ export class ReservationsService {
   async findOne(ownerId: string, id: string): Promise<ReservationDto> {
     const businessId = await this.businesses.requireBusinessId(ownerId);
     return toReservationDto(await this.findOwned(businessId, id));
+  }
+
+  async sportAvailabilityForOwner(
+    ownerId: string,
+    sport: Sport,
+    date: string,
+  ): Promise<SportAvailabilityDto> {
+    const businessId = await this.businesses.requireBusinessId(ownerId);
+    return this.sportAvailability(businessId, sport, date);
   }
 
   async availabilityForOwner(
@@ -223,7 +239,7 @@ export class ReservationsService {
     };
   }
 
-  /** Turnos del día con su estado y precio. */
+  /** Turnos del día de una cancha con su estado y precio. */
   async availability(
     businessId: string,
     courtId: string,
@@ -242,41 +258,126 @@ export class ReservationsService {
       court.slotDuration,
       this.utcOffset,
     );
-    const booked = slots.length
-      ? await this.prisma.reservation.findMany({
-          where: {
-            courtId,
-            status: { in: BLOCKING_STATUSES },
-            start: { lt: slots.at(-1)!.end },
-            end: { gt: slots[0].start },
-          },
-          select: { start: true, end: true },
-        })
-      : [];
-    const rates = courtRates(court);
-    const base = Number(court.basePricePerHour);
-
+    const booked = await this.bookedRanges([court.id], slots);
     return {
       date,
       courtId,
       slotDuration: court.slotDuration,
       currency: court.currency,
       maxSlots: MAX_SLOTS,
-      slots: slots.map((slot) => ({
-        start: slot.start,
-        end: slot.end,
-        status: booked.some((r) => r.start < slot.end && r.end > slot.start)
-          ? 'BOOKED'
-          : slot.end <= now
-            ? 'PAST'
-            : 'AVAILABLE',
-        price: priceFor(
-          reservationIntervals(slot.start, slot.end, this.utcOffset),
-          base,
-          rates,
-        ),
-      })),
+      slots: this.slotsWithStatus(
+        court,
+        slots,
+        booked.get(court.id) ?? [],
+        now,
+      ),
     };
+  }
+
+  /**
+   * Turnos del día de todas las canchas reservables (activas y con sus 3 fotos)
+   * de un deporte, una tarjeta por cancha.
+   */
+  async sportAvailability(
+    businessId: string,
+    sport: Sport,
+    date: string,
+    now = new Date(),
+  ): Promise<SportAvailabilityDto> {
+    const courts = (
+      await this.prisma.court.findMany({
+        where: { businessId, sport, isActive: true },
+        include: courtInclude,
+        orderBy: { name: 'asc' },
+      })
+    ).filter(isComplete);
+
+    const daySlotsByCourt = new Map(
+      courts.map((c) => [
+        c.id,
+        daySlots(date, c.schedules, c.slotDuration, this.utcOffset),
+      ]),
+    );
+    const booked = await this.bookedRanges(
+      courts.map((c) => c.id),
+      [...daySlotsByCourt.values()].flat(),
+    );
+
+    return {
+      date,
+      sport,
+      maxSlots: MAX_SLOTS,
+      courts: courts.map((court) => {
+        const slots = this.slotsWithStatus(
+          court,
+          daySlotsByCourt.get(court.id)!,
+          booked.get(court.id) ?? [],
+          now,
+        );
+        const main = court.photos.find((p) => p.slot === CourtPhotoSlot.MAIN);
+        return {
+          court: {
+            id: court.id,
+            name: court.name,
+            sport: court.sport,
+            isCovered: court.isCovered,
+            slotDuration: court.slotDuration,
+            currency: court.currency,
+            photoUrl: main ? courtPhotoUrl(this.publicApiUrl, main.id) : null,
+          },
+          availableCount: slots.filter((s) => s.status === 'AVAILABLE').length,
+          slots,
+        };
+      }),
+    };
+  }
+
+  /** Reservas que ocupan las canchas dentro del rango de los turnos, por cancha. */
+  private async bookedRanges(
+    courtIds: string[],
+    slots: Slot[],
+  ): Promise<Map<string, { start: Date; end: Date }[]>> {
+    const byCourt = new Map<string, { start: Date; end: Date }[]>();
+    if (!courtIds.length || !slots.length) return byCourt;
+    const from = new Date(Math.min(...slots.map((s) => s.start.getTime())));
+    const to = new Date(Math.max(...slots.map((s) => s.end.getTime())));
+    const reservations = await this.prisma.reservation.findMany({
+      where: {
+        courtId: { in: courtIds },
+        status: { in: BLOCKING_STATUSES },
+        start: { lt: to },
+        end: { gt: from },
+      },
+      select: { courtId: true, start: true, end: true },
+    });
+    for (const r of reservations) {
+      byCourt.set(r.courtId, [...(byCourt.get(r.courtId) ?? []), r]);
+    }
+    return byCourt;
+  }
+
+  private slotsWithStatus(
+    court: CourtWithDetails,
+    slots: Slot[],
+    booked: { start: Date; end: Date }[],
+    now: Date,
+  ): SlotDto[] {
+    const rates = courtRates(court);
+    const base = Number(court.basePricePerHour);
+    return slots.map((slot) => ({
+      start: slot.start,
+      end: slot.end,
+      status: booked.some((r) => r.start < slot.end && r.end > slot.start)
+        ? 'BOOKED'
+        : slot.end <= now
+          ? 'PAST'
+          : 'AVAILABLE',
+      price: priceFor(
+        reservationIntervals(slot.start, slot.end, this.utcOffset),
+        base,
+        rates,
+      ),
+    }));
   }
 
   async createForBusiness(
@@ -289,36 +390,33 @@ export class ReservationsService {
         'Envía customerId (cliente existente) o customer (cliente nuevo), uno de los dos',
       );
     }
+    if (!dto.courtId === !dto.sport) {
+      throw new BadRequestException(
+        'Envía courtId (una cancha) o sport (cualquier cancha libre de ese deporte), uno de los dos',
+      );
+    }
     const start = new Date(dto.start);
 
     // Serializable evita que dos reservas simultáneas tomen el mismo turno.
     const reservation = await this.prisma.$transaction(
       async (tx) => {
-        const court = await tx.court.findFirst({
-          where: { id: dto.courtId, businessId },
-          include: courtInclude,
-        });
-        if (!court) throw new NotFoundException('La cancha no existe');
-        assertBookable(court);
-
-        const { first, last } = this.findSlots(court, start, dto.slots);
-        if (last.end <= now) {
-          throw new BadRequestException('Ese turno ya pasó');
-        }
-        const overlapping = await tx.reservation.findFirst({
-          where: {
-            courtId: court.id,
-            status: { in: BLOCKING_STATUSES },
-            start: { lt: last.end },
-            end: { gt: first.start },
-          },
-          select: { id: true },
-        });
-        if (overlapping) {
-          throw new ConflictException(
-            'La cancha ya está reservada en ese horario',
-          );
-        }
+        const { court, first, last } = dto.courtId
+          ? await this.claimCourt(
+              tx,
+              businessId,
+              dto.courtId,
+              start,
+              dto.slots,
+              now,
+            )
+          : await this.claimAnyCourt(
+              tx,
+              businessId,
+              dto.sport!,
+              start,
+              dto.slots,
+              now,
+            );
 
         const subtotal = priceFor(
           reservationIntervals(first.start, last.end, this.utcOffset),
@@ -438,6 +536,80 @@ export class ReservationsService {
     return toReservationDto(reservation);
   }
 
+  /** La cancha pedida, si tiene esos turnos libres. */
+  private async claimCourt(
+    tx: Prisma.TransactionClient,
+    businessId: string,
+    courtId: string,
+    start: Date,
+    count: number,
+    now: Date,
+  ): Promise<{ court: CourtWithDetails; first: Slot; last: Slot }> {
+    const court = await tx.court.findFirst({
+      where: { id: courtId, businessId },
+      include: courtInclude,
+    });
+    if (!court) throw new NotFoundException('La cancha no existe');
+    assertBookable(court);
+
+    const { first, last } = this.findSlots(court, start, count);
+    if (last.end <= now) throw new BadRequestException('Ese turno ya pasó');
+    if (await isTaken(tx, court.id, first.start, last.end)) {
+      throw new ConflictException('La cancha ya está reservada en ese horario');
+    }
+    return { court, first, last };
+  }
+
+  /**
+   * La primera cancha reservable del deporte (por nombre) que tenga un turno que
+   * empiece en `start` y `count` turnos seguidos libres.
+   */
+  private async claimAnyCourt(
+    tx: Prisma.TransactionClient,
+    businessId: string,
+    sport: Sport,
+    start: Date,
+    count: number,
+    now: Date,
+  ): Promise<{ court: CourtWithDetails; first: Slot; last: Slot }> {
+    const courts = (
+      await tx.court.findMany({
+        where: { businessId, sport, isActive: true },
+        include: courtInclude,
+        orderBy: { name: 'asc' },
+      })
+    ).filter(isComplete);
+    if (!courts.length) {
+      throw new NotFoundException(
+        `No hay canchas de ${SPORT_LABELS[sport]} disponibles para reservar`,
+      );
+    }
+
+    let matched = false;
+    for (const court of courts) {
+      let range: { first: Slot; last: Slot };
+      try {
+        range = this.findSlots(court, start, count);
+      } catch {
+        continue; // esta cancha no tiene ese turno o cierra antes
+      }
+      matched = true;
+      if (range.last.end <= now)
+        throw new BadRequestException('Ese turno ya pasó');
+      if (!(await isTaken(tx, court.id, range.first.start, range.last.end))) {
+        return { court, ...range };
+      }
+    }
+    if (!matched) {
+      throw new BadRequestException(
+        `Ninguna cancha de ${SPORT_LABELS[sport]} tiene ${count} turno(s) seguidos desde ese inicio (consulta la disponibilidad)`,
+      );
+    }
+    throw new ConflictException(
+      `No hay canchas de ${SPORT_LABELS[sport]} libres en ese horario`,
+    );
+  }
+
   private async findOwned(
     businessId: string,
     id: string,
@@ -516,6 +688,37 @@ export class ReservationsService {
       registeredByBusiness: true,
     };
   }
+}
+
+const SPORT_LABELS: Record<Sport, string> = {
+  FUTBOL: 'fútbol',
+  PADEL: 'pádel',
+  BALONCESTO: 'baloncesto',
+  VOLEIBOL: 'voleibol',
+};
+
+function isComplete(court: CourtWithDetails): boolean {
+  return REQUIRED_PHOTOS.every((slot) =>
+    court.photos.some((p) => p.slot === slot),
+  );
+}
+
+async function isTaken(
+  tx: Prisma.TransactionClient,
+  courtId: string,
+  start: Date,
+  end: Date,
+): Promise<boolean> {
+  const overlapping = await tx.reservation.findFirst({
+    where: {
+      courtId,
+      status: { in: BLOCKING_STATUSES },
+      start: { lt: end },
+      end: { gt: start },
+    },
+    select: { id: true },
+  });
+  return overlapping !== null;
 }
 
 function assertBookable(court: CourtWithDetails): void {
