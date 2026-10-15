@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { Header } from '../components/Header';
-import { Alert, Button, Card, inputClass, Skeleton } from '../components/ui';
+import { Alert, Button, Card, Dialog, inputClass, Skeleton } from '../components/ui';
 import { api, ApiError, errorMessage } from '../lib/api';
 import {
   bogotaDate,
@@ -188,7 +188,6 @@ function Booking({ business }: { business: PublicBusiness }) {
       setSelection(null);
       setNotes('');
       availability.reload();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) {
         savePending(business.slug, { ...selection, slots: chosen.length, sport, date, notes });
@@ -205,7 +204,7 @@ function Booking({ business }: { business: PublicBusiness }) {
 
   return (
     <>
-      {booked && <BookedCard reservation={booked} slug={business.slug} onClose={() => setBooked(null)} />}
+      <BookedDialog business={business} reservation={booked} onClose={() => setBooked(null)} />
 
       <Card>
         <h2 className="text-lg font-bold">Reserva tu cancha</h2>
@@ -394,24 +393,63 @@ function CourtCard({
   );
 }
 
-function BookedCard({ reservation: r, slug, onClose }: { reservation: Reservation; slug: string; onClose: () => void }) {
+function BookedDialog({
+  business,
+  reservation: r,
+  onClose,
+}: {
+  business: PublicBusiness;
+  reservation: Reservation | null;
+  onClose: () => void;
+}) {
+  if (!r) return null;
+  const hours = (new Date(r.end).getTime() - new Date(r.start).getTime()) / 3_600_000;
+  const rows: [string, string][] = [
+    ['Sede', business.name],
+    ['Cancha', `${r.courtName} · ${SPORT_LABELS[r.sport]}`],
+    ['Fecha', formatLongDay(r.start)],
+    ['Horario', `${formatTime(r.start)} a ${formatTime(r.end)} (${hours.toLocaleString('es-CO')} h)`],
+    ['A nombre de', r.customerName],
+    ['Total', formatMoney(r.totalPrice, r.currency)],
+    ['Pago', 'En efectivo al llegar a la sede'],
+  ];
+  if (r.contactNote) rows.push(['Notas', r.contactNote]);
+
   return (
-    <Card className="border-accent/40 bg-accent-soft">
-      <p className="text-lg font-bold text-accent">✅ ¡Reserva confirmada!</p>
-      <p className="mt-1 text-sm">
-        {r.courtName} · {formatLongDay(r.start)} · {formatTime(r.start)} a {formatTime(r.end)}
+    <Dialog open onClose={onClose} labelledBy="booked-title">
+      <div className="flex flex-col items-center text-center">
+        <span className="flex size-14 items-center justify-center rounded-full bg-accent-soft text-3xl" aria-hidden="true">
+          ✅
+        </span>
+        <h2 id="booked-title" className="mt-3 text-xl font-bold">
+          ¡Reserva confirmada!
+        </h2>
+        <p className="mt-1 text-sm text-fg-2">
+          Gracias por reservar con nosotros. Te esperamos en {business.name}.
+        </p>
+      </div>
+      <dl className="mt-5 divide-y divide-border rounded-2xl border border-border text-sm">
+        {rows.map(([label, value]) => (
+          <div key={label} className="flex justify-between gap-4 px-4 py-2.5">
+            <dt className="shrink-0 text-fg-3">{label}</dt>
+            <dd className={`text-right ${label === 'Total' ? 'font-bold tabular' : 'font-medium'}`}>{value}</dd>
+          </div>
+        ))}
+      </dl>
+      <p className="mt-3 text-center text-xs text-fg-3">
+        Para cancelar o cambiar la reserva, comunícate con la sede.
       </p>
-      <p className="mt-2 text-sm">
-        Total <strong>{formatMoney(r.totalPrice, r.currency)}</strong>: pagas en efectivo al llegar a la sede.
-      </p>
-      <div className="mt-3 flex flex-wrap gap-2">
-        <Link to={`/${slug}/mis-reservas`} className="inline-flex min-h-11 items-center rounded-xl bg-accent px-4 text-sm font-semibold text-accent-fg">
+      <div className="mt-5 flex flex-col gap-2 sm:flex-row-reverse">
+        <Button onClick={onClose} className="flex-1">
+          Listo
+        </Button>
+        <Link
+          to={`/${business.slug}/mis-reservas`}
+          className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl border border-border px-4 text-sm font-semibold hover:bg-surface-2"
+        >
           Ver mis reservas
         </Link>
-        <Button variant="ghost" onClick={onClose}>
-          Hacer otra reserva
-        </Button>
       </div>
-    </Card>
+    </Dialog>
   );
 }

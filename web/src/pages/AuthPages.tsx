@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { Header } from '../components/Header';
-import { Alert, Button, Card, Field, inputClass } from '../components/ui';
+import { Alert, Button, Card, Field, inputClass, PasswordField } from '../components/ui';
 import { api, errorMessage } from '../lib/api';
 import { SPORT_LABELS } from '../lib/format';
 import { useSession } from '../lib/session';
@@ -64,9 +64,8 @@ export function LoginPage() {
           value={form.identifier}
           onChange={(e) => setForm({ ...form, identifier: e.target.value })}
         />
-        <Field
+        <PasswordField
           label="Contraseña"
-          type="password"
           autoComplete="current-password"
           required
           value={form.password}
@@ -140,9 +139,8 @@ export function RegisterPage() {
         <Field label="Correo electrónico" type="email" autoComplete="email" required value={form.email} onChange={set('email')} />
         <Field label="Celular" type="tel" autoComplete="tel" inputMode="tel" required value={form.phone} onChange={set('phone')} hint="Lo usarás para ingresar" />
         <Field label="Cédula" inputMode="numeric" required value={form.documentId} onChange={set('documentId')} hint="También sirve para ingresar" />
-        <Field
+        <PasswordField
           label="Contraseña"
-          type="password"
           autoComplete="new-password"
           required
           minLength={8}

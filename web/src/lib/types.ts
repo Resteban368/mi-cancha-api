@@ -72,6 +72,7 @@ export interface PlayerSession {
 export interface Reservation {
   id: string;
   courtName: string;
+  customerName: string;
   sport: Sport;
   start: string;
   end: string;
