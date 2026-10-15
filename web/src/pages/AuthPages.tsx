@@ -13,6 +13,13 @@ function AuthLayout({ title, subtitle, children }: { title: string; subtitle: st
     <>
       <Header slug={slug} />
       <main className="mx-auto max-w-md px-4 py-6">
+        <img
+          src={`${import.meta.env.BASE_URL}brand/logo-full.png`}
+          alt="Mi Cancha · Encuentra, reserva, juega"
+          width={320}
+          height={271}
+          className="mx-auto mb-5 h-auto w-full max-w-[220px] rounded-2xl border border-border shadow-sm"
+        />
         <Card>
           <h1 className="text-xl font-bold">{title}</h1>
           <p className="mb-5 mt-1 text-sm text-fg-2">{subtitle}</p>
