@@ -342,4 +342,83 @@ describe('ReservationsService', () => {
       ).rejects.toThrow('courtId');
     });
   });
+
+  describe('createWebReservation', () => {
+    const rules = {
+      minAdvanceMinutes: 60,
+      maxDaysAhead: 30,
+      maxReservationsPerDay: 2,
+    };
+    const player = {
+      id: 'u-1',
+      displayName: 'Pedro',
+      phone: '+573120001111',
+      documentId: '1098111222',
+      favoriteSport: null,
+    } as never;
+    const input = {
+      courtId: 'court-1',
+      start: '2030-10-21T19:00:00-05:00',
+      slots: 1,
+      notes: ' Llevamos balón ',
+    };
+    const now = new Date('2030-10-21T12:00:00Z');
+
+    beforeEach(() => {
+      prisma.court.findFirst.mockResolvedValue(court);
+      prisma.reservation.findFirst.mockResolvedValue(null);
+      prisma.customer.findUnique.mockResolvedValueOnce({
+        id: 'cus-1',
+        name: 'Pedro',
+        phone: '+573120001111',
+      });
+      prisma.reservation.count.mockResolvedValue(0);
+      prisma.reservation.create.mockRejectedValue(new Error('stop'));
+    });
+
+    it('crea la reserva confirmada, sin pago, con origen WEB y la nota', async () => {
+      await expect(
+        service.createWebReservation('biz-1', player, input, rules, now),
+      ).rejects.toThrow('stop');
+      const { data } = prisma.reservation.create.mock.calls[0][0];
+      expect(data).toMatchObject({
+        source: 'WEB',
+        playerId: 'u-1',
+        customerId: 'cus-1',
+        contactNote: 'Llevamos balón',
+        discount: 0,
+        subtotal: 120_000,
+        totalPrice: 120_000,
+      });
+      expect(data.payments).toBeUndefined();
+    });
+
+    it('exige la anticipación mínima y respeta el máximo de días', async () => {
+      await expect(
+        service.createWebReservation(
+          'biz-1',
+          player,
+          { ...input, start: '2030-10-21T07:00:00-05:00' }, // empieza ya
+          { ...rules, minAdvanceMinutes: 60 },
+          new Date('2030-10-21T12:00:00Z'),
+        ),
+      ).rejects.toThrow('al menos 60 minutos');
+      await expect(
+        service.createWebReservation(
+          'biz-1',
+          player,
+          input,
+          { ...rules, maxDaysAhead: 0 },
+          new Date('2030-10-20T12:00:00Z'),
+        ),
+      ).rejects.toThrow('hasta 0 días');
+    });
+
+    it('limita las reservas por día del jugador en la sede', async () => {
+      prisma.reservation.count.mockResolvedValue(2);
+      await expect(
+        service.createWebReservation('biz-1', player, input, rules, now),
+      ).rejects.toThrow('máximo 2 reservas por día');
+    });
+  });
 });

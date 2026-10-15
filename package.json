@@ -21,7 +21,7 @@
     "test:cov": "vitest run --coverage",
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts",
-    "postinstall": "prisma generate && npm --prefix admin install",
+    "postinstall": "prisma generate && npm --prefix admin install && npm --prefix web install",
     "db:up": "docker compose up -d",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
@@ -29,7 +29,9 @@
     "db:studio": "prisma studio",
     "db:erd": "prisma generate",
     "build:admin": "npm --prefix admin run build",
-    "admin:dev": "npm --prefix admin run dev"
+    "build:web": "npm --prefix web run build",
+    "admin:dev": "npm --prefix admin run dev",
+    "web:dev": "npm --prefix web run dev"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",

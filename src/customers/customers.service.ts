@@ -481,6 +481,66 @@ export class CustomersService {
   }
 
   /**
+   * Ficha de cliente del jugador en este negocio: la ya vinculada a su cuenta,
+   * o la que el negocio había creado con su celular o cédula (se vincula y se
+   * conservan sus datos), o una nueva con los datos de la cuenta.
+   */
+  async resolveForPlayer(
+    db: Db,
+    businessId: string,
+    player: {
+      id: string;
+      displayName: string;
+      phone: string | null;
+      documentId: string | null;
+      favoriteSport: Sport | null;
+    },
+  ): Promise<Customer> {
+    const linked = await db.customer.findUnique({
+      where: { businessId_userId: { businessId, userId: player.id } },
+    });
+    if (linked) return linked;
+
+    const phone = player.phone ?? '';
+    const documentId = player.documentId ?? '';
+    const [byPhone, byDocument] = await Promise.all([
+      db.customer.findUnique({
+        where: { businessId_phone: { businessId, phone } },
+      }),
+      db.customer.findUnique({
+        where: { businessId_documentId: { businessId, documentId } },
+      }),
+    ]);
+    if (byPhone && byDocument && byPhone.id !== byDocument.id) {
+      throw new ConflictException(
+        'Tu celular y tu cédula están registrados en esta sede como clientes distintos: comunícate con la sede',
+      );
+    }
+    const existing = byPhone ?? byDocument;
+    if (existing) {
+      if (existing.userId) {
+        throw new ConflictException(
+          'Tu celular o tu cédula ya están vinculados a otra cuenta en esta sede: comunícate con la sede',
+        );
+      }
+      return db.customer.update({
+        where: { id: existing.id },
+        data: { userId: player.id },
+      });
+    }
+    return db.customer.create({
+      data: {
+        businessId,
+        userId: player.id,
+        name: player.displayName,
+        phone,
+        documentId,
+        preferredSport: player.favoriteSport,
+      },
+    });
+  }
+
+  /**
    * Cliente de la reserva: el indicado por id, o el que ya tenga ese teléfono o
    * esa cédula (se conservan sus datos), o uno nuevo.
    */

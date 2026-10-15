@@ -16,6 +16,13 @@ erDiagram
     Boolean verified
     String googleSub UK "opcional · Identificador de la cuenta de Google del jugador."
     String appleSub UK "opcional · Identificador de la cuenta de Apple del jugador."
+    String documentId UK "opcional · Cédula del jugador (sin puntos); con el celular sirve para iniciar sesión."
+    DateTime birthDate "opcional"
+    Sport favoriteSport "opcional"
+    DateTime dataConsentAt "opcional · Aceptación de la política de tratamiento de datos (Ley 1581) y su versión."
+    String dataConsentVersion "opcional"
+    DateTime emailVerifiedAt "opcional · Previsto para verificar correo y celular con un código (aún no se usa)."
+    DateTime phoneVerifiedAt "opcional"
     DateTime createdAt
     DateTime updatedAt
   }
@@ -28,6 +35,9 @@ erDiagram
     String description "opcional"
     Float latitude "opcional · Punto de llegada (WGS84). Ambos nulos si aún no se fijó en el mapa."
     Float longitude "opcional"
+    String slug UK "opcional · Identificador del link público de reservas: /reservar/<slug>. Lo genera un
+trigger de la base a partir del nombre al crear el negocio (nunca queda nulo)."
+    Boolean onlineBookingEnabled "Si el link público acepta reservas de jugadores."
     DateTime createdAt
     DateTime updatedAt
   }
@@ -94,6 +104,7 @@ erDiagram
     String contactNote "opcional"
     String tag "opcional"
     Boolean isRecurring
+    ReservationSource source "BUSINESS si la creó el negocio o el super admin; WEB si la creó el jugador."
     Decimal subtotal "Valor según las tarifas, antes del descuento."
     Decimal discount
     Decimal totalPrice "subtotal - discount, en la moneda de la cancha."
@@ -112,6 +123,7 @@ erDiagram
     String documentId "Número de cédula u otro documento de identidad."
     Sport preferredSport "opcional · Deporte habitual elegido por el negocio; si es null se usa el más reservado."
     String notes "opcional · Notas internas del negocio (no las ve el cliente)."
+    String userId FK "opcional · Cuenta de jugador vinculada (si se registró en la web)."
     DateTime createdAt
     DateTime updatedAt
   }
@@ -189,6 +201,7 @@ erDiagram
   Customer |o--o{ Reservation : "reservations"
   User |o--o{ Reservation : "cancelledReservations"
   Business ||--o{ Customer : "customers"
+  User |o--o{ Customer : "customers"
   Business ||--o{ Refund : "refunds"
   Reservation ||--o{ Refund : "refunds"
   Payment ||--o| Refund : "refund"
@@ -212,6 +225,7 @@ Cualquier persona que inicia sesión: super admin, administrador de negocio o ju
 Los negocios entran con email y contraseña; los jugadores con Google o Apple.
 
 - **Business**: Puede tener un Business (campo business); la llave foránea está en Business.
+- **Customer**: Tiene cero o muchos Customer (campo customers). Cada Customer apunta a este User.
 - **Reservation**: Tiene cero o muchos Reservation (campo reservations). Cada Reservation apunta a este User.
 - **Reservation**: Tiene cero o muchos Reservation (campo cancelledReservations). Cada Reservation apunta a este User.
 - **Refund**: Tiene cero o muchos Refund (campo refunds). Cada Refund apunta a este User.
@@ -287,6 +301,7 @@ teléfono y cédula son únicos dentro del negocio. El nivel de fidelidad no se
 guarda: se calcula con sus reservas.
 
 - **Business**: Pertenece siempre a un Business mediante businessId; un Business puede tener varios Customer. Si se borra el Business, se borran también sus Customer.
+- **User**: Puede pertenecer a un User mediante userId; un User puede tener varios Customer. Si se borra el User, el Customer se conserva sin User.
 - **Reservation**: Tiene cero o muchos Reservation (campo reservations). Cada Reservation apunta a este Customer.
 - **Refund**: Tiene cero o muchos Refund (campo refunds). Cada Refund apunta a este Customer.
 
@@ -342,14 +357,17 @@ Plan que tiene contratado un negocio, su estado (activo o suspendido) y la fecha
 | `Sport` | `FUTBOL`, `PADEL`, `BALONCESTO`, `VOLEIBOL` |
 | `DayOfWeek` | `MONDAY`, `TUESDAY`, `WEDNESDAY`, `THURSDAY`, `FRIDAY`, `SATURDAY`, `SUNDAY` |
 | `CourtPhotoSlot` | `MAIN`, `SURFACE`, `LIGHTING`, `EXTRA_1`, `EXTRA_2` |
+| `ReservationSource` | `BUSINESS`, `WEB` |
 | `ReservationStatus` | `CONFIRMED`, `COMPLETED`, `NO_SHOW`, `CANCELLED` |
 | `PaymentConcept` | `ANTICIPO`, `SALDO`, `TOTAL` |
 | `PaymentStatus` | `PENDING`, `APPROVED`, `REJECTED`, `REFUNDED` |
 
 ## Únicos compuestos
 
+- User: (role, phone)
 - Court: (businessId, name)
 - CourtSchedule: (courtId, dayOfWeek)
 - CourtPhoto: (courtId, slot)
 - Customer: (businessId, phone)
 - Customer: (businessId, documentId)
+- Customer: (businessId, userId)

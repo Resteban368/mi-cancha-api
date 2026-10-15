@@ -28,11 +28,12 @@ import {
   normalizeDocument,
   toCustomerDto,
 } from '../customers/customers.service.js';
-import { Prisma } from '../generated/prisma/client.js';
+import { Prisma, type User } from '../generated/prisma/client.js';
 import {
   CourtPhotoSlot,
   PaymentConcept,
   PaymentStatus,
+  ReservationSource,
   ReservationStatus,
   type Sport,
 } from '../generated/prisma/enums.js';
@@ -55,6 +56,14 @@ const BLOCKING_STATUSES: ReservationStatus[] = [
   ReservationStatus.COMPLETED,
 ];
 const DEFAULT_PAYMENT_METHOD = 'EFECTIVO';
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Reglas de las reservas hechas por jugadores desde la web. */
+export interface WebBookingRules {
+  minAdvanceMinutes: number;
+  maxDaysAhead: number;
+  maxReservationsPerDay: number;
+}
 
 const reservationInclude = {
   court: { select: { name: true, sport: true, currency: true } },
@@ -221,6 +230,7 @@ export class ReservationsService {
       status: query.status,
       courtId: query.courtId,
       customerId: query.customerId,
+      source: query.source,
       ...(term && {
         OR: [
           { customerName: { contains: term, mode: 'insensitive' } },
@@ -468,6 +478,115 @@ export class ReservationsService {
     );
 
     return toReservationDto(reservation);
+  }
+
+  /**
+   * Reserva hecha por un jugador desde la web del negocio: queda confirmada,
+   * sin pago (se paga en efectivo en la sede) y con origen WEB. Además de las
+   * reglas del negocio aplica anticipación mínima y máxima y un tope diario.
+   */
+  async createWebReservation(
+    businessId: string,
+    player: User,
+    input: { courtId: string; start: string; slots: number; notes?: string },
+    rules: WebBookingRules,
+    now = new Date(),
+  ): Promise<ReservationDto> {
+    const start = new Date(input.start);
+    const reservation = await this.prisma.$transaction(
+      async (tx) => {
+        const { court, first, last } = await this.claimCourt(
+          tx,
+          businessId,
+          input.courtId,
+          start,
+          input.slots,
+          now,
+        );
+        if (
+          first.start.getTime() <
+          now.getTime() + rules.minAdvanceMinutes * 60_000
+        ) {
+          throw new BadRequestException(
+            `Reserva con al menos ${rules.minAdvanceMinutes} minutos de anticipación`,
+          );
+        }
+        if (
+          first.start.getTime() >
+          now.getTime() + rules.maxDaysAhead * DAY_MS
+        ) {
+          throw new BadRequestException(
+            `Solo se puede reservar hasta ${rules.maxDaysAhead} días adelante`,
+          );
+        }
+
+        const customer = await this.customers.resolveForPlayer(
+          tx,
+          businessId,
+          player,
+        );
+        const day = dayRange(
+          localDate(first.start, this.utcOffset),
+          this.utcOffset,
+        );
+        const sameDay = await tx.reservation.count({
+          where: {
+            businessId,
+            customerId: customer.id,
+            status: { not: ReservationStatus.CANCELLED },
+            start: { gte: day.from, lt: day.to },
+          },
+        });
+        if (sameDay >= rules.maxReservationsPerDay) {
+          throw new ConflictException(
+            `Puedes tener máximo ${rules.maxReservationsPerDay} reservas por día en esta sede`,
+          );
+        }
+
+        const subtotal = priceFor(
+          reservationIntervals(first.start, last.end, this.utcOffset),
+          Number(court.basePricePerHour),
+          courtRates(court),
+        );
+        return tx.reservation.create({
+          data: {
+            businessId,
+            courtId: court.id,
+            customerId: customer.id,
+            playerId: player.id,
+            source: ReservationSource.WEB,
+            start: first.start,
+            end: last.end,
+            customerName: customer.name,
+            phone: customer.phone,
+            contactNote: input.notes?.trim() || null,
+            subtotal,
+            discount: 0,
+            totalPrice: subtotal,
+          },
+          include: reservationInclude,
+        });
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
+    return toReservationDto(reservation);
+  }
+
+  /** Reservas de un jugador en un negocio, de la más próxima a la más antigua. */
+  async listForPlayer(
+    businessId: string,
+    playerId: string,
+  ): Promise<ReservationDto[]> {
+    const reservations = await this.prisma.reservation.findMany({
+      where: {
+        businessId,
+        OR: [{ playerId }, { customer: { userId: playerId } }],
+      },
+      include: reservationInclude,
+      orderBy: { start: 'desc' },
+      take: 100,
+    });
+    return reservations.map(toReservationDto);
   }
 
   /**
@@ -783,6 +902,7 @@ export function toReservationDto(r: ReservationWithRelations): ReservationDto {
       receivedAt: p.receivedAt,
     })),
     status: r.status,
+    source: r.source,
     cancellationReason: r.cancellationReason,
     cancelledAt: r.cancelledAt,
     cancelledBy: r.cancelledBy?.displayName ?? null,

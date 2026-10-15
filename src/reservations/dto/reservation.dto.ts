@@ -26,6 +26,7 @@ import {
 import {
   PaymentConcept,
   PaymentStatus,
+  ReservationSource,
   ReservationStatus,
   Sport,
 } from '../../generated/prisma/enums.js';
@@ -81,6 +82,12 @@ export class ReservationsQueryDto extends PageQueryDto {
   @IsOptional()
   @IsUUID()
   customerId?: string;
+
+  /** BUSINESS o WEB (reservas hechas por jugadores desde el link). */
+  @ApiProperty({ enum: ReservationSource, required: false })
+  @IsOptional()
+  @IsEnum(ReservationSource)
+  source?: ReservationSource;
 }
 
 export class ReservationPageDto {
@@ -218,8 +225,9 @@ export class SportAvailabilityQueryDto extends DayQueryDto {
 export class SlotDto {
   start: Date;
   end: Date;
-  @ApiProperty({ enum: ['AVAILABLE', 'BOOKED', 'PAST'] })
-  status: 'AVAILABLE' | 'BOOKED' | 'PAST';
+  /** UNAVAILABLE solo en la web: aún libre, pero dentro de la anticipación mínima. */
+  @ApiProperty({ enum: ['AVAILABLE', 'BOOKED', 'PAST', 'UNAVAILABLE'] })
+  status: 'AVAILABLE' | 'BOOKED' | 'PAST' | 'UNAVAILABLE';
   /** Valor del turno según las tarifas. */
   price: number;
 }
@@ -309,6 +317,9 @@ export class ReservationDto {
   payments: ReservationPaymentDto[];
   @ApiProperty({ enum: ReservationStatus })
   status: ReservationStatus;
+  /** BUSINESS (negocio o super admin) o WEB (jugador desde el link de reservas). */
+  @ApiProperty({ enum: ReservationSource })
+  source: ReservationSource;
   cancellationReason: string | null;
   cancelledAt: Date | null;
   /** Nombre de quien canceló. */

@@ -174,19 +174,17 @@ describe('CustomersService.findPaginated', () => {
   });
 
   it('no consulta canchas ni deportes si la página viene vacía', async () => {
-    prisma.$queryRaw
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([
-        {
-          totalCustomers: 0,
-          newThisMonth: 0,
-          newLastMonth: 0,
-          loyalCustomers: 0,
-          totalReservations: 0,
-          pendingBalance: 0,
-          filtered: 0,
-        },
-      ]);
+    prisma.$queryRaw.mockResolvedValueOnce([]).mockResolvedValueOnce([
+      {
+        totalCustomers: 0,
+        newThisMonth: 0,
+        newLastMonth: 0,
+        loyalCustomers: 0,
+        totalReservations: 0,
+        pendingBalance: 0,
+        filtered: 0,
+      },
+    ]);
     const result = await service.findPaginated(
       'biz-1',
       { page: 1, pageSize: 20 },
@@ -425,5 +423,74 @@ describe('CustomersService.findOneDetail', () => {
     expect(detail.reservations[0].courtName).toBe('Cancha Sintética 1');
     expect(detail.payments).toHaveLength(1);
     expect(detail.payments[0].method).toBe('NEQUI');
+  });
+});
+
+describe('CustomersService.resolveForPlayer', () => {
+  let prisma: PrismaMock;
+  let service: CustomersService;
+  let db: Parameters<CustomersService['resolveForPlayer']>[0];
+  const player = {
+    id: 'u-1',
+    displayName: 'Laurita',
+    phone: '+573115550001',
+    documentId: '1075111222',
+    favoriteSport: null,
+  };
+
+  beforeEach(() => {
+    prisma = createPrismaMock();
+    service = new CustomersService(prisma as unknown as PrismaService);
+    db = prisma as unknown as typeof db;
+    prisma.customer.findUnique.mockResolvedValue(null);
+  });
+
+  it('usa la ficha ya vinculada a la cuenta', async () => {
+    prisma.customer.findUnique.mockResolvedValueOnce({ id: 'c-1' });
+    await expect(
+      service.resolveForPlayer(db, 'biz-1', player),
+    ).resolves.toEqual({ id: 'c-1' });
+  });
+
+  it('vincula la ficha que el negocio ya tenía y conserva sus datos', async () => {
+    prisma.customer.findUnique
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: 'c-1', name: 'Laura Gómez', userId: null })
+      .mockResolvedValueOnce(null);
+    prisma.customer.update.mockResolvedValue({
+      id: 'c-1',
+      name: 'Laura Gómez',
+    });
+
+    await service.resolveForPlayer(db, 'biz-1', player);
+
+    expect(prisma.customer.update).toHaveBeenCalledWith({
+      where: { id: 'c-1' },
+      data: { userId: 'u-1' },
+    });
+  });
+
+  it('no toma una ficha vinculada a otra cuenta', async () => {
+    prisma.customer.findUnique
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: 'c-1', userId: 'otra' })
+      .mockResolvedValueOnce(null);
+    await expect(service.resolveForPlayer(db, 'biz-1', player)).rejects.toThrow(
+      'ya están vinculados a otra cuenta',
+    );
+  });
+
+  it('crea la ficha con los datos de la cuenta', async () => {
+    prisma.customer.create.mockImplementation(({ data }) => data);
+    await expect(
+      service.resolveForPlayer(db, 'biz-1', player),
+    ).resolves.toEqual({
+      businessId: 'biz-1',
+      userId: 'u-1',
+      name: 'Laurita',
+      phone: '+573115550001',
+      documentId: '1075111222',
+      preferredSport: null,
+    });
   });
 });

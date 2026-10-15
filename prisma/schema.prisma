@@ -48,6 +48,12 @@ enum CourtPhotoSlot {
   EXTRA_2
 }
 
+/// Quién creó la reserva: el negocio (o el super admin) o el jugador desde la web.
+enum ReservationSource {
+  BUSINESS
+  WEB
+}
+
 enum ReservationStatus {
   CONFIRMED
   COMPLETED
@@ -72,41 +78,60 @@ enum PaymentStatus {
 /// Cualquier persona que inicia sesión: super admin, administrador de negocio o jugador (según role).
 /// Los negocios entran con email y contraseña; los jugadores con Google o Apple.
 model User {
-  id           String   @id @default(uuid())
-  email        String?  @unique
-  passwordHash String?
-  displayName  String
-  phone        String?
-  role         UserRole
-  verified     Boolean  @default(false)
+  id                 String    @id @default(uuid())
+  email              String?   @unique
+  passwordHash       String?
+  displayName        String
+  phone              String?
+  role               UserRole
+  verified           Boolean   @default(false)
   /// Identificador de la cuenta de Google del jugador.
-  googleSub    String?  @unique
+  googleSub          String?   @unique
   /// Identificador de la cuenta de Apple del jugador.
-  appleSub     String?  @unique
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  appleSub           String?   @unique
+  /// Cédula del jugador (sin puntos); con el celular sirve para iniciar sesión.
+  documentId         String?   @unique
+  birthDate          DateTime? @db.Date
+  favoriteSport      Sport?
+  /// Aceptación de la política de tratamiento de datos (Ley 1581) y su versión.
+  dataConsentAt      DateTime?
+  dataConsentVersion String?
+  /// Previsto para verificar correo y celular con un código (aún no se usa).
+  emailVerifiedAt    DateTime?
+  phoneVerifiedAt    DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   business              Business?
+  customers             Customer[]
   reservations          Reservation[]
   cancelledReservations Reservation[] @relation("ReservationCancelledBy")
   refunds               Refund[]
+
+  /// El celular no se repite entre jugadores (sí puede coincidir con el de un negocio).
+  @@unique([role, phone])
 }
 
 /// La sede deportiva de un cliente. Cada administrador de negocio tiene exactamente una.
 model Business {
-  id           String    @id @default(uuid())
-  ownerId      String    @unique
-  owner        User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  name         String
-  address      String
-  neighborhood String
-  description  String?
+  id                   String    @id @default(uuid())
+  ownerId              String    @unique
+  owner                User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name                 String
+  address              String
+  neighborhood         String
+  description          String?
   /// Punto de llegada (WGS84). Ambos nulos si aún no se fijó en el mapa.
-  latitude     Float?
-  longitude    Float?
-  amenities    Amenity[]
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  latitude             Float?
+  longitude            Float?
+  /// Identificador del link público de reservas: /reservar/<slug>. Lo genera un
+  /// trigger de la base a partir del nombre al crear el negocio (nunca queda nulo).
+  slug                 String?   @unique
+  /// Si el link público acepta reservas de jugadores.
+  onlineBookingEnabled Boolean   @default(true)
+  amenities            Amenity[]
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   courts       Court[]
   customers    Customer[]
@@ -228,6 +253,8 @@ model Reservation {
   contactNote        String?
   tag                String?
   isRecurring        Boolean           @default(false)
+  /// BUSINESS si la creó el negocio o el super admin; WEB si la creó el jugador.
+  source             ReservationSource @default(BUSINESS)
   /// Valor según las tarifas, antes del descuento.
   subtotal           Decimal           @db.Decimal(12, 2)
   discount           Decimal           @default(0) @db.Decimal(12, 2)
@@ -265,6 +292,9 @@ model Customer {
   preferredSport Sport?
   /// Notas internas del negocio (no las ve el cliente).
   notes          String?
+  /// Cuenta de jugador vinculada (si se registró en la web).
+  userId         String?
+  user           User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -273,6 +303,7 @@ model Customer {
 
   @@unique([businessId, phone])
   @@unique([businessId, documentId])
+  @@unique([businessId, userId])
   // Búsqueda por fragmentos (ILIKE '%texto%') con trigramas (extensión pg_trgm).
   @@index([name(ops: raw("gin_trgm_ops"))], type: Gin)
   @@index([phone(ops: raw("gin_trgm_ops"))], type: Gin)

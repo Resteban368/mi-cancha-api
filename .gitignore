@@ -6,6 +6,8 @@ coverage
 *.tsbuildinfo
 /admin/dist
 /admin/node_modules
+/web/node_modules
 .env.neon
 .vercel
 /public/admin
+/public/reservar

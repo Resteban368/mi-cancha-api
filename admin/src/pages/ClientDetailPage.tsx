@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router';
 import { StatTile } from '../components/charts/StatTile';
 import { ClientCourts } from '../components/ClientCourts';
 import { ClientCustomers } from '../components/ClientCustomers';
+import { ClientOnlineBooking } from '../components/ClientOnlineBooking';
 import { NewReservationModal } from '../components/NewReservation';
 import { CancelReservationModal, RefundsCard } from '../components/ReservationCancel';
 import { ArrowLeftIcon, ImageIcon, MapPinIcon, PlusIcon } from '../components/icons';
@@ -195,6 +196,8 @@ function ClientDetailView({
         activeCourts={activeCourts}
         onChanged={onChanged}
       />
+
+      <ClientOnlineBooking clientId={data.id} />
 
       <ClientCourts
         clientId={data.id}
