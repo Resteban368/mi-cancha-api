@@ -70,6 +70,24 @@ export const ImageIcon = (p: IconProps) => (
 export const MapPinIcon = (p: IconProps) => (
   <Icon {...p}><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></Icon>
 );
+export const ChevronDownIcon = (p: IconProps) => (
+  <Icon {...p}><path d="M6 9l6 6 6-6" /></Icon>
+);
+export const PhoneIcon = (p: IconProps) => (
+  <Icon {...p}><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" /></Icon>
+);
+export const CalendarIcon = (p: IconProps) => (
+  <Icon {...p}><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></Icon>
+);
+export const CreditCardIcon = (p: IconProps) => (
+  <Icon {...p}><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20M7 15h2" /></Icon>
+);
+export const HistoryIcon = (p: IconProps) => (
+  <Icon {...p}><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" /><path d="M12 7v5l3 2" /></Icon>
+);
+export const EditIcon = (p: IconProps) => (
+  <Icon {...p}><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></Icon>
+);
 
 /** Ícono de la app (assets/logo.png). Las esquinas se redondean como ícono de app. */
 export function BrandMark({ size = 32 }: { size?: number }) {

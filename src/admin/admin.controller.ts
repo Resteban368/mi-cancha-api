@@ -29,8 +29,12 @@ import { CourtsService } from '../courts/courts.service.js';
 import { CourtDto, UpdateCourtDto } from '../courts/dto/court.dto.js';
 import { CustomersService } from '../customers/customers.service.js';
 import {
+  CreateCustomerDto,
+  CustomerDetailDto,
   CustomerDto,
-  CustomerSearchDto,
+  CustomerPageDto,
+  CustomerQueryDto,
+  UpdateCustomerDto,
 } from '../customers/dto/customer.dto.js';
 import { RefundDto, RefundsService } from '../refunds/refunds.service.js';
 import {
@@ -219,13 +223,53 @@ export class AdminController {
   }
 
   @Get('clients/:id/customers')
-  @ApiOperation({ summary: 'Buscar clientes (personas) del negocio' })
+  @ApiOperation({
+    summary:
+      'Clientes (personas) del negocio: con page, listado paginado con métricas; sin page, búsqueda rápida (máx. 20)',
+  })
   async clientCustomers(
     @Param('id', ParseUUIDPipe) id: string,
-    @Query() query: CustomerSearchDto,
-  ): Promise<CustomerDto[]> {
+    @Query() query: CustomerQueryDto,
+  ): Promise<CustomerDto[] | CustomerPageDto> {
     await this.clientsService.requireClient(id);
+    if (query.page !== undefined) {
+      return this.customersService.findPaginated(id, query);
+    }
     return this.customersService.search(id, query.search);
+  }
+
+  @Post('clients/:id/customers')
+  @ApiOperation({ summary: 'Registrar un cliente (persona) del negocio' })
+  async createClientCustomer(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CreateCustomerDto,
+  ): Promise<CustomerDto> {
+    await this.clientsService.requireClient(id);
+    return this.customersService.create(id, dto);
+  }
+
+  @Patch('clients/:id/customers/:customerId')
+  @ApiOperation({ summary: 'Editar un cliente (persona) del negocio' })
+  async updateClientCustomer(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('customerId', ParseUUIDPipe) customerId: string,
+    @Body() dto: UpdateCustomerDto,
+  ): Promise<CustomerDto> {
+    await this.clientsService.requireClient(id);
+    return this.customersService.update(id, customerId, dto);
+  }
+
+  @Get('clients/:id/customers/:customerId')
+  @ApiOperation({
+    summary:
+      'Ficha del cliente del negocio con todas sus reservas y pagos en detalle',
+  })
+  async clientCustomerDetail(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('customerId', ParseUUIDPipe) customerId: string,
+  ): Promise<CustomerDetailDto> {
+    await this.clientsService.requireClient(id);
+    return this.customersService.findOneDetail(id, customerId);
   }
 
   @Get('clients/:id/refunds')

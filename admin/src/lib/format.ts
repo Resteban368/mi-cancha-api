@@ -51,6 +51,14 @@ export function formatMoney(value: number, currency: string): string {
 }
 export const formatNumber = (value: number) => number.format(value);
 export const formatDate = (iso: string) => date.format(new Date(iso));
+const shortDate = new Intl.DateTimeFormat('es-CO', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  timeZone: 'America/Bogota',
+});
+/** "14/10/2026" en hora de Colombia. */
+export const formatShortDate = (iso: string) => shortDate.format(new Date(iso));
 /** "14 oct, 7:00 p. m." en hora de Colombia. */
 export const formatDateTime = (iso: string) => dateTime.format(new Date(iso));
 export const formatTime = (iso: string) => time.format(new Date(iso));
@@ -114,6 +122,24 @@ export const DAY_SHORT: Record<string, string> = {
   SATURDAY: 'S',
   SUNDAY: 'D',
 };
+
+export const CUSTOMER_LEVELS: Record<string, { label: string; tone: 'neutral' | 'success' | 'danger' | 'warn' }> = {
+  VIP: { label: 'VIP Diamante', tone: 'warn' },
+  FREQUENT: { label: 'Frecuente', tone: 'success' },
+  RECURRENT: { label: 'Recurrente', tone: 'neutral' },
+  NEW: { label: 'Nuevo', tone: 'neutral' },
+};
+
+/** "+573114567890" → "+57 311 456 7890" (otros formatos se dejan igual). */
+export function formatPhone(phone: string): string {
+  const m = phone.match(/^\+57(\d{3})(\d{3})(\d{4})$/);
+  return m ? `+57 ${m[1]} ${m[2]} ${m[3]}` : phone;
+}
+
+/** "1020334881" → "1.020.334.881" para cédulas solo numéricas. */
+export function formatDocument(document: string): string {
+  return /^[1-9]\d*$/.test(document) ? Number(document).toLocaleString('es-CO') : document;
+}
 
 export const PHOTO_SLOT_LABELS: Record<string, string> = {
   MAIN: 'Principal',

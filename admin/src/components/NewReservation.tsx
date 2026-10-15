@@ -17,10 +17,13 @@ const EMPTY_CUSTOMER = { name: '', phone: '', documentId: '' };
 /** Reserva hecha por el super admin en nombre del negocio. */
 export function NewReservationModal({
   clientId,
+  initialCustomer,
   onClose,
   onCreated,
 }: {
   clientId: string;
+  /** Cliente ya elegido (p. ej. desde el botón "Reservar" de la lista de clientes). */
+  initialCustomer?: Customer;
   onClose: () => void;
   onCreated: () => void;
 }) {
@@ -35,7 +38,7 @@ export function NewReservationModal({
   const [slotCount, setSlotCount] = useState(1);
   const [customerMode, setCustomerMode] = useState<'search' | 'new'>('search');
   const [search, setSearch] = useState('');
-  const [customer, setCustomer] = useState<Customer | null>(null);
+  const [customer, setCustomer] = useState<Customer | null>(initialCustomer ?? null);
   const [newCustomer, setNewCustomer] = useState(EMPTY_CUSTOMER);
   const [discount, setDiscount] = useState('0');
   const [withPayment, setWithPayment] = useState(false);

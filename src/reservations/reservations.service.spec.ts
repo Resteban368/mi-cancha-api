@@ -111,7 +111,7 @@ describe('ReservationsService', () => {
     ).rejects.toThrow('stop');
 
     expect(prisma.customer.create.mock.calls[0][0].data).toMatchObject({
-      phone: '3001234567',
+      phone: '+573001234567',
       documentId: '1117000',
     });
     const { data } = prisma.reservation.create.mock.calls[0][0];

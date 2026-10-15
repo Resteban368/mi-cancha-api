@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router';
 import { StatTile } from '../components/charts/StatTile';
 import { ClientCourts } from '../components/ClientCourts';
+import { ClientCustomers } from '../components/ClientCustomers';
 import { NewReservationModal } from '../components/NewReservation';
 import { CancelReservationModal, RefundsCard } from '../components/ReservationCancel';
 import { ArrowLeftIcon, ImageIcon, MapPinIcon, PlusIcon } from '../components/icons';
@@ -200,6 +201,8 @@ function ClientDetailView({
         courtLimit={subscription?.plan.courtLimit ?? null}
         onChanged={onChanged}
       />
+
+      <ClientCustomers key={`cust-${version}`} clientId={data.id} onChanged={refresh} />
 
       <div className="flex flex-col gap-6">
         <Card

@@ -204,7 +204,133 @@ export interface Customer {
   name: string;
   phone: string;
   documentId: string;
+  preferredSport: Sport | null;
+  notes: string | null;
   createdAt: string;
+}
+
+export type CustomerLevel = 'NEW' | 'RECURRENT' | 'FREQUENT' | 'VIP';
+export type CustomerSegment = 'ALL' | 'LOYAL' | 'WITH_BALANCE' | 'NEW';
+export type CustomerSort =
+  | 'MOST_RESERVATIONS'
+  | 'TOP_SPENDERS'
+  | 'LAST_VISIT'
+  | 'HIGHEST_BALANCE'
+  | 'NAME'
+  | 'NEWEST';
+
+export interface CustomerMetrics {
+  reservations: number;
+  level: CustomerLevel;
+  attendancePct: number | null;
+  totalSpent: number;
+  balance: number;
+  lastVisit: { date: string; courtName: string } | null;
+  favoriteSport: Sport | null;
+}
+
+export interface CustomerSummary extends Customer {
+  metrics: CustomerMetrics;
+}
+
+export interface CustomersOverview {
+  totalCustomers: number;
+  newThisMonth: number;
+  newVsLastMonthPct: number | null;
+  loyalCustomers: number;
+  loyalPct: number;
+  totalReservations: number;
+  pendingBalance: number;
+  currency: string;
+}
+
+export interface CustomerPage extends Page<CustomerSummary> {
+  overview: CustomersOverview;
+}
+
+export interface CustomerStats {
+  totalReservations: number;
+  confirmedReservations: number;
+  completedReservations: number;
+  cancelledReservations: number;
+  noShowReservations: number;
+  totalSpent: number;
+  pendingPayments: number;
+  totalRefunded: number;
+}
+
+export interface CustomerPaymentItem {
+  id: string;
+  amount: number;
+  method: string;
+  concept: PaymentConcept;
+  status: PaymentStatus;
+  reference: string | null;
+  note: string | null;
+  rejectionReason: string | null;
+  registeredByBusiness: boolean;
+  receivedAt: string;
+  reservationId: string | null;
+  courtName: string | null;
+  reservationStart: string | null;
+  reservationEnd: string | null;
+  refund: {
+    id: string;
+    amount: number;
+    reason: string;
+    createdAt: string;
+    createdBy: string | null;
+  } | null;
+}
+
+export interface CustomerRefundItem {
+  id: string;
+  amount: number;
+  reason: string;
+  createdAt: string;
+  createdBy: string | null;
+}
+
+export interface CustomerReservationItem {
+  id: string;
+  courtId: string;
+  courtName: string;
+  sport: Sport;
+  currency: string;
+  start: string;
+  end: string;
+  customerName: string;
+  customerDetail: string | null;
+  phone: string;
+  contactNote: string | null;
+  tag: string | null;
+  isRecurring: boolean;
+  subtotal: number;
+  discount: number;
+  totalPrice: number;
+  status: ReservationStatus;
+  cancellationReason: string | null;
+  cancelledAt: string | null;
+  cancelledByName: string | null;
+  createdAt: string;
+  payments: CustomerPaymentItem[];
+  refunds: CustomerRefundItem[];
+}
+
+export interface CustomerDetail {
+  id: string;
+  businessId: string;
+  name: string;
+  phone: string;
+  documentId: string;
+  preferredSport: Sport | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  metrics: CustomerMetrics;
+  stats: CustomerStats;
+  reservations: CustomerReservationItem[];
+  payments: CustomerPaymentItem[];
 }
 
 export interface AvailabilitySlot {

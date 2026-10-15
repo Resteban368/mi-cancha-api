@@ -110,6 +110,8 @@ erDiagram
     String name
     String phone
     String documentId "Número de cédula u otro documento de identidad."
+    Sport preferredSport "opcional · Deporte habitual elegido por el negocio; si es null se usa el más reservado."
+    String notes "opcional · Notas internas del negocio (no las ve el cliente)."
     DateTime createdAt
     DateTime updatedAt
   }
@@ -281,7 +283,8 @@ Un turno reservado en una cancha. La crea el negocio desde la app (o un jugador,
 
 Dinero recibido por el negocio, normalmente ligado a una reserva. Los pagos por transferencia
 Cliente de un negocio (quien reserva). Cada negocio tiene su propia lista;
-teléfono y cédula son únicos dentro del negocio.
+teléfono y cédula son únicos dentro del negocio. El nivel de fidelidad no se
+guarda: se calcula con sus reservas.
 
 - **Business**: Pertenece siempre a un Business mediante businessId; un Business puede tener varios Customer. Si se borra el Business, se borran también sus Customer.
 - **Reservation**: Tiene cero o muchos Reservation (campo reservations). Cada Reservation apunta a este Customer.
