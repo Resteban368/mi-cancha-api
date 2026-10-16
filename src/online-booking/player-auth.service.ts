@@ -104,7 +104,11 @@ export class PlayerAuthService {
   }
 
   private async session(user: User): Promise<PlayerSessionDto> {
-    const payload: AuthPayload = { sub: user.id, role: user.role };
+    const payload: AuthPayload = {
+      sub: user.id,
+      role: user.role,
+      ver: user.tokenVersion,
+    };
     return {
       accessToken: await this.jwt.signAsync(payload),
       player: toPlayerDto(user),

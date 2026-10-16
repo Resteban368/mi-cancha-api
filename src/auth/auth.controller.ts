@@ -10,6 +10,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { AuthPayload } from '../common/auth/auth-payload.js';
 import { CurrentUser } from '../common/auth/current-user.decorator.js';
 import { Public } from '../common/auth/public.decorator.js';
+import { LoginRateLimit, RegisterRateLimit } from '../common/rate-limit.js';
 import { AuthService } from './auth.service.js';
 import {
   AppleSignInDto,
@@ -26,6 +27,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Public()
+  @RegisterRateLimit()
   @Post('business/register')
   @ApiOperation({ summary: 'Registrar un administrador de negocio' })
   register(@Body() dto: RegisterBusinessAdminDto): Promise<AuthResponseDto> {
@@ -33,6 +35,7 @@ export class AuthController {
   }
 
   @Public()
+  @LoginRateLimit()
   @Post('business/login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Iniciar sesión como negocio (email y contraseña)' })
@@ -41,6 +44,7 @@ export class AuthController {
   }
 
   @Public()
+  @LoginRateLimit()
   @Post('google')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Iniciar sesión como jugador con Google' })
@@ -49,11 +53,23 @@ export class AuthController {
   }
 
   @Public()
+  @LoginRateLimit()
   @Post('apple')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Iniciar sesión como jugador con Apple' })
   apple(@Body() dto: AppleSignInDto): Promise<AuthResponseDto> {
     return this.authService.signInWithApple(dto);
+  }
+
+  @Post('logout-all')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      'Cerrar sesión en todos los dispositivos (invalida todos los tokens del usuario, incluido el actual)',
+  })
+  logoutAll(@CurrentUser() user: AuthPayload): Promise<void> {
+    return this.authService.revokeSessions(user.sub);
   }
 
   @Get('me')

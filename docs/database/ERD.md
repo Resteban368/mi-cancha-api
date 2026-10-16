@@ -23,6 +23,7 @@ erDiagram
     String dataConsentVersion "opcional"
     DateTime emailVerifiedAt "opcional · Previsto para verificar correo y celular con un código (aún no se usa)."
     DateTime phoneVerifiedAt "opcional"
+    Int tokenVersion "Se incrementa para cerrar todas las sesiones: los tokens con otra versión dejan de valer."
     DateTime createdAt
     DateTime updatedAt
   }

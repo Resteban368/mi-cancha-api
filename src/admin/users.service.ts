@@ -43,6 +43,18 @@ export class UsersService {
       pageSize: query.pageSize,
     };
   }
+
+  /**
+   * Cierra todas las sesiones de un usuario (p. ej. si reporta que le robaron la
+   * cuenta o el celular). Sus tokens actuales dejan de valer de inmediato.
+   * Si el usuario no existe, Prisma lanza P2025 y la API responde 404.
+   */
+  async revokeSessions(userId: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { tokenVersion: { increment: 1 } },
+    });
+  }
 }
 
 function toAdminUserDto(u: UserRecord): AdminUserDto {
