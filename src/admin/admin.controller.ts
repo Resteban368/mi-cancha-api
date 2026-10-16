@@ -322,6 +322,16 @@ export class AdminController {
     return this.usersService.findAll(query);
   }
 
+  @Post('users/:id/revoke-sessions')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary:
+      'Cerrar todas las sesiones de un usuario (sus tokens dejan de valer de inmediato)',
+  })
+  revokeUserSessions(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
+    return this.usersService.revokeSessions(id);
+  }
+
   @Get('plans')
   @ApiOperation({ summary: 'Planes de suscripción' })
   findPlans(): Promise<PlanDto[]> {

@@ -88,6 +88,17 @@ export class AuthService {
     return this.issueSession(user);
   }
 
+  /**
+   * Cierra todas las sesiones del usuario: sube su versión de sesiones y con eso
+   * todos los tokens emitidos hasta ahora dejan de valer (incluido el actual).
+   */
+  async revokeSessions(userId: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { tokenVersion: { increment: 1 } },
+    });
+  }
+
   async me(userId: string): Promise<AuthUserDto> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('El usuario ya no existe');
@@ -137,7 +148,11 @@ export class AuthService {
   }
 
   private async issueSession(user: User): Promise<AuthResponseDto> {
-    const payload: AuthPayload = { sub: user.id, role: user.role };
+    const payload: AuthPayload = {
+      sub: user.id,
+      role: user.role,
+      ver: user.tokenVersion,
+    };
     return {
       accessToken: await this.jwt.signAsync(payload),
       user: toAuthUser(user),

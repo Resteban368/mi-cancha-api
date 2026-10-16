@@ -61,6 +61,14 @@ export class EnvironmentVariables {
   @Matches(/^[\w-]+(\/[\w-]+)*$/)
   STORAGE_ROOT: string = 'mi-cancha';
 
+  /**
+   * Orígenes (dominios) que pueden llamar a la API desde el navegador, separados
+   * por coma. Ver common/cors.ts. @example https://micancha.co
+   */
+  @IsOptional()
+  @IsString()
+  CORS_ORIGINS?: string;
+
   /** URL pública de la API para armar enlaces absolutos (p. ej. https://mi-cancha-api.vercel.app). */
   @IsOptional()
   @IsString()

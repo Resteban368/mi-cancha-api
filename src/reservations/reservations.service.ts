@@ -51,6 +51,8 @@ import {
 } from './dto/reservation.dto.js';
 
 /** Estados que ocupan la cancha en su horario. */
+// Debe coincidir con el WHERE de la restricción "Reservation_court_no_overlap"
+// (migración 20261016210000_reservation_no_overlap), que impide los solapes en la base.
 const BLOCKING_STATUSES: ReservationStatus[] = [
   ReservationStatus.CONFIRMED,
   ReservationStatus.COMPLETED,

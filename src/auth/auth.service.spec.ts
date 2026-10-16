@@ -21,6 +21,7 @@ const baseUser = {
   verified: false,
   googleSub: null,
   appleSub: null,
+  tokenVersion: 3,
   createdAt: new Date(),
   updatedAt: new Date(),
 };
@@ -112,6 +113,7 @@ describe('AuthService', () => {
       expect(jwt.signAsync).toHaveBeenCalledWith({
         sub: 'user-1',
         role: UserRole.ADMIN_NEGOCIO,
+        ver: 3,
       });
       expect(result.user).toEqual({
         id: 'user-1',
@@ -179,6 +181,16 @@ describe('AuthService', () => {
       await expect(
         service.signInWithGoogle({ idToken: 'token' }),
       ).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe('revokeSessions', () => {
+    it('sube la versión de sesiones del usuario', async () => {
+      await service.revokeSessions('user-1');
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: { tokenVersion: { increment: 1 } },
+      });
     });
   });
 });

@@ -15,6 +15,7 @@ import type { AuthPayload } from '../common/auth/auth-payload.js';
 import { CurrentUser } from '../common/auth/current-user.decorator.js';
 import { Public } from '../common/auth/public.decorator.js';
 import { Roles } from '../common/auth/roles.decorator.js';
+import { LoginRateLimit, RegisterRateLimit } from '../common/rate-limit.js';
 import { UserRole } from '../generated/prisma/enums.js';
 import {
   ReservationDto,
@@ -63,6 +64,7 @@ export class PublicBookingController {
   }
 
   @Public()
+  @RegisterRateLimit()
   @Post('auth/register')
   @ApiOperation({ summary: 'Registrar una cuenta de jugador' })
   register(@Body() dto: RegisterPlayerDto): Promise<PlayerSessionDto> {
@@ -70,6 +72,7 @@ export class PublicBookingController {
   }
 
   @Public()
+  @LoginRateLimit()
   @Post('auth/login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Iniciar sesión con celular o cédula y contraseña' })
