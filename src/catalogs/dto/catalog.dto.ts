@@ -47,7 +47,7 @@ export class UpdateAmenityDto extends PartialType(
 }
 
 export class CreatePaymentMethodDto extends CreateAmenityDto {
-  /** Si exige número de referencia o comprobante al registrar el pago. */
+  /** Si al registrar el pago se pide el número de referencia o comprobante (siempre opcional). */
   @IsBoolean()
   requiresReference: boolean;
 }

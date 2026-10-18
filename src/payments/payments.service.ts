@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -59,12 +58,8 @@ export class PaymentsService {
     }
 
     const method = await this.catalogs.resolvePaymentMethod(dto.method);
+    // La referencia es opcional: se guarda si el método la pide y la envían.
     const reference = dto.reference?.trim() || null;
-    if (method.requiresReference && !reference) {
-      throw new BadRequestException(
-        `El pago con ${method.name} requiere el número de referencia`,
-      );
-    }
 
     const payment = await this.prisma.payment.create({
       data: {

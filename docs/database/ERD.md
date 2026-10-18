@@ -200,7 +200,7 @@ se pagan y se cancelan juntas. null = reserva de una sola cancha."
     String id PK
     String code UK "Código estable que usan la API y la app (p. ej. NEQUI)."
     String name
-    Boolean requiresReference "Si al registrar el pago se exige número de referencia o comprobante."
+    Boolean requiresReference "Si al registrar el pago se pide número de referencia o comprobante (opcional)."
     Boolean active
     Int sortOrder
     DateTime createdAt

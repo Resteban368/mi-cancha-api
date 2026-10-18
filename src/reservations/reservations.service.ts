@@ -1156,12 +1156,8 @@ export class ReservationsService {
     const method = await this.catalogs.resolvePaymentMethod(
       input.method ?? DEFAULT_PAYMENT_METHOD,
     );
+    // La referencia es opcional: se guarda si el método la pide y la envían.
     const reference = input.reference?.trim() || null;
-    if (method.requiresReference && !reference) {
-      throw new BadRequestException(
-        `El pago con ${method.name} requiere el número de referencia`,
-      );
-    }
     return {
       amount: input.amount,
       methodId: method.id,

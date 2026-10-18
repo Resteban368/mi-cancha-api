@@ -448,7 +448,7 @@ model PaymentMethod {
   /// Código estable que usan la API y la app (p. ej. NEQUI).
   code              String   @unique
   name              String
-  /// Si al registrar el pago se exige número de referencia o comprobante.
+  /// Si al registrar el pago se pide número de referencia o comprobante (opcional).
   requiresReference Boolean  @default(true)
   active            Boolean  @default(true)
   sortOrder         Int      @default(0)

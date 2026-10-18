@@ -140,7 +140,7 @@ function CatalogCard({ kind }: { kind: CatalogKind }) {
             <tr>
               <Th>Nombre</Th>
               <Th>Código</Th>
-              {isPayment && <Th>Exige referencia</Th>}
+              {isPayment && <Th>Pide referencia</Th>}
               {isSurface && <Th>Deportes</Th>}
               <Th align="right">{text.usage}</Th>
               <Th>Activo</Th>
@@ -159,9 +159,9 @@ function CatalogCard({ kind }: { kind: CatalogKind }) {
                     <Switch
                       checked={(item as PaymentMethod).requiresReference}
                       disabled={busyId === item.id}
-                      label={`Exigir referencia en ${item.name}`}
+                      label={`Pedir referencia en ${item.name}`}
                       onChange={(requiresReference) =>
-                        patch(item, { requiresReference }, `${item.name}: ${requiresReference ? 'exige' : 'no exige'} referencia`)
+                        patch(item, { requiresReference }, `${item.name}: ${requiresReference ? 'pide' : 'no pide'} referencia`)
                       }
                     />
                   </Td>
@@ -323,10 +323,10 @@ function CatalogItemModal({
         {isPayment && (
           <div className="flex items-center justify-between gap-4 rounded-lg border border-border p-3">
             <div>
-              <p className="text-sm font-medium">Exige referencia</p>
-              <p className="text-xs text-fg-3">Pide número de comprobante al registrar el pago.</p>
+              <p className="text-sm font-medium">Pide referencia</p>
+              <p className="text-xs text-fg-3">Muestra el campo de comprobante al registrar el pago (opcional).</p>
             </div>
-            <Switch checked={requiresReference} onChange={setRequiresReference} label="Exige referencia" />
+            <Switch checked={requiresReference} onChange={setRequiresReference} label="Pide referencia" />
           </div>
         )}
         {isSurface && (

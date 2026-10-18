@@ -1041,13 +1041,12 @@ export function NewReservationModal({
 
                     {method?.requiresReference && (
                       <Field
-                        label="Número de Referencia"
-                        hint={`Obligatorio para ${method.name}`}
+                        label="Número de Referencia (opcional)"
+                        hint={`Comprobante del pago con ${method.name}, si lo tienes`}
                       >
                         {(id) => (
                           <Input
                             id={id}
-                            required
                             placeholder="Ej. # Comprobante / Aprobación"
                             value={payment.reference}
                             onChange={(e) =>

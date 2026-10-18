@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  NotFoundException,
-} from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import {
   createPrismaMock,
@@ -94,8 +90,9 @@ describe('PaymentsService', () => {
       expect(result.method).toBe('EFECTIVO');
     });
 
-    it('exige referencia cuando el método la requiere', async () => {
+    it('la referencia es opcional aunque el método la pida', async () => {
       catalogs.resolvePaymentMethod.mockResolvedValue(nequi);
+      prisma.payment.create.mockRejectedValue(new Error('stop'));
       await expect(
         service.create('owner-1', {
           customerName: 'Camilo',
@@ -104,8 +101,8 @@ describe('PaymentsService', () => {
           concept: PaymentConcept.TOTAL,
           reference: '   ',
         }),
-      ).rejects.toThrow(BadRequestException);
-      expect(prisma.payment.create).not.toHaveBeenCalled();
+      ).rejects.toThrow('stop');
+      expect(prisma.payment.create.mock.calls[0][0].data.reference).toBeNull();
     });
 
     it('rechaza una reserva que no pertenece al negocio', async () => {
