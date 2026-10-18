@@ -542,6 +542,15 @@ function CourtCard({
   onChoose: (courtId: string, start: string) => void;
   onDetails?: () => void;
 }) {
+  // Solo lo que el jugador puede tomar, más lo que otro está apartando (vence en minutos).
+  const visible = slots
+    .map((slot, i) => {
+      const selected = selection?.courtId === court.id && startIndex !== -1 && i >= startIndex && i < startIndex + chosenCount;
+      const free = selected || isFree(court.id, slot);
+      return { slot, selected, free, inProcess: !free && slot.status === 'HELD' };
+    })
+    .filter((s) => s.free || s.inProcess);
+
   return (
     <Card>
       <div className="mb-3 flex items-center gap-3">
@@ -579,12 +588,11 @@ function CourtCard({
       </div>
       {slots.length === 0 ? (
         <p className="text-sm text-fg-3">Cerrada este día.</p>
+      ) : visible.length === 0 ? (
+        <p className="text-sm text-fg-3">No quedan turnos disponibles este día.</p>
       ) : (
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
-          {slots.map((slot, i) => {
-            const selected = selection?.courtId === court.id && startIndex !== -1 && i >= startIndex && i < startIndex + chosenCount;
-            const free = selected || isFree(court.id, slot);
-            const inProcess = !free && slot.status === 'HELD';
+          {visible.map(({ slot, selected, free, inProcess }) => {
             return (
               <button
                 key={slot.start}
@@ -597,20 +605,12 @@ function CourtCard({
                     ? 'border-accent bg-accent text-accent-fg'
                     : free
                       ? 'border-border bg-surface hover:border-accent'
-                      : inProcess
-                        ? 'cursor-not-allowed border-dashed border-warn bg-warn-soft text-fg-2'
-                        : 'cursor-not-allowed border-transparent bg-surface-2 text-fg-3'
+                      : 'cursor-not-allowed border-dashed border-warn bg-warn-soft text-fg-2'
                 }`}
               >
-                <span className={`font-semibold tabular ${free || inProcess ? '' : 'line-through'}`}>{formatTime(slot.start)}</span>
+                <span className="font-semibold tabular">{formatTime(slot.start)}</span>
                 <span className="text-[11px] opacity-80">
-                  {free
-                    ? formatMoney(slot.price, court.currency)
-                    : inProcess
-                      ? 'En proceso'
-                      : slot.status === 'BOOKED'
-                        ? 'Ocupado'
-                        : 'No disponible'}
+                  {inProcess ? 'En proceso' : formatMoney(slot.price, court.currency)}
                 </span>
               </button>
             );
