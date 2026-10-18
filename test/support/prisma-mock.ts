@@ -6,6 +6,7 @@ type ModelMock = Record<
   | 'findFirst'
   | 'findMany'
   | 'create'
+  | 'createMany'
   | 'update'
   | 'updateMany'
   | 'count'
@@ -24,6 +25,7 @@ function modelMock(): ModelMock {
     findFirst: vi.fn(),
     findMany: vi.fn(),
     create: vi.fn(),
+    createMany: vi.fn(),
     update: vi.fn(),
     updateMany: vi.fn(),
     count: vi.fn(),
@@ -49,6 +51,7 @@ export function createPrismaMock() {
     paymentMethod: modelMock(),
     courtSurface: modelMock(),
     slotHold: modelMock(),
+    reservationGroup: modelMock(),
     businessProfileImage: modelMock(),
     courtPhoto: modelMock(),
     customer: modelMock(),

@@ -1,7 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  ArrayMinSize,
+  ArrayUnique,
   Equals,
+  IsArray,
   IsBoolean,
   IsEmail,
   IsEnum,
@@ -23,6 +27,7 @@ import {
   CourtSurfaceRefDto,
 } from '../../courts/dto/court.dto.js';
 import { Sport } from '../../generated/prisma/enums.js';
+import { MAX_GROUP_COURTS } from '../../reservations/dto/reservation.dto.js';
 
 /** Turnos seguidos que un jugador puede apartar y reservar desde la web. */
 export const WEB_MAX_SLOTS = 3;
@@ -114,8 +119,22 @@ export class PlayerSessionDto {
 }
 
 export class WebHoldDto {
+  /**
+   * 1 a 3 canchas del mismo deporte y turno, libres en la misma franja (para
+   * jugar varias canchas a la vez). Envía esto o `courtId`.
+   */
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(MAX_GROUP_COURTS)
+  @ArrayUnique()
+  @IsUUID('all', { each: true })
+  courtIds?: string[];
+
+  /** Una sola cancha (equivale a `courtIds` con una). */
+  @IsOptional()
   @IsUUID()
-  courtId: string;
+  courtId?: string;
 
   /** Inicio del primer turno, tal como llega en la disponibilidad. */
   @IsISO8601({ strict: true })
@@ -150,7 +169,8 @@ export class PublicAvailabilityQueryDto {
 }
 
 export class SlotHoldDto {
-  courtId: string;
+  /** Canchas apartadas, todas en la misma franja. */
+  courtIds: string[];
   /** Inicio del primer turno y fin del último. */
   start: Date;
   end: Date;
@@ -197,6 +217,8 @@ export class BookingRulesDto {
   maxReservationsPerDay: number;
   maxSlots: number;
   holdMinutes: number;
+  /** Canchas que se pueden reservar a la vez en la misma franja. */
+  maxCourts: number;
   /** Las reservas web se pagan en la sede. */
   paymentMethod: string;
 }

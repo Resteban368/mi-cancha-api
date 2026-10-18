@@ -1,6 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  ArrayMinSize,
+  ArrayUnique,
+  IsArray,
   IsBoolean,
   IsEnum,
   IsIn,
@@ -33,6 +37,8 @@ import {
 
 /** Máximo de turnos seguidos en una reserva. */
 export const MAX_SLOTS = 5;
+/** Máximo de canchas que se reservan a la vez en la misma franja. */
+export const MAX_GROUP_COURTS = 3;
 const MONEY = { maxDecimalPlaces: 2 };
 
 export class DayQueryDto {
@@ -123,16 +129,35 @@ export class ReservationPaymentInputDto {
 }
 
 export class CreateReservationDto {
-  /** Cancha elegida. Envía esto o `sport`. */
+  /** Cancha elegida. Envía esto, `courtIds` o `sport`. */
   @IsOptional()
   @IsUUID()
   courtId?: string;
 
-  /** Cualquier cancha libre de este deporte: la API asigna la primera por nombre. Envía esto o `courtId`. */
+  /**
+   * Varias canchas a la vez (máximo 3), del mismo deporte y con el mismo turno,
+   * todas libres en la misma franja. Se reservan juntas o ninguna.
+   */
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(MAX_GROUP_COURTS)
+  @ArrayUnique()
+  @IsUUID('all', { each: true })
+  courtIds?: string[];
+
+  /** Cualquier cancha libre de este deporte: la API asigna la primera por nombre. Envía esto, `courtId` o `courtIds`. */
   @ApiProperty({ enum: Sport, required: false })
   @IsOptional()
   @IsEnum(Sport)
   sport?: Sport;
+
+  /** Con `sport`: cuántas canchas libres reservar a la vez (1 a 3). Por defecto 1. */
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(MAX_GROUP_COURTS)
+  courts?: number;
 
   /** Inicio del primer turno (debe coincidir con un turno de GET …/availability). @example 2026-10-20T19:00:00-05:00 */
   @IsISO8601({ strict: true })
@@ -176,14 +201,17 @@ export class CreateReservationDto {
   @IsBoolean()
   isRecurring?: boolean;
 
-  /** Se resta del valor de las tarifas. Por defecto 0. @example 10000 */
+  /**
+   * Se resta del valor de las tarifas; con varias canchas es sobre el total y
+   * se reparte en proporción al valor de cada una. Por defecto 0. @example 10000
+   */
   @IsOptional()
   @IsNumber(MONEY)
   @Min(0)
   @Max(1_000_000_000)
   discount?: number;
 
-  /** Pago opcional al reservar (anticipo o total). */
+  /** Pago opcional al reservar (anticipo o total; con varias canchas, del total del grupo). */
   @IsOptional()
   @ValidateNested()
   @Type(() => ReservationPaymentInputDto)
@@ -300,6 +328,24 @@ export class ReservationPaymentDto {
   receivedAt: Date;
 }
 
+export class ReservationGroupCourtDto {
+  reservationId: string;
+  courtId: string;
+  courtName: string;
+}
+
+/** Reserva de varias canchas: se paga y se cancela como un todo. */
+export class ReservationGroupDto {
+  id: string;
+  @ApiProperty({ type: [ReservationGroupCourtDto] })
+  courts: ReservationGroupCourtDto[];
+  /** Suma de las canchas del grupo, con el descuento. */
+  totalPrice: number;
+  /** Pagos aprobados del grupo (se registran en la primera reserva). */
+  amountPaid: number;
+  balance: number;
+}
+
 export class ReservationDto {
   id: string;
   courtId: string;
@@ -338,4 +384,7 @@ export class ReservationDto {
   cancelledAt: Date | null;
   /** Nombre de quien canceló. */
   cancelledBy: string | null;
+  /** Si es parte de una reserva de varias canchas; los montos del grupo están aquí. */
+  @ApiProperty({ type: ReservationGroupDto, nullable: true })
+  group: ReservationGroupDto | null;
 }

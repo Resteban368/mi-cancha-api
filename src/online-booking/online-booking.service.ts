@@ -17,12 +17,14 @@ import type { Prisma, SlotHold } from '../generated/prisma/client.js';
 import type { Sport } from '../generated/prisma/enums.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
+  MAX_GROUP_COURTS,
   ReservationDto,
   SportAvailabilityDto,
 } from '../reservations/dto/reservation.dto.js';
 import {
   ReservationsService,
   type WebBookingRules,
+  type WebSlotsInput,
 } from '../reservations/reservations.service.js';
 import {
   CurrentHoldDto,
@@ -109,7 +111,11 @@ export class OnlineBookingService {
       mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(point)}`,
       sports: bookableSports(business),
       currency: business.courts[0]?.currency ?? 'COP',
-      rules: { ...WEB_RULES, paymentMethod: 'EFECTIVO' },
+      rules: {
+        ...WEB_RULES,
+        maxCourts: MAX_GROUP_COURTS,
+        paymentMethod: 'EFECTIVO',
+      },
       courts,
       bookingAvailable: available,
       unavailableReason: reason,
@@ -175,7 +181,7 @@ export class OnlineBookingService {
     return this.reservations.createWebReservation(
       business.id,
       player,
-      dto,
+      { ...webSlots(dto), notes: dto.notes },
       WEB_RULES,
     );
   }
@@ -188,19 +194,19 @@ export class OnlineBookingService {
   ): Promise<SlotHoldDto> {
     const business = await this.requireBookable(slug);
     await this.players.requirePlayer(playerId);
-    const hold = await this.reservations.holdWebSlots(
+    const rows = await this.reservations.holdWebSlots(
       business.id,
       playerId,
-      dto,
+      webSlots(dto),
       WEB_RULES,
     );
-    return toHoldDto(hold);
+    return toHoldDto(rows);
   }
 
   async currentHold(slug: string, playerId: string): Promise<CurrentHoldDto> {
     const business = await this.findBySlug(slug);
-    const hold = await this.reservations.currentHold(business.id, playerId);
-    return { hold: hold ? toHoldDto(hold) : null };
+    const rows = await this.reservations.currentHold(business.id, playerId);
+    return { hold: rows.length ? toHoldDto(rows) : null };
   }
 
   async releaseHold(slug: string, playerId: string): Promise<void> {
@@ -352,12 +358,25 @@ function bookingState(business: PublicBusiness): {
   return { available: true, reason: null };
 }
 
-function toHoldDto(hold: SlotHold): SlotHoldDto {
+/** Las filas del apartado (una por cancha) comparten franja y vencimiento. */
+function toHoldDto(rows: SlotHold[]): SlotHoldDto {
+  const [first] = rows;
   return {
-    courtId: hold.courtId,
-    start: hold.start,
-    end: hold.end,
-    slots: hold.slots,
-    expiresAt: hold.expiresAt,
+    courtIds: rows.map((r) => r.courtId),
+    start: first.start,
+    end: first.end,
+    slots: first.slots,
+    expiresAt: first.expiresAt,
   };
+}
+
+/** `courtIds` o, por compatibilidad, `courtId`. */
+function webSlots(dto: WebHoldDto): WebSlotsInput {
+  const courtIds = dto.courtIds ?? (dto.courtId ? [dto.courtId] : []);
+  if (!courtIds.length || (dto.courtIds && dto.courtId)) {
+    throw new BadRequestException(
+      'Envía courtIds (1 a 3 canchas) o courtId (una cancha), uno de los dos',
+    );
+  }
+  return { courtIds, start: dto.start, slots: dto.slots };
 }

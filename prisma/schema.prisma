@@ -142,6 +142,7 @@ model Business {
   subscription Subscription?
   profileImage BusinessProfileImage?
   slotHolds    SlotHold[]
+  reservationGroups ReservationGroup[]
 }
 
 /// Foto de portada del negocio. Una por negocio; el archivo vive en Koofr.
@@ -196,7 +197,8 @@ model Court {
 }
 
 /// Turnos que un jugador apartó en la web mientras confirma la reserva. Vencen
-/// solos (expiresAt) y cada jugador tiene como máximo uno por negocio.
+/// solos (expiresAt). Un jugador tiene un solo apartado por negocio, de 1 a 3
+/// canchas (una fila por cancha, todas con la misma franja).
 model SlotHold {
   id         String   @id @default(uuid())
   businessId String
@@ -213,7 +215,7 @@ model SlotHold {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  @@unique([businessId, playerId])
+  @@unique([businessId, playerId, courtId])
   @@index([courtId, start])
 }
 
@@ -295,6 +297,10 @@ model Reservation {
   /// subtotal - discount, en la moneda de la cancha.
   totalPrice         Decimal           @db.Decimal(12, 2)
   status             ReservationStatus @default(CONFIRMED)
+  /// Reserva de varias canchas a la vez: las del mismo grupo comparten franja,
+  /// se pagan y se cancelan juntas. null = reserva de una sola cancha.
+  groupId            String?
+  group              ReservationGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
   cancellationReason String?
   cancelledAt        DateTime?
   cancelledById      String?
@@ -308,6 +314,20 @@ model Reservation {
   @@index([businessId, start])
   @@index([customerId, status])
   @@index([courtId, start, end])
+  @@index([groupId])
+}
+
+/// Varias canchas (máximo 3) reservadas a la vez en la misma franja. Cada cancha
+/// es una Reservation con este grupo; los pagos van en la primera reserva.
+model ReservationGroup {
+  id         String   @id @default(uuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  reservations Reservation[]
+
+  @@index([businessId])
 }
 
 /// Dinero recibido por el negocio, normalmente ligado a una reserva. Los pagos por transferencia

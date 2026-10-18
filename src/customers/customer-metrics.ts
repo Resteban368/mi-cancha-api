@@ -12,6 +12,9 @@ export type CustomerLevel = (typeof CUSTOMER_LEVELS)[number];
 export const NEW_CUSTOMER_DAYS = 30;
 
 export interface ReservationForMetrics {
+  /** Reserva de varias canchas (null = una sola): cuenta como una. */
+  groupId?: string | null;
+  id?: string;
   status: ReservationStatus;
   start: Date;
   totalPrice: number;
@@ -56,7 +59,7 @@ export function computeMetrics(
   let lastVisit: CustomerMetrics['lastVisit'] = null;
   const sports = new Map<Sport, number>();
 
-  for (const r of reservations) {
+  for (const r of byReservation(reservations)) {
     const paid = r.payments
       .filter((p) => p.status === PaymentStatus.APPROVED)
       .reduce((sum, p) => sum + p.amount, 0);
@@ -96,6 +99,29 @@ export function computeMetrics(
     lastVisit,
     mostPlayedSport,
   };
+}
+
+/**
+ * Une las canchas de un mismo grupo en una sola reserva: suma sus valores y sus
+ * pagos (que van en la primera) y nombra las canchas juntas.
+ */
+function byReservation(
+  reservations: ReservationForMetrics[],
+): ReservationForMetrics[] {
+  const units = new Map<string, ReservationForMetrics>();
+  for (const [i, r] of reservations.entries()) {
+    const key = r.groupId ?? r.id ?? `#${i}`;
+    const unit = units.get(key);
+    if (!unit) {
+      units.set(key, { ...r, payments: [...r.payments] });
+      continue;
+    }
+    unit.totalPrice += r.totalPrice;
+    unit.payments.push(...r.payments);
+    unit.courtName = `${unit.courtName} + ${r.courtName}`;
+    if (r.start < unit.start) unit.start = r.start;
+  }
+  return [...units.values()];
 }
 
 function round2(value: number): number {

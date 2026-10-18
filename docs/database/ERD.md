@@ -125,11 +125,18 @@ trigger de la base a partir del nombre al crear el negocio (nunca queda nulo)."
     Decimal discount
     Decimal totalPrice "subtotal - discount, en la moneda de la cancha."
     ReservationStatus status
+    String groupId FK "opcional · Reserva de varias canchas a la vez: las del mismo grupo comparten franja,
+se pagan y se cancelan juntas. null = reserva de una sola cancha."
     String cancellationReason "opcional"
     DateTime cancelledAt "opcional"
     String cancelledById FK "opcional"
     DateTime createdAt
     DateTime updatedAt
+  }
+  ReservationGroup {
+    String id PK
+    String businessId FK
+    DateTime createdAt
   }
   Customer {
     String id PK
@@ -229,7 +236,9 @@ trigger de la base a partir del nombre al crear el negocio (nunca queda nulo)."
   Court ||--o{ Reservation : "reservations"
   User |o--o{ Reservation : "reservations"
   Customer |o--o{ Reservation : "reservations"
+  ReservationGroup |o--o{ Reservation : "reservations"
   User |o--o{ Reservation : "cancelledReservations"
+  Business ||--o{ ReservationGroup : "reservationGroups"
   Business ||--o{ Customer : "customers"
   User |o--o{ Customer : "customers"
   Business ||--o{ Refund : "refunds"
@@ -275,6 +284,7 @@ La sede deportiva de un cliente. Cada administrador de negocio tiene exactamente
 - **Subscription**: Puede tener un Subscription (campo subscription); la llave foránea está en Subscription.
 - **BusinessProfileImage**: Puede tener un BusinessProfileImage (campo profileImage); la llave foránea está en BusinessProfileImage.
 - **SlotHold**: Tiene cero o muchos SlotHold (campo slotHolds). Cada SlotHold apunta a este Business.
+- **ReservationGroup**: Tiene cero o muchos ReservationGroup (campo reservationGroups). Cada ReservationGroup apunta a este Business.
 
 ### BusinessProfileImage
 
@@ -298,7 +308,8 @@ completa (tiene las fotos MAIN, SURFACE y LIGHTING). El límite del plan cuenta 
 ### SlotHold
 
 Turnos que un jugador apartó en la web mientras confirma la reserva. Vencen
-solos (expiresAt) y cada jugador tiene como máximo uno por negocio.
+solos (expiresAt). Un jugador tiene un solo apartado por negocio, de 1 a 3
+canchas (una fila por cancha, todas con la misma franja).
 
 - **Business**: Pertenece siempre a un Business mediante businessId; un Business puede tener varios SlotHold. Si se borra el Business, se borran también sus SlotHold.
 - **Court**: Pertenece siempre a un Court mediante courtId; un Court puede tener varios SlotHold. Si se borra el Court, se borran también sus SlotHold.
@@ -332,9 +343,18 @@ Un turno reservado en una cancha. La crea el negocio desde la app (o un jugador,
 - **Court**: Pertenece siempre a un Court mediante courtId; un Court puede tener varios Reservation. No se puede borrar un Court mientras tenga Reservation.
 - **User**: Puede pertenecer a un User mediante playerId; un User puede tener varios Reservation. Si se borra el User, el Reservation se conserva sin User.
 - **Customer**: Puede pertenecer a un Customer mediante customerId; un Customer puede tener varios Reservation. Si se borra el Customer, el Reservation se conserva sin Customer.
+- **ReservationGroup**: Puede pertenecer a un ReservationGroup mediante groupId; un ReservationGroup puede tener varios Reservation. Si se borra el ReservationGroup, el Reservation se conserva sin ReservationGroup.
 - **User**: Puede pertenecer a un User mediante cancelledById; un User puede tener varios Reservation. Si se borra el User, el Reservation se conserva sin User.
 - **Payment**: Tiene cero o muchos Payment (campo payments). Cada Payment apunta a este Reservation.
 - **Refund**: Tiene cero o muchos Refund (campo refunds). Cada Refund apunta a este Reservation.
+
+### ReservationGroup
+
+Varias canchas (máximo 3) reservadas a la vez en la misma franja. Cada cancha
+es una Reservation con este grupo; los pagos van en la primera reserva.
+
+- **Business**: Pertenece siempre a un Business mediante businessId; un Business puede tener varios ReservationGroup. Si se borra el Business, se borran también sus ReservationGroup.
+- **Reservation**: Tiene cero o muchos Reservation (campo reservations). Cada Reservation apunta a este ReservationGroup.
 
 ### Customer
 
@@ -415,7 +435,7 @@ Plan que tiene contratado un negocio, su estado (activo o suspendido) y la fecha
 
 - User: (role, phone)
 - Court: (businessId, name)
-- SlotHold: (businessId, playerId)
+- SlotHold: (businessId, playerId, courtId)
 - CourtSchedule: (courtId, dayOfWeek)
 - CourtPhoto: (courtId, slot)
 - Customer: (businessId, phone)

@@ -157,15 +157,18 @@ describe('ReservationsService', () => {
   });
 
   it('cancela devolviendo los pagos aprobados y rechazando los pendientes', async () => {
-    prisma.reservation.findFirst.mockResolvedValue({
+    const current = {
       id: 'res-1',
       customerId: 'cus-1',
+      groupId: null,
       status: ReservationStatus.CONFIRMED,
       payments: [
         { id: 'p1', status: PaymentStatus.APPROVED, amount: 50_000 },
         { id: 'p2', status: PaymentStatus.PENDING, amount: 10_000 },
       ],
-    });
+    };
+    prisma.reservation.findFirst.mockResolvedValue(current);
+    prisma.reservation.findMany.mockResolvedValue([current]);
     prisma.reservation.update.mockRejectedValue(new Error('stop'));
 
     await expect(
@@ -195,6 +198,203 @@ describe('ReservationsService', () => {
     await expect(
       service.cancel('owner-1', 'res-1', { reason: 'X' }),
     ).rejects.toThrow('Solo se pueden cancelar');
+  });
+
+  describe('varias canchas a la vez', () => {
+    const courtA = { ...court, id: 'court-1', name: 'Sintética 1' };
+    const courtB = {
+      ...court,
+      id: 'court-2',
+      name: 'Sintética 2',
+      basePricePerHour: 50_000,
+      rates: [],
+    };
+    const byId = { 'court-1': courtA, 'court-2': courtB } as Record<
+      string,
+      unknown
+    >;
+    const { courtId: _c, ...base } = dto;
+
+    beforeEach(() => {
+      prisma.court.findFirst.mockImplementation(
+        ({ where }) => byId[where.id] ?? null,
+      );
+      prisma.reservationGroup.create.mockResolvedValue({ id: 'g-1' });
+      prisma.reservation.create.mockImplementation(({ data }) => ({
+        id: `r-${data.courtId}`,
+      }));
+      prisma.reservation.findUniqueOrThrow.mockRejectedValue(new Error('stop'));
+      catalogs.resolvePaymentMethod.mockResolvedValue({
+        id: 'm-cash',
+        name: 'Efectivo',
+        requiresReference: false,
+      });
+    });
+
+    it('reserva todas en grupo, reparte el descuento y deja el pago en la primera', async () => {
+      await expect(
+        service.create('owner-1', {
+          ...base,
+          courtIds: ['court-1', 'court-2'],
+          discount: 32_000,
+          payment: { amount: 100_000 },
+        }),
+      ).rejects.toThrow('stop');
+
+      const [a, b] = prisma.reservation.create.mock.calls.map((c) => c[0].data);
+      // A: 100.000 + 120.000 = 220.000 · B: 2 × 50.000 = 100.000 · total 320.000
+      expect(a).toMatchObject({
+        courtId: 'court-1',
+        groupId: 'g-1',
+        subtotal: 220_000,
+        discount: 22_000,
+        totalPrice: 198_000,
+      });
+      expect(b).toMatchObject({
+        courtId: 'court-2',
+        groupId: 'g-1',
+        subtotal: 100_000,
+        discount: 10_000,
+        totalPrice: 90_000,
+      });
+      expect(a.start).toEqual(b.start);
+      expect(a.end).toEqual(b.end);
+      expect(a.payments.create).toMatchObject({
+        amount: 100_000,
+        concept: 'ANTICIPO',
+      });
+      expect(b.payments).toBeUndefined();
+    });
+
+    it('un descuento en pesos enteros se reparte sin centavos', async () => {
+      await expect(
+        service.create('owner-1', {
+          ...base,
+          courtIds: ['court-1', 'court-2'],
+          discount: 10_001,
+        }),
+      ).rejects.toThrow('stop');
+      const shares = prisma.reservation.create.mock.calls.map(
+        (c) => c[0].data.discount,
+      );
+      // 10.001 × 220/320 = 6.875,69 → 6.876; el resto, a la última.
+      expect(shares).toEqual([6_876, 3_125]);
+    });
+
+    it('si una está ocupada no reserva ninguna', async () => {
+      prisma.reservation.findFirst
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ id: 'otra' });
+      await expect(
+        service.create('owner-1', {
+          ...base,
+          courtIds: ['court-1', 'court-2'],
+        }),
+      ).rejects.toThrow('La cancha Sintética 2 ya está reservada');
+      expect(prisma.reservation.create).not.toHaveBeenCalled();
+      expect(prisma.reservationGroup.create).not.toHaveBeenCalled();
+    });
+
+    it('exige el mismo deporte y la misma duración de turno', async () => {
+      byId['court-2'] = { ...courtB, sport: Sport.PADEL };
+      await expect(
+        service.create('owner-1', { ...base, courtIds: ['court-1', 'court-2'] }),
+      ).rejects.toThrow('mismo deporte');
+      byId['court-2'] = { ...courtB, slotDuration: 90 };
+      await expect(
+        service.create('owner-1', { ...base, courtIds: ['court-1', 'court-2'] }),
+      ).rejects.toThrow(BadRequestException);
+      byId['court-2'] = courtB;
+    });
+
+    it('el descuento es sobre el total del grupo', async () => {
+      await expect(
+        service.create('owner-1', {
+          ...base,
+          courtIds: ['court-1', 'court-2'],
+          discount: 320_001,
+        }),
+      ).rejects.toThrow('no puede superar el valor de la reserva (320000)');
+    });
+
+    it('con sport y courts toma las primeras canchas libres', async () => {
+      prisma.court.findMany.mockResolvedValue([courtA, courtB]);
+      await expect(
+        service.create('owner-1', { ...base, sport: Sport.FUTBOL, courts: 2 }),
+      ).rejects.toThrow('stop');
+      expect(
+        prisma.reservation.create.mock.calls.map((c) => c[0].data.courtId),
+      ).toEqual(['court-1', 'court-2']);
+
+      prisma.reservation.create.mockClear();
+      prisma.reservation.findFirst
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ id: 'otra' });
+      await expect(
+        service.create('owner-1', { ...base, sport: Sport.FUTBOL, courts: 2 }),
+      ).rejects.toThrow('Solo hay 1 cancha(s) de fútbol libres');
+    });
+
+    it('pide una sola forma de elegir canchas', async () => {
+      await expect(
+        service.create('owner-1', {
+          ...dto,
+          courtIds: ['court-1', 'court-2'],
+        }),
+      ).rejects.toThrow('uno de los tres');
+      await expect(
+        service.create('owner-1', { ...dto, courts: 2 }),
+      ).rejects.toThrow('courts solo aplica junto con sport');
+    });
+
+    it('cancelar una cancha del grupo cancela todas', async () => {
+      prisma.reservation.findFirst.mockResolvedValue({
+        id: 'r-1',
+        status: ReservationStatus.CONFIRMED,
+        groupId: 'g-1',
+      });
+      prisma.reservation.findMany.mockResolvedValue([
+        {
+          id: 'r-1',
+          customerId: 'cus-1',
+          payments: [
+            { id: 'p1', status: PaymentStatus.APPROVED, amount: 80_000 },
+          ],
+        },
+        { id: 'r-2', customerId: 'cus-1', payments: [] },
+      ]);
+      await expect(
+        service.cancel('owner-1', 'r-2', { reason: 'Llueve' }),
+      ).rejects.toThrow('stop');
+      expect(prisma.reservation.findMany.mock.calls[0][0].where).toEqual({
+        groupId: 'g-1',
+        status: ReservationStatus.CONFIRMED,
+      });
+      expect(
+        prisma.reservation.update.mock.calls.map((c) => c[0].where.id),
+      ).toEqual(['r-1', 'r-2']);
+      expect(prisma.payment.update.mock.calls[0][0].data.status).toBe(
+        PaymentStatus.REFUNDED,
+      );
+    });
+
+    it('el estado aplica a todas las canchas del grupo', async () => {
+      prisma.reservation.findFirst.mockResolvedValue({
+        id: 'r-1',
+        status: ReservationStatus.CONFIRMED,
+        groupId: 'g-1',
+      });
+      await service
+        .updateStatus('owner-1', 'r-1', { status: ReservationStatus.COMPLETED })
+        .catch(() => undefined);
+      expect(prisma.reservation.updateMany).toHaveBeenCalledWith({
+        where: {
+          groupId: 'g-1',
+          status: { not: ReservationStatus.CANCELLED },
+        },
+        data: { status: ReservationStatus.COMPLETED },
+      });
+    });
   });
 
   describe('list', () => {
@@ -397,7 +597,7 @@ describe('ReservationsService', () => {
       favoriteSport: null,
     } as never;
     const input = {
-      courtId: 'court-1',
+      courtIds: ['court-1'],
       start: '2030-10-21T19:00:00-05:00',
       slots: 1,
       notes: ' Llevamos balón ',
@@ -413,7 +613,7 @@ describe('ReservationsService', () => {
         name: 'Pedro',
         phone: '+573120001111',
       });
-      prisma.reservation.count.mockResolvedValue(0);
+      prisma.reservation.findMany.mockResolvedValue([]);
       prisma.reservation.create.mockRejectedValue(new Error('stop'));
     });
 
@@ -456,10 +656,53 @@ describe('ReservationsService', () => {
     });
 
     it('limita las reservas por día del jugador en la sede', async () => {
-      prisma.reservation.count.mockResolvedValue(2);
+      prisma.reservation.findMany.mockResolvedValue([
+        { id: 'r-1', groupId: null },
+        { id: 'r-2', groupId: null },
+      ]);
       await expect(
         service.createWebReservation('biz-1', player, input, rules, now),
       ).rejects.toThrow('máximo 2 reservas por día');
+    });
+
+    it('una reserva de varias canchas cuenta como una en el límite diario', async () => {
+      prisma.reservation.findMany.mockResolvedValue([
+        { id: 'r-1', groupId: 'g-1' },
+        { id: 'r-2', groupId: 'g-1' },
+        { id: 'r-3', groupId: 'g-1' },
+      ]);
+      await expect(
+        service.createWebReservation('biz-1', player, input, rules, now),
+      ).rejects.toThrow('stop'); // pasa el límite y llega a crear
+    });
+
+    it('reserva varias canchas en grupo desde la web', async () => {
+      prisma.court.findFirst.mockImplementation(({ where }) => ({
+        ...court,
+        id: where.id,
+        name: where.id === 'court-1' ? 'Sintética 1' : 'Sintética 2',
+      }));
+      prisma.reservationGroup.create.mockResolvedValue({ id: 'g-1' });
+      prisma.reservation.create.mockImplementation(({ data }) => ({
+        id: `r-${data.courtId}`,
+      }));
+      await service
+        .createWebReservation(
+          'biz-1',
+          player,
+          { ...input, courtIds: ['court-1', 'court-2'] },
+          rules,
+          now,
+        )
+        .catch(() => undefined);
+      const rows = prisma.reservation.create.mock.calls.map((c) => c[0].data);
+      expect(rows.map((d) => [d.courtId, d.groupId, d.source])).toEqual([
+        ['court-1', 'g-1', 'WEB'],
+        ['court-2', 'g-1', 'WEB'],
+      ]);
+      expect(prisma.slotHold.findFirst.mock.calls[0][0].where.courtId).toEqual({
+        in: ['court-1', 'court-2'],
+      });
     });
 
     it('rechaza el turno que otro jugador tiene apartado', async () => {
@@ -469,7 +712,7 @@ describe('ReservationsService', () => {
       ).rejects.toThrow('Otra persona está reservando ese turno');
       const { where } = prisma.slotHold.findFirst.mock.calls[0][0];
       expect(where).toMatchObject({
-        courtId: 'court-1',
+        courtId: { in: ['court-1'] },
         playerId: { not: 'u-1' },
         expiresAt: { gt: now },
       });
@@ -508,7 +751,7 @@ describe('ReservationsService', () => {
       holdMinutes: 3,
     };
     const input = {
-      courtId: 'court-1',
+      courtIds: ['court-1'],
       start: '2030-10-21T19:00:00-05:00',
       slots: 2,
     };
@@ -518,29 +761,46 @@ describe('ReservationsService', () => {
       prisma.court.findFirst.mockResolvedValue(court);
       prisma.reservation.findFirst.mockResolvedValue(null);
       prisma.slotHold.findFirst.mockResolvedValue(null);
-      prisma.slotHold.upsert.mockImplementation(({ create }) => create);
+      prisma.slotHold.findMany.mockResolvedValue([]);
     });
 
     it('aparta los turnos 3 minutos y reemplaza el apartado anterior', async () => {
-      const hold = await service.holdWebSlots(
+      await service.holdWebSlots('biz-1', 'u-1', input, rules, now);
+      expect(prisma.slotHold.deleteMany).toHaveBeenCalledWith({
+        where: { businessId: 'biz-1', playerId: 'u-1' },
+      });
+      const { data } = prisma.slotHold.createMany.mock.calls[0][0];
+      expect(data).toEqual([
+        {
+          businessId: 'biz-1',
+          playerId: 'u-1',
+          courtId: 'court-1',
+          start: new Date('2030-10-22T00:00:00Z'),
+          end: new Date('2030-10-22T02:00:00Z'),
+          slots: 2,
+          expiresAt: new Date('2030-10-21T12:03:00Z'),
+        },
+      ]);
+    });
+
+    it('aparta varias canchas en la misma franja, una fila por cancha', async () => {
+      prisma.court.findFirst.mockImplementation(({ where }) => ({
+        ...court,
+        id: where.id,
+      }));
+      await service.holdWebSlots(
         'biz-1',
         'u-1',
-        input,
+        { ...input, courtIds: ['court-1', 'court-2', 'court-3'] },
         rules,
         now,
       );
-      const args = prisma.slotHold.upsert.mock.calls[0][0];
-      expect(args.where).toEqual({
-        businessId_playerId: { businessId: 'biz-1', playerId: 'u-1' },
-      });
-      expect(hold).toMatchObject({
-        courtId: 'court-1',
-        start: new Date('2030-10-22T00:00:00Z'),
-        end: new Date('2030-10-22T02:00:00Z'),
-        slots: 2,
-        expiresAt: new Date('2030-10-21T12:03:00Z'),
-      });
-      expect(args.update.expiresAt).toEqual(hold.expiresAt);
+      const { data } = prisma.slotHold.createMany.mock.calls[0][0];
+      expect(data.map((d: { courtId: string }) => d.courtId)).toEqual([
+        'court-1',
+        'court-2',
+        'court-3',
+      ]);
     });
 
     it('no aparta lo que ya está apartado por otro o reservado', async () => {
@@ -554,7 +814,7 @@ describe('ReservationsService', () => {
       await expect(
         service.holdWebSlots('biz-1', 'u-1', input, rules, now),
       ).rejects.toThrow('ya está reservada');
-      expect(prisma.slotHold.upsert).not.toHaveBeenCalled();
+      expect(prisma.slotHold.createMany).not.toHaveBeenCalled();
     });
 
     it('aplica la anticipación mínima y el máximo de turnos', async () => {
@@ -589,9 +849,10 @@ describe('ReservationsService', () => {
     });
 
     it('el apartado vigente ignora los vencidos', async () => {
-      prisma.slotHold.findFirst.mockResolvedValue(null);
-      await expect(service.currentHold('biz-1', 'u-1', now)).resolves.toBeNull();
-      expect(prisma.slotHold.findFirst.mock.calls[0][0].where).toEqual({
+      await expect(service.currentHold('biz-1', 'u-1', now)).resolves.toEqual(
+        [],
+      );
+      expect(prisma.slotHold.findMany.mock.calls[0][0].where).toEqual({
         businessId: 'biz-1',
         playerId: 'u-1',
         expiresAt: { gt: now },

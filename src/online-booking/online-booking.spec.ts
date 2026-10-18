@@ -161,7 +161,12 @@ describe('OnlineBookingService', () => {
       sports: [Sport.FUTBOL],
       bookingAvailable: true,
       unavailableReason: null,
-      rules: { ...WEB_RULES, maxSlots: 3, paymentMethod: 'EFECTIVO' },
+      rules: {
+        ...WEB_RULES,
+        maxSlots: 3,
+        maxCourts: 3,
+        paymentMethod: 'EFECTIVO',
+      },
     });
   });
 

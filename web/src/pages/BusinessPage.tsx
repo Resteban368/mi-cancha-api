@@ -35,8 +35,9 @@ const UNAVAILABLE_MESSAGES: Record<string, string> = {
   NO_COURTS: 'Esta sede aún no tiene canchas disponibles para reservar en línea.',
 };
 
+/** Turnos elegidos: 1 a 3 canchas en la misma franja (la primera es la que se tocó). */
 interface Selection {
-  courtId: string;
+  courtIds: string[];
   start: string;
   slots: number;
 }
@@ -62,7 +63,11 @@ function takePending(slug: string): Pending | null {
   try {
     const raw = sessionStorage.getItem(pendingKey(slug));
     sessionStorage.removeItem(pendingKey(slug));
-    return raw ? (JSON.parse(raw) as Pending) : null;
+    if (!raw) return null;
+    // Selecciones guardadas antes de poder elegir varias canchas traían courtId.
+    const pending = JSON.parse(raw) as Pending & { courtId?: string };
+    if (!pending.courtIds && pending.courtId) pending.courtIds = [pending.courtId];
+    return pending.courtIds?.length ? pending : null;
   } catch {
     return null;
   }
@@ -187,37 +192,76 @@ function Booking({ business }: { business: PublicBusiness }) {
   /** Del apartado propio: el turno se ve libre para quien lo apartó. */
   const isMine = (courtId: string, slot: Slot) =>
     hold !== null &&
-    hold.value.courtId === courtId &&
+    hold.value.courtIds.includes(courtId) &&
     Date.parse(slot.start) >= Date.parse(hold.value.start) &&
     Date.parse(slot.end) <= Date.parse(hold.value.end);
   const isFree = (courtId: string, slot: Slot) =>
     slot.status === 'AVAILABLE' ||
-    (slot.status === 'HELD' && (isMine(courtId, slot) || (holding && selection?.courtId === courtId)));
+    (slot.status === 'HELD' && (isMine(courtId, slot) || (holding && Boolean(selection?.courtIds.includes(courtId)))));
 
-  const court = availability.data?.courts.find((c) => c.court.id === selection?.courtId);
-  const startIndex = court?.slots.findIndex((s) => s.start === selection?.start) ?? -1;
-  let maxCount = 0;
-  if (court && startIndex !== -1) {
-    while (
-      maxCount < business.rules.maxSlots &&
-      court.slots[startIndex + maxCount] &&
-      isFree(court.court.id, court.slots[startIndex + maxCount])
-    ) {
-      maxCount++;
+  const maxCourts = business.rules.maxCourts ?? 1;
+  const courtsData = availability.data?.courts ?? [];
+  /** Dónde empieza la franja elegida en una cancha y cuántos turnos seguidos libres tiene. */
+  const freeRun = (c: CourtSlots | undefined) => {
+    const index = c && selection ? c.slots.findIndex((s) => s.start === selection.start) : -1;
+    let count = 0;
+    if (c && index !== -1) {
+      while (count < business.rules.maxSlots && c.slots[index + count] && isFree(c.court.id, c.slots[index + count])) {
+        count++;
+      }
     }
-  }
-  const chosen = court && startIndex !== -1 ? court.slots.slice(startIndex, startIndex + Math.min(selection!.slots, maxCount)) : [];
-  const total = chosen.reduce((sum, s) => sum + s.price, 0);
+    return { index, count };
+  };
+  const runs = (selection?.courtIds ?? []).map((id) => {
+    const c = courtsData.find((x) => x.court.id === id);
+    return { id, court: c, ...freeRun(c) };
+  });
+  const court = runs[0]?.court;
+  // La duración es la misma en todas: la que quepa en todas las canchas elegidas.
+  const maxCount = runs.length ? Math.min(...runs.map((r) => r.count)) : 0;
+  const count = selection ? Math.min(selection.slots, maxCount) : 0;
+  const chosenByCourt = runs.map((r) => ({
+    court: r.court,
+    slots: r.court && r.index !== -1 ? r.court.slots.slice(r.index, r.index + count) : [],
+  }));
+  const chosen = chosenByCourt[0]?.slots ?? [];
+  const total = chosenByCourt.reduce((sum, c) => sum + c.slots.reduce((s, x) => s + x.price, 0), 0);
+  // Otras canchas del deporte libres en la misma franja, con el mismo turno.
+  const addable =
+    selection && court && selection.courtIds.length < maxCourts
+      ? courtsData.filter(
+          (c) =>
+            !selection.courtIds.includes(c.court.id) &&
+            c.court.slotDuration === court.court.slotDuration &&
+            freeRun(c).count >= count,
+        )
+      : [];
   const remaining = hold ? (hold.expiresAt - now) / 1000 : 0;
+  const lostKey = availability.data
+    ? runs
+        .filter((r) => r.count === 0)
+        .map((r) => r.id)
+        .join(',')
+    : '';
 
-  // Si la selección ya no está libre (otra persona la tomó), se descarta.
+  // Si otra persona tomó alguna cancha elegida, se quita (y si eran todas, se descarta la selección).
   useEffect(() => {
-    if (availability.data && selection && maxCount === 0 && !holding) {
+    if (!selection || holding || !lostKey) return;
+    const lost = lostKey.split(',');
+    const keep = selection.courtIds.filter((id) => !lost.includes(id));
+    if (!keep.length) {
       setSelection(null);
       setHold(null);
       setNotice('Ese turno lo acaba de tomar otra persona. Elige otro horario.');
+      return;
     }
-  }, [availability.data, selection, maxCount, holding]);
+    const names = lost.map((id) => courtsData.find((c) => c.court.id === id)?.court.name ?? 'Una cancha');
+    const next = { ...selection, courtIds: keep };
+    setSelection(next);
+    setNotice(`${names.join(' y ')} ya no está libre en ese horario y se quitó de tu reserva.`);
+    void requestHold(next);
+    // Solo cuando cambia qué canchas se perdieron.
+  }, [lostKey, holding]);
 
   // Cuenta regresiva del apartado; al vencer, el turno queda libre otra vez.
   useEffect(() => {
@@ -292,11 +336,11 @@ function Booking({ business }: { business: PublicBusiness }) {
     }
     api<{ hold: SlotHold | null }>(holdPath, { token })
       .then(({ hold: current }) => {
-        const held = current && business.courts.find((c) => c.id === current.courtId);
+        const held = current && business.courts.find((c) => c.id === current.courtIds[0]);
         if (!current || !held) return;
         setSport(held.sport);
         setDate(bogotaDateOf(current.start));
-        setSelection({ courtId: current.courtId, start: current.start, slots: current.slots });
+        setSelection({ courtIds: current.courtIds, start: current.start, slots: current.slots });
         setHold({ value: current, expiresAt: Date.parse(current.expiresAt) });
         setNow(Date.now());
       })
@@ -305,7 +349,7 @@ function Booking({ business }: { business: PublicBusiness }) {
   }, []);
 
   function choose(courtId: string, start: string) {
-    const next = { courtId, start, slots: 1 };
+    const next = { courtIds: [courtId], start, slots: 1 };
     setSelection(next);
     setError(undefined);
     setNotice(undefined);
@@ -315,6 +359,24 @@ function Booking({ business }: { business: PublicBusiness }) {
   function changeSlots(slots: number) {
     if (!selection) return;
     const next = { ...selection, slots };
+    setSelection(next);
+    void requestHold(next);
+  }
+
+  /** Suma otra cancha en la misma franja (para jugar varias a la vez). */
+  function addCourt(courtId: string) {
+    if (!selection) return;
+    const next = { ...selection, slots: count, courtIds: [...selection.courtIds, courtId] };
+    setSelection(next);
+    setNotice(undefined);
+    void requestHold(next);
+  }
+
+  function removeCourt(courtId: string) {
+    if (!selection) return;
+    const courtIds = selection.courtIds.filter((id) => id !== courtId);
+    if (!courtIds.length) return clearSelection();
+    const next = { ...selection, courtIds };
     setSelection(next);
     void requestHold(next);
   }
@@ -336,7 +398,12 @@ function Booking({ business }: { business: PublicBusiness }) {
       const reservation = await api<Reservation>(`/player/businesses/${business.slug}/reservations`, {
         method: 'POST',
         token,
-        body: { courtId: selection.courtId, start: selection.start, slots: chosen.length, notes: notes.trim() || undefined },
+        body: {
+          courtIds: selection.courtIds,
+          start: selection.start,
+          slots: chosen.length,
+          notes: notes.trim() || undefined,
+        },
       });
       holdSeq.current++;
       setHold(null);
@@ -436,8 +503,8 @@ function Booking({ business }: { business: PublicBusiness }) {
             key={c.court.id}
             court={c}
             selection={selection}
-            chosenCount={chosen.length}
-            startIndex={court?.court.id === c.court.id ? startIndex : -1}
+            chosenCount={count}
+            startIndex={runs.find((r) => r.id === c.court.id)?.index ?? -1}
             isFree={isFree}
             onChoose={choose}
             onDetails={
@@ -449,14 +516,15 @@ function Booking({ business }: { business: PublicBusiness }) {
         ))
       )}
 
-      {selection && court && chosen.length > 0 && (
+      {selection && court && chosen.length > 0 && runs.every((r) => r.count > 0) && (
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface shadow-[0_-8px_24px_rgba(0,0,0,0.08)]">
           <div className="mx-auto flex max-w-3xl flex-col gap-3 px-4 py-3" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
             {error && <Alert>{error}</Alert>}
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <p className="font-semibold">
-                  {court.court.name} · {formatTime(chosen[0].start)} a {formatTime(chosen.at(-1)!.end)}
+                  {formatTime(chosen[0].start)} a {formatTime(chosen.at(-1)!.end)}
+                  {runs.length > 1 && ` · ${runs.length} canchas`}
                 </p>
                 <p className="text-xs text-fg-3">{formatLongDay(chosen[0].start)}</p>
                 <HoldStatus token={token} holding={holding} remaining={hold ? remaining : null} />
@@ -484,6 +552,42 @@ function Booking({ business }: { business: PublicBusiness }) {
                 </button>
               </div>
             </div>
+            <div className="flex flex-wrap items-center gap-2" aria-label="Canchas elegidas">
+              {runs.map((r) => (
+                <span
+                  key={r.id}
+                  className="inline-flex min-h-9 items-center gap-1 rounded-full bg-accent-soft pl-3 pr-1 text-sm font-semibold text-accent"
+                >
+                  {r.court?.court.name}
+                  {runs.length > 1 ? (
+                    <button
+                      type="button"
+                      onClick={() => removeCourt(r.id)}
+                      aria-label={`Quitar ${r.court?.court.name}`}
+                      className="flex size-7 items-center justify-center rounded-full hover:bg-accent/15"
+                    >
+                      ×
+                    </button>
+                  ) : (
+                    <span className="pr-2" />
+                  )}
+                </span>
+              ))}
+              {addable.map((c) => (
+                <button
+                  key={c.court.id}
+                  type="button"
+                  onClick={() => addCourt(c.court.id)}
+                  disabled={holding}
+                  className="inline-flex min-h-9 items-center gap-1 rounded-full border border-dashed border-accent px-3 text-sm font-semibold text-accent hover:bg-accent-soft disabled:opacity-60"
+                >
+                  + {c.court.name}
+                </button>
+              ))}
+            </div>
+            {selection.courtIds.length < maxCourts && addable.length === 0 && courtsData.length > 1 && (
+              <p className="-mt-1 text-xs text-fg-3">No hay otra cancha libre en ese mismo horario para jugar a la vez.</p>
+            )}
             <textarea
               rows={2}
               maxLength={200}
@@ -545,7 +649,8 @@ function CourtCard({
   // Solo lo que el jugador puede tomar, más lo que otro está apartando (vence en minutos).
   const visible = slots
     .map((slot, i) => {
-      const selected = selection?.courtId === court.id && startIndex !== -1 && i >= startIndex && i < startIndex + chosenCount;
+      const selected =
+        Boolean(selection?.courtIds.includes(court.id)) && startIndex !== -1 && i >= startIndex && i < startIndex + chosenCount;
       const free = selected || isFree(court.id, slot);
       return { slot, selected, free, inProcess: !free && slot.status === 'HELD' };
     })
@@ -634,11 +739,14 @@ function BookedDialog({
   const hours = (new Date(r.end).getTime() - new Date(r.start).getTime()) / 3_600_000;
   const rows: [string, string][] = [
     ['Sede', business.name],
-    ['Cancha', `${r.courtName} · ${SPORT_LABELS[r.sport]}`],
+    [
+      r.group ? 'Canchas' : 'Cancha',
+      `${r.group ? r.group.courts.map((c) => c.courtName).join(' + ') : r.courtName} · ${SPORT_LABELS[r.sport]}`,
+    ],
     ['Fecha', formatLongDay(r.start)],
     ['Horario', `${formatTime(r.start)} a ${formatTime(r.end)} (${hours.toLocaleString('es-CO')} h)`],
     ['A nombre de', r.customerName],
-    ['Total', formatMoney(r.totalPrice, r.currency)],
+    ['Total', formatMoney(r.group?.totalPrice ?? r.totalPrice, r.currency)],
     ['Pago', 'En efectivo al llegar a la sede'],
   ];
   if (r.contactNote) rows.push(['Notas', r.contactNote]);

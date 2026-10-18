@@ -605,6 +605,8 @@ export function toCustomerDto(c: Customer): CustomerDto {
 }
 
 function toMetricsInput(r: {
+  id?: string;
+  groupId?: string | null;
   status: ReservationStatus;
   start: Date;
   totalPrice: Prisma.Decimal | number;
@@ -612,6 +614,8 @@ function toMetricsInput(r: {
   payments: { amount: Prisma.Decimal | number; status: PaymentStatus }[];
 }): ReservationForMetrics {
   return {
+    id: r.id,
+    groupId: r.groupId,
     status: r.status,
     start: r.start,
     totalPrice: Number(r.totalPrice),

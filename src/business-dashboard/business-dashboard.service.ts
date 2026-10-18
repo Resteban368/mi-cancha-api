@@ -28,6 +28,7 @@ interface Filter {
 
 /** Reservas que ocupan la cancha y cuentan como valor reservado. */
 const ACTIVE = Prisma.sql`r."status" IN ('CONFIRMED', 'COMPLETED')`;
+const UNIT_ACTIVE = Prisma.sql`u.status IN ('CONFIRMED', 'COMPLETED')`;
 
 @Injectable()
 export class BusinessDashboardService {
@@ -262,25 +263,35 @@ export class BusinessDashboardService {
           WHERE p."businessId" = ${businessId} AND p."status" = 'APPROVED'
             AND p."reservationId" IS NOT NULL
           GROUP BY p."reservationId"
+        ),
+        -- Una reserva de varias canchas cuenta como una; sus pagos van en la primera.
+        units AS (
+          SELECT
+            MIN(r."status"::text) AS status,
+            SUM(r."totalPrice") AS total,
+            SUM(r."discount") AS discount,
+            SUM(COALESCE(paid.amount, 0)) AS paid
+          FROM "Reservation" r
+          JOIN "Court" co ON co."id" = r."courtId"
+          LEFT JOIN paid ON paid."reservationId" = r."id"
+          WHERE r."businessId" = ${businessId}
+            AND r."start" >= ${range.from} AND r."start" < ${range.to}
+            ${courtFilter(filter)}
+          GROUP BY COALESCE(r."groupId", r."id")
         )
         SELECT
           COUNT(*)::int AS "total",
-          COUNT(*) FILTER (WHERE r."status" = 'CONFIRMED')::int AS "confirmed",
-          COUNT(*) FILTER (WHERE r."status" = 'COMPLETED')::int AS "completed",
-          COUNT(*) FILTER (WHERE r."status" = 'NO_SHOW')::int AS "noShow",
-          COUNT(*) FILTER (WHERE r."status" = 'CANCELLED')::int AS "cancelled",
-          COALESCE(SUM(r."totalPrice") FILTER (WHERE ${ACTIVE}), 0)::float8 AS "booked",
-          COALESCE(SUM(r."discount") FILTER (WHERE ${ACTIVE}), 0)::float8 AS "discounts",
+          COUNT(*) FILTER (WHERE u.status = 'CONFIRMED')::int AS "confirmed",
+          COUNT(*) FILTER (WHERE u.status = 'COMPLETED')::int AS "completed",
+          COUNT(*) FILTER (WHERE u.status = 'NO_SHOW')::int AS "noShow",
+          COUNT(*) FILTER (WHERE u.status = 'CANCELLED')::int AS "cancelled",
+          COALESCE(SUM(u.total) FILTER (WHERE ${UNIT_ACTIVE}), 0)::float8 AS "booked",
+          COALESCE(SUM(u.discount) FILTER (WHERE ${UNIT_ACTIVE}), 0)::float8 AS "discounts",
           COALESCE(
-            SUM(GREATEST(r."totalPrice" - COALESCE(paid.amount, 0), 0)) FILTER (WHERE ${ACTIVE}),
+            SUM(GREATEST(u.total - u.paid, 0)) FILTER (WHERE ${UNIT_ACTIVE}),
             0
           )::float8 AS "pendingBalance"
-        FROM "Reservation" r
-        JOIN "Court" co ON co."id" = r."courtId"
-        LEFT JOIN paid ON paid."reservationId" = r."id"
-        WHERE r."businessId" = ${businessId}
-          AND r."start" >= ${range.from} AND r."start" < ${range.to}
-          ${courtFilter(filter)}`,
+        FROM units u`,
       )
       .then((rows) => rows[0]);
   }
@@ -383,7 +394,8 @@ export class BusinessDashboardService {
           AND p."reservationId" IS NOT NULL
         GROUP BY p."reservationId"
       )
-      SELECT c."id", c."name", c."phone", COUNT(*)::int AS "reservations",
+      SELECT c."id", c."name", c."phone",
+        COUNT(DISTINCT COALESCE(r."groupId", r."id"))::int AS "reservations",
         COALESCE(SUM(paid.amount), 0)::float8 AS "paid"
       FROM "Reservation" r
       JOIN "Customer" c ON c."id" = r."customerId"
@@ -403,7 +415,8 @@ export class BusinessDashboardService {
     filter: Filter,
   ): Promise<{ sport: Sport; reservations: number; booked: number }[]> {
     return this.prisma.$queryRaw(Prisma.sql`
-      SELECT co."sport"::text AS "sport", COUNT(*)::int AS "reservations",
+      SELECT co."sport"::text AS "sport",
+        COUNT(DISTINCT COALESCE(r."groupId", r."id"))::int AS "reservations",
         COALESCE(SUM(r."totalPrice") FILTER (WHERE ${ACTIVE}), 0)::float8 AS "booked"
       FROM "Reservation" r
       JOIN "Court" co ON co."id" = r."courtId"

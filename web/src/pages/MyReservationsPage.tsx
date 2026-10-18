@@ -21,8 +21,16 @@ export function MyReservationsPage() {
   if (!token) return <Navigate to={`/${slug}/ingresar`} replace />;
 
   const now = Date.now();
-  const upcoming = reservations.data?.filter((r) => new Date(r.end).getTime() > now).reverse() ?? [];
-  const past = reservations.data?.filter((r) => new Date(r.end).getTime() <= now) ?? [];
+  // Una reserva de varias canchas llega como una fila por cancha: se muestra una vez.
+  const seen = new Set<string>();
+  const list = (reservations.data ?? []).filter((r) => {
+    if (!r.group) return true;
+    if (seen.has(r.group.id)) return false;
+    seen.add(r.group.id);
+    return true;
+  });
+  const upcoming = list.filter((r) => new Date(r.end).getTime() > now).reverse();
+  const past = list.filter((r) => new Date(r.end).getTime() <= now);
 
   return (
     <>
@@ -58,13 +66,16 @@ function Section({ title, items, empty }: { title: string; items: Reservation[];
       {items.length === 0 && empty && <p className="text-sm text-fg-2">{empty}</p>}
       {items.map((r) => {
         const status = STATUS_LABELS[r.status];
+        const courts = r.group ? r.group.courts.map((c) => c.courtName).join(' + ') : r.courtName;
+        const totalPrice = r.group?.totalPrice ?? r.totalPrice;
+        const balance = r.group?.balance ?? r.balance;
         return (
           <Card key={r.id}>
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="font-semibold">{formatLongDay(r.start)}</p>
                 <p className="text-sm text-fg-2">
-                  {formatTime(r.start)} a {formatTime(r.end)} · {r.courtName}
+                  {formatTime(r.start)} a {formatTime(r.end)} · {courts}
                 </p>
               </div>
               <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${status.className}`}>{status.label}</span>
@@ -72,11 +83,11 @@ function Section({ title, items, empty }: { title: string; items: Reservation[];
             {r.contactNote && <p className="mt-2 text-sm text-fg-2">📝 {r.contactNote}</p>}
             {r.cancellationReason && <p className="mt-2 text-sm text-danger">Motivo: {r.cancellationReason}</p>}
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3 text-sm">
-              <span className="tabular">Total {formatMoney(r.totalPrice, r.currency)}</span>
+              <span className="tabular">Total {formatMoney(totalPrice, r.currency)}</span>
               {r.status !== 'CANCELLED' &&
-                (r.balance > 0 ? (
+                (balance > 0 ? (
                   <span className="rounded-full bg-warn-soft px-2.5 py-1 text-xs font-semibold text-warn">
-                    Pendiente {formatMoney(r.balance, r.currency)} · efectivo en la sede
+                    Pendiente {formatMoney(balance, r.currency)} · efectivo en la sede
                   </span>
                 ) : (
                   <span className="rounded-full bg-accent-soft px-2.5 py-1 text-xs font-semibold text-accent">Pagada</span>

@@ -43,6 +43,7 @@ import {
   AvailabilityDto,
   CancelReservationDto,
   CreateReservationDto,
+  MAX_GROUP_COURTS,
   MAX_SLOTS,
   ReservationDto,
   ReservationsQueryDto,
@@ -71,6 +72,10 @@ export interface WebBookingRules {
 }
 
 type Range = { start: Date; end: Date };
+type Claimed = { court: CourtWithDetails; first: Slot; last: Slot };
+/** Turnos que el jugador elige en la web: 1 a 3 canchas en la misma franja. */
+export type WebSlotsInput = { courtIds: string[]; start: string; slots: number };
+type Prices = { subtotal: number; discount: number; totalPrice: number };
 
 const reservationInclude = {
   court: { select: { name: true, sport: true, currency: true } },
@@ -79,6 +84,20 @@ const reservationInclude = {
   payments: {
     include: { method: { select: { code: true } } },
     orderBy: { receivedAt: 'asc' },
+  },
+  group: {
+    include: {
+      reservations: {
+        select: {
+          id: true,
+          courtId: true,
+          totalPrice: true,
+          court: { select: { name: true } },
+          payments: { select: { status: true, amount: true } },
+        },
+        orderBy: { createdAt: 'asc' },
+      },
+    },
   },
 } satisfies Prisma.ReservationInclude;
 
@@ -155,12 +174,17 @@ export class ReservationsService {
         'Una reserva cancelada no se puede modificar',
       );
     }
-    const updated = await this.prisma.reservation.update({
-      where: { id: reservation.id },
+    // En un grupo, el estado aplica a todas sus canchas.
+    await this.prisma.reservation.updateMany({
+      where: reservation.groupId
+        ? {
+            groupId: reservation.groupId,
+            status: { not: ReservationStatus.CANCELLED },
+          }
+        : { id: reservation.id },
       data: { status: dto.status },
-      include: reservationInclude,
     });
-    return toReservationDto(updated);
+    return toReservationDto(await this.findOwned(businessId, reservation.id));
   }
 
   async cancel(
@@ -449,84 +473,168 @@ export class ReservationsService {
         'Envía customerId (cliente existente) o customer (cliente nuevo), uno de los dos',
       );
     }
-    if (!dto.courtId === !dto.sport) {
+    const picks = [dto.courtId, dto.courtIds, dto.sport].filter(
+      (x) => x !== undefined,
+    ).length;
+    if (picks !== 1) {
       throw new BadRequestException(
-        'Envía courtId (una cancha) o sport (cualquier cancha libre de ese deporte), uno de los dos',
+        'Envía courtId (una cancha), courtIds (varias canchas) o sport (cualquier cancha libre de ese deporte), uno de los tres',
       );
+    }
+    if (dto.courts !== undefined && !dto.sport) {
+      throw new BadRequestException('courts solo aplica junto con sport');
     }
     const start = new Date(dto.start);
 
     // Serializable evita que dos reservas simultáneas tomen el mismo turno.
     const reservation = await this.prisma.$transaction(
       async (tx) => {
-        const { court, first, last } = dto.courtId
-          ? await this.claimCourt(
+        const claimed = dto.sport
+          ? await this.claimAnyCourts(
               tx,
               businessId,
-              dto.courtId,
+              dto.sport,
               start,
               dto.slots,
+              dto.courts ?? 1,
               now,
             )
-          : await this.claimAnyCourt(
+          : await this.claimCourts(
               tx,
               businessId,
-              dto.sport!,
+              dto.courtIds ?? [dto.courtId!],
               start,
               dto.slots,
               now,
             );
 
-        const subtotal = priceFor(
-          reservationIntervals(first.start, last.end, this.utcOffset),
-          Number(court.basePricePerHour),
-          courtRates(court),
+        const prices = this.groupPrices(claimed, dto.discount ?? 0);
+        const groupTotal = round2(
+          prices.reduce((sum, p) => sum + p.totalPrice, 0),
         );
-        const discount = dto.discount ?? 0;
-        if (discount > subtotal) {
-          throw new BadRequestException(
-            `El descuento no puede superar el valor de la reserva (${subtotal})`,
-          );
-        }
-        const totalPrice = round2(subtotal - discount);
         const payment = dto.payment
-          ? await this.paymentData(dto.payment, totalPrice)
+          ? await this.paymentData(dto.payment, groupTotal)
           : null;
 
         const customer = await this.customers.resolve(tx, businessId, dto);
-        return tx.reservation.create({
-          data: {
-            businessId,
-            courtId: court.id,
+        return this.createReservations(
+          tx,
+          businessId,
+          claimed,
+          prices,
+          {
             customerId: customer.id,
-            start: first.start,
-            end: last.end,
             customerName: customer.name,
             phone: customer.phone,
             customerDetail: dto.customerDetail,
             contactNote: dto.contactNote,
             tag: dto.tag,
             isRecurring: dto.isRecurring ?? false,
-            subtotal,
-            discount,
-            totalPrice,
-            ...(payment && {
-              payments: {
-                create: {
-                  ...payment,
-                  businessId,
-                  customerName: customer.name,
-                },
-              },
-            }),
           },
-          include: reservationInclude,
-        });
+          payment && { ...payment, customerName: customer.name },
+        );
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );
 
     return toReservationDto(reservation);
+  }
+
+  /**
+   * Valor de cada cancha según sus tarifas. El descuento es sobre el total y
+   * se reparte en proporción al valor de cada una (el redondeo queda en la última).
+   */
+  private groupPrices(claimed: Claimed[], discount: number): Prices[] {
+    const subtotals = claimed.map(({ court, first, last }) =>
+      priceFor(
+        reservationIntervals(first.start, last.end, this.utcOffset),
+        Number(court.basePricePerHour),
+        courtRates(court),
+      ),
+    );
+    const total = round2(subtotals.reduce((sum, v) => sum + v, 0));
+    if (discount > total) {
+      throw new BadRequestException(
+        `El descuento no puede superar el valor de la reserva (${total})`,
+      );
+    }
+    // Un descuento entero (lo normal en pesos) se reparte en enteros.
+    const roundShare = Number.isInteger(discount) ? Math.round : round2;
+    let left = discount;
+    return subtotals.map((subtotal, i) => {
+      const share =
+        i === subtotals.length - 1
+          ? round2(left)
+          : total > 0
+            ? roundShare((discount * subtotal) / total)
+            : 0;
+      left = round2(left - share);
+      return {
+        subtotal,
+        discount: share,
+        totalPrice: round2(subtotal - share),
+      };
+    });
+  }
+
+  /**
+   * Crea una reserva por cancha; con más de una las une en un grupo. El pago
+   * (si hay) queda en la primera. Devuelve la primera con su grupo.
+   */
+  private async createReservations(
+    tx: Prisma.TransactionClient,
+    businessId: string,
+    claimed: Claimed[],
+    prices: Prices[],
+    common: Omit<
+      Prisma.ReservationUncheckedCreateInput,
+      | 'businessId'
+      | 'courtId'
+      | 'start'
+      | 'end'
+      | 'subtotal'
+      | 'discount'
+      | 'totalPrice'
+      | 'groupId'
+    >,
+    payment: Omit<
+      Prisma.PaymentUncheckedCreateWithoutReservationInput,
+      'businessId'
+    > | null,
+  ): Promise<ReservationWithRelations> {
+    const groupId =
+      claimed.length > 1
+        ? (
+            await tx.reservationGroup.create({
+              data: { businessId },
+              select: { id: true },
+            })
+          ).id
+        : null;
+    let firstId = '';
+    for (const [i, { court, first, last }] of claimed.entries()) {
+      const created = await tx.reservation.create({
+        data: {
+          ...common,
+          businessId,
+          courtId: court.id,
+          groupId,
+          start: first.start,
+          end: last.end,
+          ...prices[i],
+          ...(i === 0 &&
+            payment && {
+              payments: { create: { ...payment, businessId } },
+            }),
+        },
+        select: { id: true },
+      });
+      if (i === 0) firstId = created.id;
+    }
+    return tx.reservation.findUniqueOrThrow({
+      where: { id: firstId },
+      include: reservationInclude,
+    });
   }
 
   /**
@@ -537,13 +645,13 @@ export class ReservationsService {
   async createWebReservation(
     businessId: string,
     player: User,
-    input: { courtId: string; start: string; slots: number; notes?: string },
+    input: WebSlotsInput & { notes?: string },
     rules: WebBookingRules,
     now = new Date(),
   ): Promise<ReservationDto> {
     const reservation = await this.webTransaction(
       async (tx) => {
-        const { court, first, last } = await this.claimWebSlots(
+        const claimed = await this.claimWebSlots(
           tx,
           businessId,
           player.id,
@@ -558,46 +666,43 @@ export class ReservationsService {
           player,
         );
         const day = dayRange(
-          localDate(first.start, this.utcOffset),
+          localDate(claimed[0].first.start, this.utcOffset),
           this.utcOffset,
         );
-        const sameDay = await tx.reservation.count({
+        // Una reserva de varias canchas cuenta como una.
+        const sameDay = await tx.reservation.findMany({
           where: {
             businessId,
             customerId: customer.id,
             status: { not: ReservationStatus.CANCELLED },
             start: { gte: day.from, lt: day.to },
           },
+          select: { id: true, groupId: true },
         });
-        if (sameDay >= rules.maxReservationsPerDay) {
+        const reservationsToday = new Set(
+          sameDay.map((r) => r.groupId ?? r.id),
+        ).size;
+        if (reservationsToday >= rules.maxReservationsPerDay) {
           throw new ConflictException(
             `Puedes tener máximo ${rules.maxReservationsPerDay} reservas por día en esta sede`,
           );
         }
 
-        const subtotal = priceFor(
-          reservationIntervals(first.start, last.end, this.utcOffset),
-          Number(court.basePricePerHour),
-          courtRates(court),
-        );
-        const created = await tx.reservation.create({
-          data: {
-            businessId,
-            courtId: court.id,
+        const created = await this.createReservations(
+          tx,
+          businessId,
+          claimed,
+          this.groupPrices(claimed, 0),
+          {
             customerId: customer.id,
             playerId: player.id,
             source: ReservationSource.WEB,
-            start: first.start,
-            end: last.end,
             customerName: customer.name,
             phone: customer.phone,
             contactNote: input.notes?.trim() || null,
-            subtotal,
-            discount: 0,
-            totalPrice: subtotal,
           },
-          include: reservationInclude,
-        });
+          null,
+        );
         // El apartado ya cumplió: el turno queda reservado.
         await tx.slotHold.deleteMany({
           where: { businessId, playerId: player.id },
@@ -615,34 +720,37 @@ export class ReservationsService {
   async holdWebSlots(
     businessId: string,
     playerId: string,
-    input: { courtId: string; start: string; slots: number },
+    input: WebSlotsInput,
     rules: WebBookingRules,
     now = new Date(),
-  ): Promise<SlotHold> {
-    return this.webTransaction(
-      async (tx) => {
-        const { court, first, last } = await this.claimWebSlots(
-          tx,
+  ): Promise<SlotHold[]> {
+    return this.webTransaction(async (tx) => {
+      const claimed = await this.claimWebSlots(
+        tx,
+        businessId,
+        playerId,
+        input,
+        rules,
+        now,
+      );
+      const expiresAt = new Date(now.getTime() + rules.holdMinutes * 60_000);
+      await tx.slotHold.deleteMany({ where: { businessId, playerId } });
+      await tx.slotHold.createMany({
+        data: claimed.map(({ court, first, last }) => ({
           businessId,
           playerId,
-          input,
-          rules,
-          now,
-        );
-        const data = {
           courtId: court.id,
           start: first.start,
           end: last.end,
           slots: input.slots,
-          expiresAt: new Date(now.getTime() + rules.holdMinutes * 60_000),
-        };
-        return tx.slotHold.upsert({
-          where: { businessId_playerId: { businessId, playerId } },
-          create: { ...data, businessId, playerId },
-          update: data,
-        });
-      },
-    );
+          expiresAt,
+        })),
+      });
+      return tx.slotHold.findMany({
+        where: { businessId, playerId },
+        orderBy: { createdAt: 'asc' },
+      });
+    });
   }
 
   /**
@@ -672,14 +780,15 @@ export class ReservationsService {
     }
   }
 
-  /** El apartado vigente del jugador en el negocio, si tiene. */
+  /** El apartado vigente del jugador en el negocio: una fila por cancha (vacío si no tiene). */
   currentHold(
     businessId: string,
     playerId: string,
     now = new Date(),
-  ): Promise<SlotHold | null> {
-    return this.prisma.slotHold.findFirst({
+  ): Promise<SlotHold[]> {
+    return this.prisma.slotHold.findMany({
       where: { businessId, playerId, expiresAt: { gt: now } },
+      orderBy: { createdAt: 'asc' },
     });
   }
 
@@ -695,24 +804,24 @@ export class ReservationsService {
     tx: Prisma.TransactionClient,
     businessId: string,
     playerId: string,
-    input: { courtId: string; start: string; slots: number },
+    input: WebSlotsInput,
     rules: WebBookingRules,
     now: Date,
-  ): Promise<{ court: CourtWithDetails; first: Slot; last: Slot }> {
+  ): Promise<Claimed[]> {
     if (input.slots > rules.maxSlots) {
       throw new BadRequestException(
         `Puedes elegir máximo ${rules.maxSlots} turnos seguidos`,
       );
     }
-    const claimed = await this.claimCourt(
+    const claimed = await this.claimCourts(
       tx,
       businessId,
-      input.courtId,
+      input.courtIds,
       new Date(input.start),
       input.slots,
       now,
     );
-    const { first, last } = claimed;
+    const { first, last } = claimed[0];
     if (
       first.start.getTime() <
       now.getTime() + rules.minAdvanceMinutes * 60_000
@@ -728,7 +837,7 @@ export class ReservationsService {
     }
     const heldByOther = await tx.slotHold.findFirst({
       where: {
-        courtId: claimed.court.id,
+        courtId: { in: claimed.map((c) => c.court.id) },
         playerId: { not: playerId },
         expiresAt: { gt: now },
         start: { lt: last.end },
@@ -778,7 +887,7 @@ export class ReservationsService {
     const reservation = await this.prisma.$transaction(async (tx) => {
       const current = await tx.reservation.findFirst({
         where: { id, businessId },
-        include: { payments: true },
+        select: { id: true, status: true, groupId: true },
       });
       if (!current) throw new NotFoundException('La reserva no existe');
       if (current.status !== ReservationStatus.CONFIRMED) {
@@ -786,7 +895,32 @@ export class ReservationsService {
           'Solo se pueden cancelar reservas confirmadas',
         );
       }
+      // En un grupo se cancelan todas sus canchas.
+      const members = await tx.reservation.findMany({
+        where: current.groupId
+          ? { groupId: current.groupId, status: ReservationStatus.CONFIRMED }
+          : { id: current.id },
+        include: { payments: true },
+      });
+      for (const member of members) {
+        await this.cancelOne(tx, businessId, member, reason, actorId);
+      }
+      return tx.reservation.findUniqueOrThrow({
+        where: { id: current.id },
+        include: reservationInclude,
+      });
+    });
+    return toReservationDto(reservation);
+  }
 
+  private async cancelOne(
+    tx: Prisma.TransactionClient,
+    businessId: string,
+    current: Prisma.ReservationGetPayload<{ include: { payments: true } }>,
+    reason: string,
+    actorId: string,
+  ): Promise<void> {
+    {
       for (const payment of current.payments) {
         if (payment.status === PaymentStatus.APPROVED) {
           await tx.payment.update({
@@ -816,7 +950,7 @@ export class ReservationsService {
         }
       }
 
-      return tx.reservation.update({
+      await tx.reservation.update({
         where: { id: current.id },
         data: {
           status: ReservationStatus.CANCELLED,
@@ -824,10 +958,8 @@ export class ReservationsService {
           cancelledAt: new Date(),
           cancelledById: actorId,
         },
-        include: reservationInclude,
       });
-    });
-    return toReservationDto(reservation);
+    }
   }
 
   /** La cancha pedida, si tiene esos turnos libres. */
@@ -849,23 +981,76 @@ export class ReservationsService {
     const { first, last } = this.findSlots(court, start, count);
     if (last.end <= now) throw new BadRequestException('Ese turno ya pasó');
     if (await isTaken(tx, court.id, first.start, last.end)) {
-      throw new ConflictException('La cancha ya está reservada en ese horario');
+      throw new ConflictException(
+        `La cancha ${court.name} ya está reservada en ese horario`,
+      );
     }
     return { court, first, last };
   }
 
   /**
-   * La primera cancha reservable del deporte (por nombre) que tenga un turno que
-   * empiece en `start` y `count` turnos seguidos libres.
+   * Varias canchas a la vez: todas libres en la misma franja, del mismo deporte
+   * y con el mismo turno. Si alguna no cumple, no se toma ninguna.
    */
-  private async claimAnyCourt(
+  private async claimCourts(
+    tx: Prisma.TransactionClient,
+    businessId: string,
+    courtIds: string[],
+    start: Date,
+    count: number,
+    now: Date,
+  ): Promise<Claimed[]> {
+    if (!courtIds.length) {
+      throw new BadRequestException('Elige al menos una cancha');
+    }
+    if (courtIds.length > MAX_GROUP_COURTS) {
+      throw new BadRequestException(
+        `Puedes reservar máximo ${MAX_GROUP_COURTS} canchas a la vez`,
+      );
+    }
+    if (new Set(courtIds).size !== courtIds.length) {
+      throw new BadRequestException('No repitas canchas en la misma reserva');
+    }
+    const claimed: Claimed[] = [];
+    for (const courtId of courtIds) {
+      const one = await this.claimCourt(
+        tx,
+        businessId,
+        courtId,
+        start,
+        count,
+        now,
+      );
+      const [base] = claimed;
+      if (base && one.court.sport !== base.court.sport) {
+        throw new BadRequestException(
+          'Las canchas de una misma reserva deben ser del mismo deporte',
+        );
+      }
+      if (base && one.court.slotDuration !== base.court.slotDuration) {
+        throw new BadRequestException(
+          'Las canchas de una misma reserva deben tener la misma duración de turno',
+        );
+      }
+      claimed.push(one);
+    }
+    return claimed;
+  }
+
+  /**
+   * Las primeras `courts` canchas reservables del deporte (por nombre) que tengan
+   * un turno que empiece en `start`, `count` turnos seguidos libres y el mismo
+   * turno que la primera.
+   */
+  private async claimAnyCourts(
     tx: Prisma.TransactionClient,
     businessId: string,
     sport: Sport,
     start: Date,
     count: number,
+    courtsWanted: number,
     now: Date,
-  ): Promise<{ court: CourtWithDetails; first: Slot; last: Slot }> {
+  ): Promise<Claimed[]> {
     const courts = (
       await tx.court.findMany({
         where: { businessId, sport, isActive: true },
@@ -880,6 +1065,7 @@ export class ReservationsService {
     }
 
     let matched = false;
+    const claimed: Claimed[] = [];
     for (const court of courts) {
       let range: { first: Slot; last: Slot };
       try {
@@ -890,13 +1076,21 @@ export class ReservationsService {
       matched = true;
       if (range.last.end <= now)
         throw new BadRequestException('Ese turno ya pasó');
+      const [base] = claimed;
+      if (base && court.slotDuration !== base.court.slotDuration) continue;
       if (!(await isTaken(tx, court.id, range.first.start, range.last.end))) {
-        return { court, ...range };
+        claimed.push({ court, ...range });
+        if (claimed.length === courtsWanted) return claimed;
       }
     }
     if (!matched) {
       throw new BadRequestException(
         `Ninguna cancha de ${SPORT_LABELS[sport]} tiene ${count} turno(s) seguidos desde ese inicio (consulta la disponibilidad)`,
+      );
+    }
+    if (claimed.length > 0) {
+      throw new ConflictException(
+        `Solo hay ${claimed.length} cancha(s) de ${SPORT_LABELS[sport]} libres en ese horario`,
       );
     }
     throw new ConflictException(
@@ -1081,5 +1275,31 @@ export function toReservationDto(r: ReservationWithRelations): ReservationDto {
     cancellationReason: r.cancellationReason,
     cancelledAt: r.cancelledAt,
     cancelledBy: r.cancelledBy?.displayName ?? null,
+    group: r.group ? toGroupDto(r.group) : null,
+  };
+}
+
+function toGroupDto(
+  group: NonNullable<ReservationWithRelations['group']>,
+): ReservationDto['group'] {
+  const totalPrice = round2(
+    group.reservations.reduce((sum, m) => sum + Number(m.totalPrice), 0),
+  );
+  const amountPaid = round2(
+    group.reservations
+      .flatMap((m) => m.payments)
+      .filter((p) => p.status === PaymentStatus.APPROVED)
+      .reduce((sum, p) => sum + Number(p.amount), 0),
+  );
+  return {
+    id: group.id,
+    courts: group.reservations.map((m) => ({
+      reservationId: m.id,
+      courtId: m.courtId,
+      courtName: m.court.name,
+    })),
+    totalPrice,
+    amountPaid,
+    balance: round2(totalPrice - amountPaid),
   };
 }

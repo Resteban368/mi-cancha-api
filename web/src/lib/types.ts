@@ -22,6 +22,8 @@ export interface PublicBusiness {
     maxSlots: number;
     /** Minutos que dura un apartado si no se confirma. */
     holdMinutes: number;
+    /** Canchas que se pueden reservar a la vez en la misma franja. */
+    maxCourts?: number;
     paymentMethod: string;
   };
   courts: PublicCourt[];
@@ -59,7 +61,8 @@ export interface Slot {
 
 /** Turnos apartados por el jugador mientras confirma. */
 export interface SlotHold {
-  courtId: string;
+  /** Canchas apartadas, todas en la misma franja. */
+  courtIds: string[];
   start: string;
   end: string;
   slots: number;
@@ -121,4 +124,12 @@ export interface Reservation {
   status: 'CONFIRMED' | 'COMPLETED' | 'NO_SHOW' | 'CANCELLED';
   source: 'BUSINESS' | 'WEB';
   cancellationReason: string | null;
+  /** Reserva de varias canchas a la vez: el total y el saldo son los del grupo. */
+  group: {
+    id: string;
+    courts: { reservationId: string; courtId: string; courtName: string }[];
+    totalPrice: number;
+    amountPaid: number;
+    balance: number;
+  } | null;
 }

@@ -65,25 +65,37 @@ function metricsCte(p: ListParams): Prisma.Sql {
         AND p."reservationId" IS NOT NULL
       GROUP BY p."reservationId"
     ),
-    agg AS (
+    -- Una reserva de varias canchas cuenta como una: se suman sus canchas y sus
+    -- pagos (que van en la primera) antes de calcular el saldo.
+    units AS (
       SELECT
         r."customerId",
-        COUNT(*) FILTER (WHERE r."status" <> 'CANCELLED') AS reservations,
-        COUNT(*) FILTER (WHERE r."status" = 'COMPLETED') AS completed,
-        COUNT(*) FILTER (WHERE r."status" = 'NO_SHOW') AS no_show,
-        COALESCE(SUM(paid.amount), 0) AS total_spent,
-        COALESCE(
-          SUM(GREATEST(r."totalPrice" - COALESCE(paid.amount, 0), 0))
-            FILTER (WHERE r."status" IN ('CONFIRMED', 'COMPLETED')),
-          0
-        ) AS balance,
-        MAX(r."start") FILTER (
-          WHERE r."status" IN ('CONFIRMED', 'COMPLETED') AND r."start" <= ${p.now}
-        ) AS last_visit
+        MIN(r."status"::text) AS status,
+        MIN(r."start") AS start,
+        SUM(r."totalPrice") AS total,
+        SUM(COALESCE(paid.amount, 0)) AS paid
       FROM "Reservation" r
       LEFT JOIN paid ON paid."reservationId" = r."id"
       WHERE r."businessId" = ${p.businessId} AND r."customerId" IS NOT NULL
-      GROUP BY r."customerId"
+      GROUP BY r."customerId", COALESCE(r."groupId", r."id")
+    ),
+    agg AS (
+      SELECT
+        u."customerId",
+        COUNT(*) FILTER (WHERE u.status <> 'CANCELLED') AS reservations,
+        COUNT(*) FILTER (WHERE u.status = 'COMPLETED') AS completed,
+        COUNT(*) FILTER (WHERE u.status = 'NO_SHOW') AS no_show,
+        COALESCE(SUM(u.paid), 0) AS total_spent,
+        COALESCE(
+          SUM(GREATEST(u.total - u.paid, 0))
+            FILTER (WHERE u.status IN ('CONFIRMED', 'COMPLETED')),
+          0
+        ) AS balance,
+        MAX(u.start) FILTER (
+          WHERE u.status IN ('CONFIRMED', 'COMPLETED') AND u.start <= ${p.now}
+        ) AS last_visit
+      FROM units u
+      GROUP BY u."customerId"
     ),
     m AS (
       SELECT
@@ -189,7 +201,8 @@ export function lastVisitCourtsQuery(
 /** Reservas por deporte, solo para los clientes de la página. */
 export function sportsQuery(customerIds: string[]): Prisma.Sql {
   return Prisma.sql`
-    SELECT r."customerId", co."sport"::text AS "sport", COUNT(*)::int AS "count"
+    SELECT r."customerId", co."sport"::text AS "sport",
+      COUNT(DISTINCT COALESCE(r."groupId", r."id"))::int AS "count"
     FROM "Reservation" r
     JOIN "Court" co ON co."id" = r."courtId"
     WHERE r."customerId" IN (${Prisma.join(customerIds)})
