@@ -1,12 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
+import { CourtDetails } from '../components/CourtDetails';
 import { Header } from '../components/Header';
 import { Alert, Button, Card, Dialog, inputClass, Skeleton } from '../components/ui';
 import { api, ApiError, errorMessage } from '../lib/api';
 import {
   courtSpecs,
   bogotaDate,
+  bogotaDateOf,
   dayParts,
+  formatCountdown,
   formatLongDay,
   formatMoney,
   formatTime,
@@ -14,7 +17,16 @@ import {
   SPORT_LABELS,
 } from '../lib/format';
 import { useSession } from '../lib/session';
-import type { CourtSlots, PublicBusiness, Reservation, Sport, SportAvailability } from '../lib/types';
+import type {
+  CourtSlots,
+  PublicBusiness,
+  PublicCourt,
+  Reservation,
+  Slot,
+  SlotHold,
+  Sport,
+  SportAvailability,
+} from '../lib/types';
 import { useApi } from '../lib/useApi';
 
 const UNAVAILABLE_MESSAGES: Record<string, string> = {
@@ -132,6 +144,9 @@ function BusinessInfo({ business: b }: { business: PublicBusiness }) {
   );
 }
 
+/** Cada cuánto se refrescan los turnos mientras la página está visible. */
+const POLL_MS = 5_000;
+
 function Booking({ business }: { business: PublicBusiness }) {
   const { token, signOut } = useSession();
   const navigate = useNavigate();
@@ -142,39 +157,177 @@ function Booking({ business }: { business: PublicBusiness }) {
   const [notes, setNotes] = useState(restored?.notes ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string>();
+  const [notice, setNotice] = useState<string>();
   const [booked, setBooked] = useState<Reservation | null>(null);
+  const [details, setDetails] = useState<PublicCourt | null>(null);
+  // Apartado propio; expiresAt en el reloj del navegador.
+  const [hold, setHold] = useState<{ value: SlotHold; expiresAt: number } | null>(null);
+  const [holding, setHolding] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+  const holdSeq = useRef(0);
+  const holdPath = `/player/businesses/${business.slug}/hold`;
 
   const availability = useApi<SportAvailability>(
     `/public/businesses/${business.slug}/availability?date=${date}&sport=${sport}`,
   );
+  const { reload } = availability;
   const dates = Array.from({ length: business.rules.maxDaysAhead + 1 }, (_, i) => bogotaDate(i));
+
+  // Turnos "en vivo": se refrescan solos mientras la pestaña está visible.
+  useEffect(() => {
+    const refresh = () => document.visibilityState === 'visible' && reload();
+    const id = setInterval(refresh, POLL_MS);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [reload]);
+
+  /** Del apartado propio: el turno se ve libre para quien lo apartó. */
+  const isMine = (courtId: string, slot: Slot) =>
+    hold !== null &&
+    hold.value.courtId === courtId &&
+    Date.parse(slot.start) >= Date.parse(hold.value.start) &&
+    Date.parse(slot.end) <= Date.parse(hold.value.end);
+  const isFree = (courtId: string, slot: Slot) =>
+    slot.status === 'AVAILABLE' ||
+    (slot.status === 'HELD' && (isMine(courtId, slot) || (holding && selection?.courtId === courtId)));
 
   const court = availability.data?.courts.find((c) => c.court.id === selection?.courtId);
   const startIndex = court?.slots.findIndex((s) => s.start === selection?.start) ?? -1;
   let maxCount = 0;
   if (court && startIndex !== -1) {
-    while (maxCount < business.rules.maxSlots && court.slots[startIndex + maxCount]?.status === 'AVAILABLE') {
+    while (
+      maxCount < business.rules.maxSlots &&
+      court.slots[startIndex + maxCount] &&
+      isFree(court.court.id, court.slots[startIndex + maxCount])
+    ) {
       maxCount++;
     }
   }
   const chosen = court && startIndex !== -1 ? court.slots.slice(startIndex, startIndex + Math.min(selection!.slots, maxCount)) : [];
   const total = chosen.reduce((sum, s) => sum + s.price, 0);
+  const remaining = hold ? (hold.expiresAt - now) / 1000 : 0;
 
-  // Si la selección guardada ya no está libre, se descarta.
+  // Si la selección ya no está libre (otra persona la tomó), se descarta.
   useEffect(() => {
-    if (availability.data && selection && maxCount === 0) setSelection(null);
-  }, [availability.data, selection, maxCount]);
+    if (availability.data && selection && maxCount === 0 && !holding) {
+      setSelection(null);
+      setHold(null);
+      setNotice('Ese turno lo acaba de tomar otra persona. Elige otro horario.');
+    }
+  }, [availability.data, selection, maxCount, holding]);
+
+  // Cuenta regresiva del apartado; al vencer, el turno queda libre otra vez.
+  useEffect(() => {
+    if (!hold) return;
+    const id = setInterval(() => setNow(Date.now()), 1_000);
+    return () => clearInterval(id);
+  }, [hold]);
+  useEffect(() => {
+    if (hold && remaining <= 0) {
+      holdSeq.current++;
+      setHold(null);
+      setSelection(null);
+      setNotice('Se acabó el tiempo y el turno quedó libre otra vez. Elígelo de nuevo si aún lo quieres.');
+      reload();
+    }
+  }, [hold, remaining, reload]);
+
+  // Al cerrar la página se suelta el apartado (si no, vence solo).
+  useEffect(() => {
+    if (!hold || !token) return;
+    const release = () => void api(holdPath, { method: 'DELETE', token, keepalive: true }).catch(() => undefined);
+    window.addEventListener('pagehide', release);
+    return () => window.removeEventListener('pagehide', release);
+  }, [hold, token, holdPath]);
+
+  function goToLogin(pending: Selection) {
+    savePending(business.slug, { ...pending, sport, date, notes });
+    navigate(`/${business.slug}/ingresar`);
+  }
+
+  /** Aparta los turnos elegidos (reemplaza el apartado anterior). */
+  async function requestHold(next: Selection) {
+    if (!token) return;
+    const seq = ++holdSeq.current;
+    setHolding(true);
+    try {
+      const value = await api<SlotHold>(holdPath, { method: 'PUT', token, body: next });
+      if (seq !== holdSeq.current) return;
+      setHold({ value, expiresAt: Date.now() + business.rules.holdMinutes * 60_000 });
+      setNow(Date.now());
+    } catch (e) {
+      if (seq !== holdSeq.current) return;
+      if (e instanceof ApiError && e.status === 401) {
+        signOut();
+        goToLogin(next);
+        return;
+      }
+      setHold(null);
+      setSelection(null);
+      setNotice(errorMessage(e));
+      reload();
+    } finally {
+      if (seq === holdSeq.current) setHolding(false);
+    }
+  }
+
+  function releaseHold() {
+    holdSeq.current++;
+    setHolding(false);
+    if (token && (hold || selection)) {
+      void api(holdPath, { method: 'DELETE', token }).catch(() => undefined);
+    }
+    setHold(null);
+  }
+
+  // Al volver del ingreso se aparta lo elegido; si no, se recupera el apartado vigente.
+  useEffect(() => {
+    if (!token) return;
+    if (restored) {
+      void requestHold(restored);
+      return;
+    }
+    api<{ hold: SlotHold | null }>(holdPath, { token })
+      .then(({ hold: current }) => {
+        const held = current && business.courts.find((c) => c.id === current.courtId);
+        if (!current || !held) return;
+        setSport(held.sport);
+        setDate(bogotaDateOf(current.start));
+        setSelection({ courtId: current.courtId, start: current.start, slots: current.slots });
+        setHold({ value: current, expiresAt: Date.parse(current.expiresAt) });
+        setNow(Date.now());
+      })
+      .catch(() => undefined);
+    // Solo al entrar a la página.
+  }, []);
 
   function choose(courtId: string, start: string) {
-    setSelection({ courtId, start, slots: 1 });
+    const next = { courtId, start, slots: 1 };
+    setSelection(next);
     setError(undefined);
+    setNotice(undefined);
+    void requestHold(next);
+  }
+
+  function changeSlots(slots: number) {
+    if (!selection) return;
+    const next = { ...selection, slots };
+    setSelection(next);
+    void requestHold(next);
+  }
+
+  function clearSelection() {
+    releaseHold();
+    setSelection(null);
   }
 
   async function reserve() {
     if (!selection || !chosen.length) return;
     if (!token) {
-      savePending(business.slug, { ...selection, slots: chosen.length, sport, date, notes });
-      navigate(`/${business.slug}/ingresar`);
+      goToLogin({ ...selection, slots: chosen.length });
       return;
     }
     setSaving(true);
@@ -185,19 +338,20 @@ function Booking({ business }: { business: PublicBusiness }) {
         token,
         body: { courtId: selection.courtId, start: selection.start, slots: chosen.length, notes: notes.trim() || undefined },
       });
+      holdSeq.current++;
+      setHold(null);
       setBooked(reservation);
       setSelection(null);
       setNotes('');
-      availability.reload();
+      reload();
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) {
-        savePending(business.slug, { ...selection, slots: chosen.length, sport, date, notes });
         signOut();
-        navigate(`/${business.slug}/ingresar`);
+        goToLogin({ ...selection, slots: chosen.length });
         return;
       }
       setError(errorMessage(e));
-      if (e instanceof ApiError && e.status === 409) availability.reload();
+      if (e instanceof ApiError && e.status === 409) reload();
     } finally {
       setSaving(false);
     }
@@ -206,6 +360,7 @@ function Booking({ business }: { business: PublicBusiness }) {
   return (
     <>
       <BookedDialog business={business} reservation={booked} onClose={() => setBooked(null)} />
+      <CourtDetails court={details} onClose={() => setDetails(null)} />
 
       <Card>
         <h2 className="text-lg font-bold">Reserva tu cancha</h2>
@@ -221,8 +376,9 @@ function Booking({ business }: { business: PublicBusiness }) {
               role="tab"
               aria-selected={sport === s}
               onClick={() => {
+                if (s === sport) return;
+                clearSelection();
                 setSport(s);
-                setSelection(null);
               }}
               className={`min-h-11 shrink-0 rounded-full border px-4 text-sm font-semibold transition ${
                 sport === s ? 'border-accent bg-accent text-accent-fg' : 'border-border text-fg-2 hover:bg-surface-2'
@@ -243,8 +399,9 @@ function Booking({ business }: { business: PublicBusiness }) {
                 type="button"
                 aria-pressed={active}
                 onClick={() => {
+                  if (active) return;
+                  clearSelection();
                   setDate(d);
-                  setSelection(null);
                 }}
                 className={`flex w-16 shrink-0 flex-col items-center rounded-xl border py-2 text-xs transition ${
                   active ? 'border-accent bg-accent text-accent-fg' : 'border-border hover:bg-surface-2'
@@ -257,8 +414,17 @@ function Booking({ business }: { business: PublicBusiness }) {
             );
           })}
         </div>
+        <p className="mt-1 flex items-center gap-1.5 text-xs text-fg-3">
+          <span className="size-2 animate-pulse rounded-full bg-accent" aria-hidden="true" />
+          Los turnos se actualizan en vivo.
+        </p>
       </Card>
 
+      {notice && (
+        <div role="status">
+          <Alert tone="warn">{notice}</Alert>
+        </div>
+      )}
       {availability.error && <Alert>{availability.error}</Alert>}
       {availability.loading && !availability.data ? (
         <Skeleton className="h-64" />
@@ -272,7 +438,13 @@ function Booking({ business }: { business: PublicBusiness }) {
             selection={selection}
             chosenCount={chosen.length}
             startIndex={court?.court.id === c.court.id ? startIndex : -1}
+            isFree={isFree}
             onChoose={choose}
+            onDetails={
+              business.courts.some((x) => x.id === c.court.id)
+                ? () => setDetails(business.courts.find((x) => x.id === c.court.id)!)
+                : undefined
+            }
           />
         ))
       )}
@@ -287,19 +459,30 @@ function Booking({ business }: { business: PublicBusiness }) {
                   {court.court.name} · {formatTime(chosen[0].start)} a {formatTime(chosen.at(-1)!.end)}
                 </p>
                 <p className="text-xs text-fg-3">{formatLongDay(chosen[0].start)}</p>
+                <HoldStatus token={token} holding={holding} remaining={hold ? remaining : null} />
               </div>
-              <select
-                aria-label="Duración"
-                className={`${inputClass} w-auto`}
-                value={Math.min(selection.slots, maxCount)}
-                onChange={(e) => setSelection({ ...selection, slots: Number(e.target.value) })}
-              >
-                {Array.from({ length: maxCount }, (_, i) => i + 1).map((n) => (
-                  <option key={n} value={n}>
-                    {(n * court.court.slotDuration) / 60} h ({n} turno{n > 1 ? 's' : ''})
-                  </option>
-                ))}
-              </select>
+              <div className="flex items-center gap-2">
+                <select
+                  aria-label="Duración"
+                  className={`${inputClass} w-auto`}
+                  value={Math.min(selection.slots, maxCount)}
+                  onChange={(e) => changeSlots(Number(e.target.value))}
+                >
+                  {Array.from({ length: maxCount }, (_, i) => i + 1).map((n) => (
+                    <option key={n} value={n}>
+                      {(n * court.court.slotDuration) / 60} h ({n} turno{n > 1 ? 's' : ''})
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={clearSelection}
+                  aria-label="Quitar selección"
+                  className="flex size-11 items-center justify-center rounded-xl border border-border text-lg text-fg-3 hover:bg-surface-2"
+                >
+                  ×
+                </button>
+              </div>
             </div>
             <textarea
               rows={2}
@@ -314,7 +497,7 @@ function Booking({ business }: { business: PublicBusiness }) {
                 <p className="text-lg font-bold tabular">{formatMoney(total, court.court.currency)}</p>
                 <p className="text-xs text-fg-3">Pagas en efectivo en la sede</p>
               </div>
-              <Button onClick={reserve} loading={saving} className="min-w-40">
+              <Button onClick={reserve} loading={saving} disabled={Boolean(token) && holding} className="min-w-40">
                 {token ? 'Reservar' : 'Ingresa para reservar'}
               </Button>
             </div>
@@ -325,29 +508,58 @@ function Booking({ business }: { business: PublicBusiness }) {
   );
 }
 
+/** "Apartado para ti · 2:41" bajo el turno elegido. */
+function HoldStatus({ token, holding, remaining }: { token: string | null; holding: boolean; remaining: number | null }) {
+  if (!token) {
+    return <p className="mt-0.5 text-xs text-fg-3">Ingresa para apartar el turno mientras confirmas.</p>;
+  }
+  if (holding && remaining === null) {
+    return <p className="mt-0.5 text-xs text-fg-3">Apartando el turno…</p>;
+  }
+  if (remaining === null) return null;
+  const urgent = remaining <= 30;
+  return (
+    <p className={`mt-0.5 text-xs font-semibold ${urgent ? 'text-danger' : 'text-accent'}`} aria-live={urgent ? 'polite' : 'off'}>
+      Apartado para ti · <span className="tabular">{formatCountdown(remaining)}</span> para confirmar
+    </p>
+  );
+}
+
 function CourtCard({
   court: { court, availableCount, slots },
   selection,
   chosenCount,
   startIndex,
+  isFree,
   onChoose,
+  onDetails,
 }: {
   court: CourtSlots;
   selection: Selection | null;
   chosenCount: number;
   startIndex: number;
+  isFree: (courtId: string, slot: Slot) => boolean;
   onChoose: (courtId: string, start: string) => void;
+  onDetails?: () => void;
 }) {
   return (
     <Card>
       <div className="mb-3 flex items-center gap-3">
-        {court.photoUrl ? (
-          <img src={court.photoUrl} alt="" className="size-14 shrink-0 rounded-xl object-cover" />
-        ) : (
-          <div className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-2xl" aria-hidden="true">
-            {SPORT_EMOJI[court.sport]}
-          </div>
-        )}
+        <button
+          type="button"
+          onClick={onDetails}
+          disabled={!onDetails}
+          aria-label={`Ver detalles de ${court.name}`}
+          className="shrink-0 rounded-xl disabled:cursor-default"
+        >
+          {court.photoUrl ? (
+            <img src={court.photoUrl} alt="" className="size-14 rounded-xl object-cover" />
+          ) : (
+            <span className="flex size-14 items-center justify-center rounded-xl bg-accent-soft text-2xl" aria-hidden="true">
+              {SPORT_EMOJI[court.sport]}
+            </span>
+          )}
+        </button>
         <div className="min-w-0 flex-1">
           <h3 className="truncate font-semibold">{court.name}</h3>
           <p className="text-xs text-fg-3">
@@ -355,6 +567,11 @@ function CourtCard({
             {court.slotDuration % 60 === 0 ? `${court.slotDuration / 60} h` : `${court.slotDuration} min`}
           </p>
           {courtSpecs(court) && <p className="text-xs text-fg-3">{courtSpecs(court)}</p>}
+          {onDetails && (
+            <button type="button" onClick={onDetails} className="mt-0.5 text-xs font-semibold text-accent hover:underline">
+              Ver fotos y detalles
+            </button>
+          )}
         </div>
         <span className="shrink-0 rounded-full bg-accent-soft px-2.5 py-1 text-xs font-bold text-accent">
           {availableCount} libre{availableCount === 1 ? '' : 's'}
@@ -365,8 +582,9 @@ function CourtCard({
       ) : (
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
           {slots.map((slot, i) => {
-            const free = slot.status === 'AVAILABLE';
             const selected = selection?.courtId === court.id && startIndex !== -1 && i >= startIndex && i < startIndex + chosenCount;
+            const free = selected || isFree(court.id, slot);
+            const inProcess = !free && slot.status === 'HELD';
             return (
               <button
                 key={slot.start}
@@ -379,12 +597,20 @@ function CourtCard({
                     ? 'border-accent bg-accent text-accent-fg'
                     : free
                       ? 'border-border bg-surface hover:border-accent'
-                      : 'cursor-not-allowed border-transparent bg-surface-2 text-fg-3'
+                      : inProcess
+                        ? 'cursor-not-allowed border-dashed border-warn bg-warn-soft text-fg-2'
+                        : 'cursor-not-allowed border-transparent bg-surface-2 text-fg-3'
                 }`}
               >
-                <span className={`font-semibold tabular ${free || selected ? '' : 'line-through'}`}>{formatTime(slot.start)}</span>
+                <span className={`font-semibold tabular ${free || inProcess ? '' : 'line-through'}`}>{formatTime(slot.start)}</span>
                 <span className="text-[11px] opacity-80">
-                  {free ? formatMoney(slot.price, court.currency) : slot.status === 'BOOKED' ? 'Ocupado' : 'No disponible'}
+                  {free
+                    ? formatMoney(slot.price, court.currency)
+                    : inProcess
+                      ? 'En proceso'
+                      : slot.status === 'BOOKED'
+                        ? 'Ocupado'
+                        : 'No disponible'}
                 </span>
               </button>
             );

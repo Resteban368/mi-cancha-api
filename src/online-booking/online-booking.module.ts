@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { BusinessesModule } from '../businesses/businesses.module.js';
+import { CourtsModule } from '../courts/courts.module.js';
 import { ReservationsModule } from '../reservations/reservations.module.js';
 import {
   AdminOnlineBookingController,
@@ -11,7 +12,7 @@ import { OnlineBookingService } from './online-booking.service.js';
 import { PlayerAuthService } from './player-auth.service.js';
 
 @Module({
-  imports: [BusinessesModule, ReservationsModule],
+  imports: [BusinessesModule, CourtsModule, ReservationsModule],
   controllers: [
     PublicBookingController,
     PlayerController,

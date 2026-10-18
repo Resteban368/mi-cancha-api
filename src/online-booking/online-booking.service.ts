@@ -8,12 +8,15 @@ import { ConfigService } from '@nestjs/config';
 import { BusinessesService } from '../businesses/businesses.service.js';
 import { businessImageUrl, publicApiUrl } from '../common/public-url.js';
 import { localDate } from '../courts/court-time.js';
-import { REQUIRED_PHOTOS } from '../courts/courts.service.js';
-import type { Prisma } from '../generated/prisma/client.js';
+import {
+  courtInclude,
+  CourtsService,
+  REQUIRED_PHOTOS,
+} from '../courts/courts.service.js';
+import type { Prisma, SlotHold } from '../generated/prisma/client.js';
 import type { Sport } from '../generated/prisma/enums.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
-  MAX_SLOTS,
   ReservationDto,
   SportAvailabilityDto,
 } from '../reservations/dto/reservation.dto.js';
@@ -22,9 +25,15 @@ import {
   type WebBookingRules,
 } from '../reservations/reservations.service.js';
 import {
+  CurrentHoldDto,
   OnlineBookingSettingsDto,
   PublicBusinessDto,
+  PublicCourtDto,
+  SlotHoldDto,
   UpdateOnlineBookingDto,
+  WEB_HOLD_MINUTES,
+  WEB_MAX_SLOTS,
+  WebHoldDto,
   WebReservationDto,
 } from './dto/online-booking.dto.js';
 import { PlayerAuthService } from './player-auth.service.js';
@@ -34,6 +43,8 @@ export const WEB_RULES: WebBookingRules = {
   minAdvanceMinutes: 60,
   maxDaysAhead: 30,
   maxReservationsPerDay: 2,
+  maxSlots: WEB_MAX_SLOTS,
+  holdMinutes: WEB_HOLD_MINUTES,
 };
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -66,6 +77,7 @@ export class OnlineBookingService {
     private readonly reservations: ReservationsService,
     private readonly players: PlayerAuthService,
     private readonly businesses: BusinessesService,
+    private readonly courts: CourtsService,
     config: ConfigService,
   ) {
     this.publicApiUrl = publicApiUrl(config);
@@ -77,6 +89,7 @@ export class OnlineBookingService {
   async publicBusiness(slug: string): Promise<PublicBusinessDto> {
     const business = await this.findBySlug(slug);
     const { available, reason } = bookingState(business);
+    const courts = available ? await this.publicCourts(business.id) : [];
     const point =
       business.latitude !== null && business.longitude !== null
         ? `${business.latitude},${business.longitude}`
@@ -96,7 +109,8 @@ export class OnlineBookingService {
       mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(point)}`,
       sports: bookableSports(business),
       currency: business.courts[0]?.currency ?? 'COP',
-      rules: { ...WEB_RULES, maxSlots: MAX_SLOTS, paymentMethod: 'EFECTIVO' },
+      rules: { ...WEB_RULES, paymentMethod: 'EFECTIVO' },
+      courts,
       bookingAvailable: available,
       unavailableReason: reason,
     };
@@ -129,6 +143,7 @@ export class OnlineBookingService {
       sport,
       date,
       now,
+      { withHolds: true },
     );
     const earliest = now.getTime() + WEB_RULES.minAdvanceMinutes * 60_000;
     return {
@@ -163,6 +178,34 @@ export class OnlineBookingService {
       dto,
       WEB_RULES,
     );
+  }
+
+  /** Aparta los turnos mientras el jugador confirma (reemplaza el anterior). */
+  async hold(
+    slug: string,
+    playerId: string,
+    dto: WebHoldDto,
+  ): Promise<SlotHoldDto> {
+    const business = await this.requireBookable(slug);
+    await this.players.requirePlayer(playerId);
+    const hold = await this.reservations.holdWebSlots(
+      business.id,
+      playerId,
+      dto,
+      WEB_RULES,
+    );
+    return toHoldDto(hold);
+  }
+
+  async currentHold(slug: string, playerId: string): Promise<CurrentHoldDto> {
+    const business = await this.findBySlug(slug);
+    const hold = await this.reservations.currentHold(business.id, playerId);
+    return { hold: hold ? toHoldDto(hold) : null };
+  }
+
+  async releaseHold(slug: string, playerId: string): Promise<void> {
+    const business = await this.findBySlug(slug);
+    await this.reservations.releaseHold(business.id, playerId);
   }
 
   async myReservations(
@@ -230,6 +273,34 @@ export class OnlineBookingService {
     };
   }
 
+  /** Canchas que reciben reservas, con fotos, medidas, horario y tarifas. */
+  private async publicCourts(businessId: string): Promise<PublicCourtDto[]> {
+    const courts = await this.prisma.court.findMany({
+      where: { businessId, isActive: true },
+      include: courtInclude,
+      orderBy: { name: 'asc' },
+    });
+    return courts
+      .map((c) => this.courts.toDto(c))
+      .filter((c) => c.isBookable)
+      .map((c) => ({
+        id: c.id,
+        name: c.name,
+        sport: c.sport,
+        isCovered: c.isCovered,
+        currency: c.currency,
+        basePricePerHour: c.basePricePerHour,
+        slotDuration: c.slotDuration,
+        surface: c.surface,
+        lengthMeters: c.lengthMeters,
+        widthMeters: c.widthMeters,
+        playersPerSide: c.playersPerSide,
+        schedules: c.schedules,
+        rates: c.rates,
+        photos: c.photos,
+      }));
+  }
+
   private async findBySlug(slug: string): Promise<PublicBusiness> {
     const business = await this.prisma.business.findUnique({
       where: { slug },
@@ -279,4 +350,14 @@ function bookingState(business: PublicBusiness): {
     return { available: false, reason: 'NO_COURTS' };
   }
   return { available: true, reason: null };
+}
+
+function toHoldDto(hold: SlotHold): SlotHoldDto {
+  return {
+    courtId: hold.courtId,
+    start: hold.start,
+    end: hold.end,
+    slots: hold.slots,
+    expiresAt: hold.expiresAt,
+  };
 }

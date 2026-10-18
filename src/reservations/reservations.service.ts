@@ -9,6 +9,7 @@ import { BusinessesService } from '../businesses/businesses.service.js';
 import { CatalogsService } from '../catalogs/catalogs.service.js';
 import { Page, pageArgs } from '../common/dto/page.dto.js';
 import { courtPhotoUrl, publicApiUrl } from '../common/public-url.js';
+import { isWriteConflict } from '../common/filters/prisma-exception.filter.js';
 import { dayRange } from '../common/utils/day-range.js';
 import {
   daySlots,
@@ -28,7 +29,7 @@ import {
   normalizeDocument,
   toCustomerDto,
 } from '../customers/customers.service.js';
-import { Prisma, type User } from '../generated/prisma/client.js';
+import { Prisma, type SlotHold, type User } from '../generated/prisma/client.js';
 import {
   CourtPhotoSlot,
   PaymentConcept,
@@ -63,7 +64,13 @@ export interface WebBookingRules {
   minAdvanceMinutes: number;
   maxDaysAhead: number;
   maxReservationsPerDay: number;
+  /** Turnos seguidos por reserva (y por apartado). */
+  maxSlots: number;
+  /** Minutos que dura un apartado si el jugador no confirma. */
+  holdMinutes: number;
 }
+
+type Range = { start: Date; end: Date };
 
 const reservationInclude = {
   court: { select: { name: true, sport: true, currency: true } },
@@ -293,6 +300,7 @@ export class ReservationsService {
     sport: Sport,
     date: string,
     now = new Date(),
+    { withHolds = false }: { withHolds?: boolean } = {},
   ): Promise<SportAvailabilityDto> {
     const courts = (
       await this.prisma.court.findMany({
@@ -308,10 +316,14 @@ export class ReservationsService {
         daySlots(date, c.schedules, c.slotDuration, this.utcOffset),
       ]),
     );
-    const booked = await this.bookedRanges(
-      courts.map((c) => c.id),
-      [...daySlotsByCourt.values()].flat(),
-    );
+    const allSlots = [...daySlotsByCourt.values()].flat();
+    const courtIds = courts.map((c) => c.id);
+    const [booked, held] = await Promise.all([
+      this.bookedRanges(courtIds, allSlots),
+      withHolds
+        ? this.heldRanges(courtIds, allSlots, now)
+        : new Map<string, Range[]>(),
+    ]);
 
     return {
       date,
@@ -323,6 +335,7 @@ export class ReservationsService {
           daySlotsByCourt.get(court.id)!,
           booked.get(court.id) ?? [],
           now,
+          held.get(court.id) ?? [],
         );
         const main = court.photos.find((p) => p.slot === CourtPhotoSlot.MAIN);
         return {
@@ -372,22 +385,52 @@ export class ReservationsService {
     return byCourt;
   }
 
+  /** Apartados vigentes de la web dentro del rango de los turnos, por cancha. */
+  private async heldRanges(
+    courtIds: string[],
+    slots: Slot[],
+    now: Date,
+  ): Promise<Map<string, Range[]>> {
+    const byCourt = new Map<string, Range[]>();
+    if (!courtIds.length || !slots.length) return byCourt;
+    const from = new Date(Math.min(...slots.map((s) => s.start.getTime())));
+    const to = new Date(Math.max(...slots.map((s) => s.end.getTime())));
+    const holds = await this.prisma.slotHold.findMany({
+      where: {
+        courtId: { in: courtIds },
+        expiresAt: { gt: now },
+        start: { lt: to },
+        end: { gt: from },
+      },
+      select: { courtId: true, start: true, end: true },
+    });
+    for (const h of holds) {
+      byCourt.set(h.courtId, [...(byCourt.get(h.courtId) ?? []), h]);
+    }
+    return byCourt;
+  }
+
   private slotsWithStatus(
     court: CourtWithDetails,
     slots: Slot[],
-    booked: { start: Date; end: Date }[],
+    booked: Range[],
     now: Date,
+    held: Range[] = [],
   ): SlotDto[] {
     const rates = courtRates(court);
     const base = Number(court.basePricePerHour);
+    const overlaps = (ranges: Range[], slot: Slot) =>
+      ranges.some((r) => r.start < slot.end && r.end > slot.start);
     return slots.map((slot) => ({
       start: slot.start,
       end: slot.end,
-      status: booked.some((r) => r.start < slot.end && r.end > slot.start)
+      status: overlaps(booked, slot)
         ? 'BOOKED'
         : slot.end <= now
           ? 'PAST'
-          : 'AVAILABLE',
+          : overlaps(held, slot)
+            ? 'HELD'
+            : 'AVAILABLE',
       price: priceFor(
         reservationIntervals(slot.start, slot.end, this.utcOffset),
         base,
@@ -498,33 +541,16 @@ export class ReservationsService {
     rules: WebBookingRules,
     now = new Date(),
   ): Promise<ReservationDto> {
-    const start = new Date(input.start);
-    const reservation = await this.prisma.$transaction(
+    const reservation = await this.webTransaction(
       async (tx) => {
-        const { court, first, last } = await this.claimCourt(
+        const { court, first, last } = await this.claimWebSlots(
           tx,
           businessId,
-          input.courtId,
-          start,
-          input.slots,
+          player.id,
+          input,
+          rules,
           now,
         );
-        if (
-          first.start.getTime() <
-          now.getTime() + rules.minAdvanceMinutes * 60_000
-        ) {
-          throw new BadRequestException(
-            `Reserva con al menos ${rules.minAdvanceMinutes} minutos de anticipación`,
-          );
-        }
-        if (
-          first.start.getTime() >
-          now.getTime() + rules.maxDaysAhead * DAY_MS
-        ) {
-          throw new BadRequestException(
-            `Solo se puede reservar hasta ${rules.maxDaysAhead} días adelante`,
-          );
-        }
 
         const customer = await this.customers.resolveForPlayer(
           tx,
@@ -554,7 +580,7 @@ export class ReservationsService {
           Number(court.basePricePerHour),
           courtRates(court),
         );
-        return tx.reservation.create({
+        const created = await tx.reservation.create({
           data: {
             businessId,
             courtId: court.id,
@@ -572,10 +598,153 @@ export class ReservationsService {
           },
           include: reservationInclude,
         });
+        // El apartado ya cumplió: el turno queda reservado.
+        await tx.slotHold.deleteMany({
+          where: { businessId, playerId: player.id },
+        });
+        return created;
       },
-      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );
     return toReservationDto(reservation);
+  }
+
+  /**
+   * Aparta turnos en la web mientras el jugador confirma: reemplaza su
+   * apartado anterior en el negocio y vence en `rules.holdMinutes`.
+   */
+  async holdWebSlots(
+    businessId: string,
+    playerId: string,
+    input: { courtId: string; start: string; slots: number },
+    rules: WebBookingRules,
+    now = new Date(),
+  ): Promise<SlotHold> {
+    return this.webTransaction(
+      async (tx) => {
+        const { court, first, last } = await this.claimWebSlots(
+          tx,
+          businessId,
+          playerId,
+          input,
+          rules,
+          now,
+        );
+        const data = {
+          courtId: court.id,
+          start: first.start,
+          end: last.end,
+          slots: input.slots,
+          expiresAt: new Date(now.getTime() + rules.holdMinutes * 60_000),
+        };
+        return tx.slotHold.upsert({
+          where: { businessId_playerId: { businessId, playerId } },
+          create: { ...data, businessId, playerId },
+          update: data,
+        });
+      },
+    );
+  }
+
+  /**
+   * Transacción Serializable para tomar turnos desde la web. Si otro jugador
+   * toma el mismo turno a la vez, una de las dos falla: se responde como turno
+   * ocupado para que la página refresque y el jugador elija otro.
+   */
+  private async webTransaction<T>(
+    fn: (tx: Prisma.TransactionClient) => Promise<T>,
+  ): Promise<T> {
+    try {
+      return await this.prisma.$transaction(fn, {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+      });
+    } catch (error) {
+      const conflict =
+        isWriteConflict(error) ||
+        (error instanceof Prisma.PrismaClientKnownRequestError &&
+          (error.code === 'P2034' || error.code === 'P2002'));
+      if (!conflict) throw error;
+      throw new ConflictException({
+        statusCode: 409,
+        error: 'Conflict',
+        code: 'SLOT_HELD',
+        message: 'Otra persona acaba de tomar ese turno. Elige otro horario.',
+      });
+    }
+  }
+
+  /** El apartado vigente del jugador en el negocio, si tiene. */
+  currentHold(
+    businessId: string,
+    playerId: string,
+    now = new Date(),
+  ): Promise<SlotHold | null> {
+    return this.prisma.slotHold.findFirst({
+      where: { businessId, playerId, expiresAt: { gt: now } },
+    });
+  }
+
+  async releaseHold(businessId: string, playerId: string): Promise<void> {
+    await this.prisma.slotHold.deleteMany({ where: { businessId, playerId } });
+  }
+
+  /**
+   * Turnos que un jugador puede tomar desde la web: libres, dentro de la
+   * ventana de reserva y sin apartado vigente de otro jugador.
+   */
+  private async claimWebSlots(
+    tx: Prisma.TransactionClient,
+    businessId: string,
+    playerId: string,
+    input: { courtId: string; start: string; slots: number },
+    rules: WebBookingRules,
+    now: Date,
+  ): Promise<{ court: CourtWithDetails; first: Slot; last: Slot }> {
+    if (input.slots > rules.maxSlots) {
+      throw new BadRequestException(
+        `Puedes elegir máximo ${rules.maxSlots} turnos seguidos`,
+      );
+    }
+    const claimed = await this.claimCourt(
+      tx,
+      businessId,
+      input.courtId,
+      new Date(input.start),
+      input.slots,
+      now,
+    );
+    const { first, last } = claimed;
+    if (
+      first.start.getTime() <
+      now.getTime() + rules.minAdvanceMinutes * 60_000
+    ) {
+      throw new BadRequestException(
+        `Reserva con al menos ${rules.minAdvanceMinutes} minutos de anticipación`,
+      );
+    }
+    if (first.start.getTime() > now.getTime() + rules.maxDaysAhead * DAY_MS) {
+      throw new BadRequestException(
+        `Solo se puede reservar hasta ${rules.maxDaysAhead} días adelante`,
+      );
+    }
+    const heldByOther = await tx.slotHold.findFirst({
+      where: {
+        courtId: claimed.court.id,
+        playerId: { not: playerId },
+        expiresAt: { gt: now },
+        start: { lt: last.end },
+        end: { gt: first.start },
+      },
+      select: { id: true },
+    });
+    if (heldByOther) {
+      throw new ConflictException({
+        statusCode: 409,
+        error: 'Conflict',
+        code: 'SLOT_HELD',
+        message: 'Otra persona está reservando ese turno. Elige otro horario.',
+      });
+    }
+    return claimed;
   }
 
   /** Reservas de un jugador en un negocio, de la más próxima a la más antigua. */

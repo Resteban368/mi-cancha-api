@@ -107,11 +107,14 @@ export function Dialog({
   open,
   onClose,
   labelledBy,
+  wide = false,
   children,
 }: {
   open: boolean;
   onClose: () => void;
   labelledBy: string;
+  /** Más ancho en pantallas grandes (galerías, tablas). */
+  wide?: boolean;
   children: ReactNode;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
@@ -143,7 +146,7 @@ export function Dialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby={labelledBy}
-        className="relative max-h-[92dvh] w-full overflow-y-auto rounded-t-3xl bg-surface p-5 shadow-xl sm:max-w-md sm:rounded-3xl"
+        className={`relative max-h-[92dvh] w-full overflow-y-auto rounded-t-3xl bg-surface p-5 shadow-xl sm:rounded-3xl ${wide ? 'sm:max-w-2xl' : 'sm:max-w-md'}`}
         style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
       >
         {children}

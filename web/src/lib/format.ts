@@ -36,11 +36,63 @@ export function formatMoney(value: number, currency = 'COP'): string {
   }
 }
 
+/** Día (YYYY-MM-DD) en Colombia de un instante. */
+export function bogotaDateOf(iso: string): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: ZONE }).format(new Date(iso));
+}
+
 /** Fecha de hoy (YYYY-MM-DD) en Colombia, desplazada `days` días. */
 export function bogotaDate(days = 0): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: ZONE }).format(
     new Date(Date.now() + days * 86_400_000),
   );
+}
+
+/** "Lunes" … "Domingo", en el orden de la semana. */
+export const DAY_LABELS: Record<string, string> = {
+  MONDAY: 'Lunes',
+  TUESDAY: 'Martes',
+  WEDNESDAY: 'Miércoles',
+  THURSDAY: 'Jueves',
+  FRIDAY: 'Viernes',
+  SATURDAY: 'Sábado',
+  SUNDAY: 'Domingo',
+};
+export const DAYS = Object.keys(DAY_LABELS);
+const DAY_SHORT: Record<string, string> = {
+  MONDAY: 'Lun',
+  TUESDAY: 'Mar',
+  WEDNESDAY: 'Mié',
+  THURSDAY: 'Jue',
+  FRIDAY: 'Vie',
+  SATURDAY: 'Sáb',
+  SUNDAY: 'Dom',
+};
+
+/** "18:00" → "6:00 p. m.", con el formato de las horas de los turnos. */
+export function formatClock(hhmm: string): string {
+  const [h, m] = hhmm.split(':').map(Number);
+  return time.format(new Date(Date.UTC(2026, 0, 1, h + 5, m)));
+}
+
+/** "6:00 a. m. a 11:00 p. m.", marcando cuando cierra al día siguiente. */
+export function formatSpan(open: string, close: string): string {
+  return `${formatClock(open)} a ${formatClock(close)}${close <= open ? ' (+1 día)' : ''}`;
+}
+
+/** "Lun a Vie", "Sáb, Dom" o "Todos los días" a partir de los días marcados. */
+export function formatDays(days: string[]): string {
+  if (days.length === 7) return 'Todos los días';
+  const idx = days.map((d) => DAYS.indexOf(d)).sort((a, b) => a - b);
+  const consecutive = idx.every((v, i) => i === 0 || v === idx[i - 1] + 1);
+  if (consecutive && idx.length > 2) return `${DAY_SHORT[DAYS[idx[0]]]} a ${DAY_SHORT[DAYS[idx.at(-1)!]]}`;
+  return idx.map((i) => DAY_SHORT[DAYS[i]]).join(', ');
+}
+
+/** "2:41" para una cuenta regresiva en segundos. */
+export function formatCountdown(seconds: number): string {
+  const s = Math.max(0, Math.ceil(seconds));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
 export const SPORT_LABELS: Record<string, string> = {

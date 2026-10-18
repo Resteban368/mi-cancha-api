@@ -274,6 +274,44 @@ describe('ReservationsService', () => {
     };
     const now = new Date('2030-10-21T12:00:00Z'); // lunes 07:00 en Colombia
 
+    it('en la web marca HELD lo apartado y no lo cuenta como libre', async () => {
+      prisma.court.findMany.mockResolvedValue([court]);
+      prisma.reservation.findMany.mockResolvedValue([]);
+      prisma.slotHold.findMany.mockResolvedValue([
+        {
+          courtId: 'court-1',
+          start: new Date('2030-10-21T18:00:00-05:00'),
+          end: new Date('2030-10-21T19:00:00-05:00'),
+        },
+      ]);
+
+      const result = await service.sportAvailability(
+        'biz-1',
+        Sport.FUTBOL,
+        '2030-10-21',
+        now,
+        { withHolds: true },
+      );
+
+      const slots = result.courts[0].slots;
+      const at18 = slots.find(
+        (s) => s.start.getTime() === Date.parse('2030-10-21T18:00:00-05:00'),
+      );
+      expect(at18?.status).toBe('HELD');
+      expect(result.courts[0].availableCount).toBe(15);
+      expect(prisma.slotHold.findMany.mock.calls[0][0].where).toMatchObject({
+        courtId: { in: ['court-1'] },
+        expiresAt: { gt: now },
+      });
+    });
+
+    it('para el negocio no consulta apartados', async () => {
+      prisma.court.findMany.mockResolvedValue([court]);
+      prisma.reservation.findMany.mockResolvedValue([]);
+      await service.sportAvailability('biz-1', Sport.FUTBOL, '2030-10-21', now);
+      expect(prisma.slotHold.findMany).not.toHaveBeenCalled();
+    });
+
     it('trae una tarjeta por cancha reservable con sus turnos y libres', async () => {
       prisma.court.findMany.mockResolvedValue([court, courtB, incomplete]);
       prisma.reservation.findMany.mockResolvedValue([
@@ -348,6 +386,8 @@ describe('ReservationsService', () => {
       minAdvanceMinutes: 60,
       maxDaysAhead: 30,
       maxReservationsPerDay: 2,
+      maxSlots: 3,
+      holdMinutes: 3,
     };
     const player = {
       id: 'u-1',
@@ -367,6 +407,7 @@ describe('ReservationsService', () => {
     beforeEach(() => {
       prisma.court.findFirst.mockResolvedValue(court);
       prisma.reservation.findFirst.mockResolvedValue(null);
+      prisma.slotHold.findFirst.mockResolvedValue(null);
       prisma.customer.findUnique.mockResolvedValueOnce({
         id: 'cus-1',
         name: 'Pedro',
@@ -419,6 +460,142 @@ describe('ReservationsService', () => {
       await expect(
         service.createWebReservation('biz-1', player, input, rules, now),
       ).rejects.toThrow('máximo 2 reservas por día');
+    });
+
+    it('rechaza el turno que otro jugador tiene apartado', async () => {
+      prisma.slotHold.findFirst.mockResolvedValue({ id: 'h-otro' });
+      await expect(
+        service.createWebReservation('biz-1', player, input, rules, now),
+      ).rejects.toThrow('Otra persona está reservando ese turno');
+      const { where } = prisma.slotHold.findFirst.mock.calls[0][0];
+      expect(where).toMatchObject({
+        courtId: 'court-1',
+        playerId: { not: 'u-1' },
+        expiresAt: { gt: now },
+      });
+      expect(prisma.reservation.create).not.toHaveBeenCalled();
+    });
+
+    it('al reservar borra el apartado del jugador', async () => {
+      prisma.reservation.create.mockResolvedValue({ id: 'r-1' });
+      await service
+        .createWebReservation('biz-1', player, input, rules, now)
+        .catch(() => undefined);
+      expect(prisma.slotHold.deleteMany).toHaveBeenCalledWith({
+        where: { businessId: 'biz-1', playerId: 'u-1' },
+      });
+    });
+
+    it('no permite más turnos seguidos que el máximo de la web', async () => {
+      await expect(
+        service.createWebReservation(
+          'biz-1',
+          player,
+          { ...input, slots: 4 },
+          rules,
+          now,
+        ),
+      ).rejects.toThrow('máximo 3 turnos seguidos');
+    });
+  });
+
+  describe('holdWebSlots', () => {
+    const rules = {
+      minAdvanceMinutes: 60,
+      maxDaysAhead: 30,
+      maxReservationsPerDay: 2,
+      maxSlots: 3,
+      holdMinutes: 3,
+    };
+    const input = {
+      courtId: 'court-1',
+      start: '2030-10-21T19:00:00-05:00',
+      slots: 2,
+    };
+    const now = new Date('2030-10-21T12:00:00Z');
+
+    beforeEach(() => {
+      prisma.court.findFirst.mockResolvedValue(court);
+      prisma.reservation.findFirst.mockResolvedValue(null);
+      prisma.slotHold.findFirst.mockResolvedValue(null);
+      prisma.slotHold.upsert.mockImplementation(({ create }) => create);
+    });
+
+    it('aparta los turnos 3 minutos y reemplaza el apartado anterior', async () => {
+      const hold = await service.holdWebSlots(
+        'biz-1',
+        'u-1',
+        input,
+        rules,
+        now,
+      );
+      const args = prisma.slotHold.upsert.mock.calls[0][0];
+      expect(args.where).toEqual({
+        businessId_playerId: { businessId: 'biz-1', playerId: 'u-1' },
+      });
+      expect(hold).toMatchObject({
+        courtId: 'court-1',
+        start: new Date('2030-10-22T00:00:00Z'),
+        end: new Date('2030-10-22T02:00:00Z'),
+        slots: 2,
+        expiresAt: new Date('2030-10-21T12:03:00Z'),
+      });
+      expect(args.update.expiresAt).toEqual(hold.expiresAt);
+    });
+
+    it('no aparta lo que ya está apartado por otro o reservado', async () => {
+      prisma.slotHold.findFirst.mockResolvedValue({ id: 'h-otro' });
+      await expect(
+        service.holdWebSlots('biz-1', 'u-1', input, rules, now),
+      ).rejects.toThrow('Otra persona está reservando ese turno');
+
+      prisma.slotHold.findFirst.mockResolvedValue(null);
+      prisma.reservation.findFirst.mockResolvedValue({ id: 'ocupada' });
+      await expect(
+        service.holdWebSlots('biz-1', 'u-1', input, rules, now),
+      ).rejects.toThrow('ya está reservada');
+      expect(prisma.slotHold.upsert).not.toHaveBeenCalled();
+    });
+
+    it('aplica la anticipación mínima y el máximo de turnos', async () => {
+      await expect(
+        service.holdWebSlots(
+          'biz-1',
+          'u-1',
+          { ...input, start: '2030-10-21T07:00:00-05:00' },
+          rules,
+          now,
+        ),
+      ).rejects.toThrow('al menos 60 minutos');
+      await expect(
+        service.holdWebSlots('biz-1', 'u-1', { ...input, slots: 4 }, rules, now),
+      ).rejects.toThrow('máximo 3 turnos seguidos');
+    });
+
+    it('si otro jugador toma el turno a la vez, responde 409 en vez de 500', async () => {
+      const writeConflict = Object.assign(new Error('conflict'), {
+        name: 'DriverAdapterError',
+        cause: { kind: 'TransactionWriteConflict' },
+      });
+      prisma.$transaction.mockRejectedValueOnce(writeConflict);
+      await expect(
+        service.holdWebSlots('biz-1', 'u-1', input, rules, now),
+      ).rejects.toThrow('Otra persona acaba de tomar ese turno');
+
+      prisma.$transaction.mockRejectedValueOnce(new Error('otra cosa'));
+      await expect(
+        service.holdWebSlots('biz-1', 'u-1', input, rules, now),
+      ).rejects.toThrow('otra cosa');
+    });
+
+    it('el apartado vigente ignora los vencidos', async () => {
+      prisma.slotHold.findFirst.mockResolvedValue(null);
+      await expect(service.currentHold('biz-1', 'u-1', now)).resolves.toBeNull();
+      expect(prisma.slotHold.findFirst.mock.calls[0][0].where).toEqual({
+        businessId: 'biz-1',
+        playerId: 'u-1',
+        expiresAt: { gt: now },
+      });
     });
   });
 });

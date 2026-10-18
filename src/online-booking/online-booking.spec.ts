@@ -7,6 +7,7 @@ import {
   PrismaMock,
 } from '../../test/support/prisma-mock.js';
 import type { BusinessesService } from '../businesses/businesses.service.js';
+import type { CourtsService } from '../courts/courts.service.js';
 import { CourtPhotoSlot, Sport, UserRole } from '../generated/prisma/enums.js';
 import type { PrismaService } from '../prisma/prisma.service.js';
 import type { ReservationsService } from '../reservations/reservations.service.js';
@@ -103,6 +104,7 @@ describe('OnlineBookingService', () => {
     createWebReservation: vi.fn(),
   };
   const players = { requirePlayer: vi.fn() };
+  const courts = { toDto: vi.fn() };
   const now = new Date('2026-10-15T15:00:00Z'); // 10:00 en Colombia
 
   const business = (overrides: Record<string, unknown> = {}) => ({
@@ -135,12 +137,14 @@ describe('OnlineBookingService', () => {
 
   beforeEach(() => {
     prisma = createPrismaMock();
+    prisma.court.findMany.mockResolvedValue([]);
     reservations.sportAvailability.mockReset();
     service = new OnlineBookingService(
       prisma as unknown as PrismaService,
       reservations as unknown as ReservationsService,
       players as unknown as PlayerAuthService,
       {} as BusinessesService,
+      courts as unknown as CourtsService,
       new ConfigService({
         APP_UTC_OFFSET: '-05:00',
         PUBLIC_API_URL: 'https://api.test',
@@ -157,8 +161,38 @@ describe('OnlineBookingService', () => {
       sports: [Sport.FUTBOL],
       bookingAvailable: true,
       unavailableReason: null,
-      rules: { ...WEB_RULES, maxSlots: 5, paymentMethod: 'EFECTIVO' },
+      rules: { ...WEB_RULES, maxSlots: 3, paymentMethod: 'EFECTIVO' },
     });
+  });
+
+  it('incluye solo las canchas reservables con sus fotos y datos', async () => {
+    prisma.business.findUnique.mockResolvedValue(business());
+    prisma.court.findMany.mockResolvedValue([{ id: 'c-1' }, { id: 'c-2' }]);
+    courts.toDto
+      .mockReturnValueOnce({
+        id: 'c-1',
+        name: 'Sintética 1',
+        isBookable: true,
+        isActive: true,
+        missingPhotos: [],
+        photos: [{ slot: 'MAIN', url: 'https://x/1' }],
+        surface: { code: 'GRAMA_SINTETICA', name: 'Grama sintética' },
+        lengthMeters: 42,
+      })
+      .mockReturnValueOnce({ id: 'c-2', isBookable: false });
+
+    const page = await service.publicBusiness('el-golazo');
+
+    expect(page.courts).toHaveLength(1);
+    expect(page.courts[0]).toMatchObject({
+      id: 'c-1',
+      photos: [{ slot: 'MAIN', url: 'https://x/1' }],
+      surface: { name: 'Grama sintética' },
+      lengthMeters: 42,
+    });
+    // Sin datos internos de la cancha.
+    expect(page.courts[0]).not.toHaveProperty('missingPhotos');
+    expect(page.courts[0]).not.toHaveProperty('isActive');
   });
 
   it.each([
@@ -201,6 +235,9 @@ describe('OnlineBookingService', () => {
       '2026-10-15',
       now,
     );
+    expect(reservations.sportAvailability.mock.calls[0][4]).toEqual({
+      withHolds: true,
+    });
     expect(result.courts[0].slots.map((s) => s.status)).toEqual([
       'UNAVAILABLE',
       'AVAILABLE',

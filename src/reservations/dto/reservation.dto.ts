@@ -225,9 +225,12 @@ export class SportAvailabilityQueryDto extends DayQueryDto {
 export class SlotDto {
   start: Date;
   end: Date;
-  /** UNAVAILABLE solo en la web: aún libre, pero dentro de la anticipación mínima. */
-  @ApiProperty({ enum: ['AVAILABLE', 'BOOKED', 'PAST', 'UNAVAILABLE'] })
-  status: 'AVAILABLE' | 'BOOKED' | 'PAST' | 'UNAVAILABLE';
+  /**
+   * Solo en la web: UNAVAILABLE = libre pero dentro de la anticipación mínima;
+   * HELD = otro jugador lo apartó mientras confirma.
+   */
+  @ApiProperty({ enum: ['AVAILABLE', 'BOOKED', 'PAST', 'UNAVAILABLE', 'HELD'] })
+  status: 'AVAILABLE' | 'BOOKED' | 'PAST' | 'UNAVAILABLE' | 'HELD';
   /** Valor del turno según las tarifas. */
   price: number;
 }

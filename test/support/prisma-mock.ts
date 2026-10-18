@@ -10,6 +10,7 @@ type ModelMock = Record<
   | 'updateMany'
   | 'count'
   | 'delete'
+  | 'deleteMany'
   | 'upsert'
   | 'groupBy'
   | 'aggregate',
@@ -27,6 +28,7 @@ function modelMock(): ModelMock {
     updateMany: vi.fn(),
     count: vi.fn(),
     delete: vi.fn(),
+    deleteMany: vi.fn(),
     upsert: vi.fn(),
     groupBy: vi.fn(),
     aggregate: vi.fn(),
@@ -46,6 +48,7 @@ export function createPrismaMock() {
     amenity: modelMock(),
     paymentMethod: modelMock(),
     courtSurface: modelMock(),
+    slotHold: modelMock(),
     businessProfileImage: modelMock(),
     courtPhoto: modelMock(),
     customer: modelMock(),

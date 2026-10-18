@@ -16,8 +16,18 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
+import {
+  CourtPhotoDto,
+  CourtRateDto,
+  CourtScheduleDto,
+  CourtSurfaceRefDto,
+} from '../../courts/dto/court.dto.js';
 import { Sport } from '../../generated/prisma/enums.js';
-import { MAX_SLOTS } from '../../reservations/dto/reservation.dto.js';
+
+/** Turnos seguidos que un jugador puede apartar y reservar desde la web. */
+export const WEB_MAX_SLOTS = 3;
+/** Minutos que dura un apartado si el jugador no confirma. */
+export const WEB_HOLD_MINUTES = 3;
 
 /** Versión vigente de la política de tratamiento de datos que acepta el jugador. */
 export const DATA_POLICY_VERSION = '2026-10-15';
@@ -103,7 +113,7 @@ export class PlayerSessionDto {
   player: PlayerDto;
 }
 
-export class WebReservationDto {
+export class WebHoldDto {
   @IsUUID()
   courtId: string;
 
@@ -114,9 +124,11 @@ export class WebReservationDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  @Max(MAX_SLOTS)
+  @Max(WEB_MAX_SLOTS)
   slots: number;
+}
 
+export class WebReservationDto extends WebHoldDto {
   /** Notas para la sede (se guardan en contactNote). */
   @IsOptional()
   @IsString()
@@ -137,11 +149,54 @@ export class PublicAvailabilityQueryDto {
   sport: Sport;
 }
 
+export class SlotHoldDto {
+  courtId: string;
+  /** Inicio del primer turno y fin del último. */
+  start: Date;
+  end: Date;
+  slots: number;
+  /** Cuándo se libera si no se confirma. */
+  expiresAt: Date;
+}
+
+export class CurrentHoldDto {
+  @ApiProperty({ type: SlotHoldDto, nullable: true })
+  hold: SlotHoldDto | null;
+}
+
+/** Cancha reservable con lo que el jugador necesita para elegirla. */
+export class PublicCourtDto {
+  id: string;
+  name: string;
+  @ApiProperty({ enum: Sport })
+  sport: Sport;
+  isCovered: boolean;
+  currency: string;
+  /** Precio por hora donde ninguna tarifa aplica. */
+  basePricePerHour: number;
+  slotDuration: number;
+  @ApiProperty({ type: CourtSurfaceRefDto, nullable: true })
+  surface: CourtSurfaceRefDto | null;
+  @ApiProperty({ type: Number, nullable: true })
+  lengthMeters: number | null;
+  @ApiProperty({ type: Number, nullable: true })
+  widthMeters: number | null;
+  @ApiProperty({ type: Number, nullable: true })
+  playersPerSide: number | null;
+  @ApiProperty({ type: [CourtScheduleDto] })
+  schedules: CourtScheduleDto[];
+  @ApiProperty({ type: [CourtRateDto] })
+  rates: CourtRateDto[];
+  @ApiProperty({ type: [CourtPhotoDto] })
+  photos: CourtPhotoDto[];
+}
+
 export class BookingRulesDto {
   minAdvanceMinutes: number;
   maxDaysAhead: number;
   maxReservationsPerDay: number;
   maxSlots: number;
+  holdMinutes: number;
   /** Las reservas web se pagan en la sede. */
   paymentMethod: string;
 }
@@ -163,6 +218,9 @@ export class PublicBusinessDto {
   sports: Sport[];
   currency: string;
   rules: BookingRulesDto;
+  /** Canchas reservables (activas y con sus fotos obligatorias). */
+  @ApiProperty({ type: [PublicCourtDto] })
+  courts: PublicCourtDto[];
   bookingAvailable: boolean;
   /** Por qué no se puede reservar: DISABLED, PLAN_INACTIVE o NO_COURTS. */
   unavailableReason: string | null;

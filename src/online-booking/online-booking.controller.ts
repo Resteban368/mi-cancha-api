@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -8,6 +9,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
   Query,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -21,6 +23,7 @@ import {
   SportAvailabilityDto,
 } from '../reservations/dto/reservation.dto.js';
 import {
+  CurrentHoldDto,
   LoginPlayerDto,
   OnlineBookingSettingsDto,
   PlayerDto,
@@ -28,7 +31,9 @@ import {
   PublicAvailabilityQueryDto,
   PublicBusinessDto,
   RegisterPlayerDto,
+  SlotHoldDto,
   UpdateOnlineBookingDto,
+  WebHoldDto,
   WebReservationDto,
 } from './dto/online-booking.dto.js';
 import { OnlineBookingService } from './online-booking.service.js';
@@ -53,7 +58,8 @@ export class PublicBookingController {
   @Public()
   @Get('businesses/:slug/availability')
   @ApiOperation({
-    summary: 'Turnos de un día de todas las canchas de un deporte',
+    summary:
+      'Turnos de un día de todas las canchas de un deporte (HELD = otro jugador los apartó)',
   })
   availability(
     @Param('slug') slug: string,
@@ -105,6 +111,38 @@ export class PlayerController {
     @Body() dto: WebReservationDto,
   ): Promise<ReservationDto> {
     return this.booking.book(slug, user.sub, dto);
+  }
+
+  @Get('businesses/:slug/hold')
+  @ApiOperation({ summary: 'Mi apartado vigente en este negocio' })
+  currentHold(
+    @CurrentUser() user: AuthPayload,
+    @Param('slug') slug: string,
+  ): Promise<CurrentHoldDto> {
+    return this.booking.currentHold(slug, user.sub);
+  }
+
+  @Put('businesses/:slug/hold')
+  @ApiOperation({
+    summary:
+      'Apartar turnos mientras confirmo (3 min, máx. 3 turnos); reemplaza el apartado anterior',
+  })
+  hold(
+    @CurrentUser() user: AuthPayload,
+    @Param('slug') slug: string,
+    @Body() dto: WebHoldDto,
+  ): Promise<SlotHoldDto> {
+    return this.booking.hold(slug, user.sub, dto);
+  }
+
+  @Delete('businesses/:slug/hold')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Soltar mi apartado' })
+  releaseHold(
+    @CurrentUser() user: AuthPayload,
+    @Param('slug') slug: string,
+  ): Promise<void> {
+    return this.booking.releaseHold(slug, user.sub);
   }
 
   @Get('businesses/:slug/reservations')

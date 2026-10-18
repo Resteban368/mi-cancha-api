@@ -67,6 +67,18 @@ trigger de la base a partir del nombre al crear el negocio (nunca queda nulo)."
     DateTime createdAt
     DateTime updatedAt
   }
+  SlotHold {
+    String id PK
+    String businessId FK
+    String courtId FK
+    String playerId FK
+    DateTime start "Inicio del primer turno y fin del último."
+    DateTime end
+    Int slots
+    DateTime expiresAt
+    DateTime createdAt
+    DateTime updatedAt
+  }
   CourtSchedule {
     String id PK
     String courtId FK
@@ -207,6 +219,9 @@ trigger de la base a partir del nombre al crear el negocio (nunca queda nulo)."
   Business ||--o| BusinessProfileImage : "profileImage"
   Business ||--o{ Court : "courts"
   CourtSurface |o--o{ Court : "courts"
+  Business ||--o{ SlotHold : "slotHolds"
+  Court ||--o{ SlotHold : "slotHolds"
+  User ||--o{ SlotHold : "slotHolds"
   Court ||--o{ CourtSchedule : "schedules"
   Court ||--o{ CourtRate : "rates"
   Court ||--o{ CourtPhoto : "photos"
@@ -244,6 +259,7 @@ Los negocios entran con email y contraseña; los jugadores con Google o Apple.
 - **Reservation**: Tiene cero o muchos Reservation (campo reservations). Cada Reservation apunta a este User.
 - **Reservation**: Tiene cero o muchos Reservation (campo cancelledReservations). Cada Reservation apunta a este User.
 - **Refund**: Tiene cero o muchos Refund (campo refunds). Cada Refund apunta a este User.
+- **SlotHold**: Tiene cero o muchos SlotHold (campo slotHolds). Cada SlotHold apunta a este User.
 
 ### Business
 
@@ -258,6 +274,7 @@ La sede deportiva de un cliente. Cada administrador de negocio tiene exactamente
 - **Refund**: Tiene cero o muchos Refund (campo refunds). Cada Refund apunta a este Business.
 - **Subscription**: Puede tener un Subscription (campo subscription); la llave foránea está en Subscription.
 - **BusinessProfileImage**: Puede tener un BusinessProfileImage (campo profileImage); la llave foránea está en BusinessProfileImage.
+- **SlotHold**: Tiene cero o muchos SlotHold (campo slotHolds). Cada SlotHold apunta a este Business.
 
 ### BusinessProfileImage
 
@@ -276,6 +293,16 @@ completa (tiene las fotos MAIN, SURFACE y LIGHTING). El límite del plan cuenta 
 - **CourtRate**: Tiene cero o muchos CourtRate (campo rates). Cada CourtRate apunta a este Court.
 - **CourtPhoto**: Tiene cero o muchos CourtPhoto (campo photos). Cada CourtPhoto apunta a este Court.
 - **Reservation**: Tiene cero o muchos Reservation (campo reservations). Cada Reservation apunta a este Court.
+- **SlotHold**: Tiene cero o muchos SlotHold (campo slotHolds). Cada SlotHold apunta a este Court.
+
+### SlotHold
+
+Turnos que un jugador apartó en la web mientras confirma la reserva. Vencen
+solos (expiresAt) y cada jugador tiene como máximo uno por negocio.
+
+- **Business**: Pertenece siempre a un Business mediante businessId; un Business puede tener varios SlotHold. Si se borra el Business, se borran también sus SlotHold.
+- **Court**: Pertenece siempre a un Court mediante courtId; un Court puede tener varios SlotHold. Si se borra el Court, se borran también sus SlotHold.
+- **User**: Pertenece siempre a un User mediante playerId; un User puede tener varios SlotHold. Si se borra el User, se borran también sus SlotHold.
 
 ### CourtSchedule
 
@@ -388,6 +415,7 @@ Plan que tiene contratado un negocio, su estado (activo o suspendido) y la fecha
 
 - User: (role, phone)
 - Court: (businessId, name)
+- SlotHold: (businessId, playerId)
 - CourtSchedule: (courtId, dayOfWeek)
 - CourtPhoto: (courtId, slot)
 - Customer: (businessId, phone)

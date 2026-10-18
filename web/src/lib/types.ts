@@ -20,17 +20,50 @@ export interface PublicBusiness {
     maxDaysAhead: number;
     maxReservationsPerDay: number;
     maxSlots: number;
+    /** Minutos que dura un apartado si no se confirma. */
+    holdMinutes: number;
     paymentMethod: string;
   };
+  courts: PublicCourt[];
   bookingAvailable: boolean;
   unavailableReason: 'DISABLED' | 'PLAN_INACTIVE' | 'NO_COURTS' | null;
+}
+
+export type DayOfWeek = 'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY' | 'SATURDAY' | 'SUNDAY';
+
+/** Cancha reservable con sus fotos, medidas, horario y tarifas. */
+export interface PublicCourt {
+  id: string;
+  name: string;
+  sport: Sport;
+  isCovered: boolean;
+  currency: string;
+  basePricePerHour: number;
+  slotDuration: number;
+  surface: { code: string; name: string } | null;
+  lengthMeters: number | null;
+  widthMeters: number | null;
+  playersPerSide: number | null;
+  schedules: { dayOfWeek: DayOfWeek; isOpen: boolean; openTime: string | null; closeTime: string | null }[];
+  rates: { name: string; pricePerHour: number; days: DayOfWeek[]; startTime: string; endTime: string }[];
+  photos: { slot: 'MAIN' | 'SURFACE' | 'LIGHTING' | 'EXTRA_1' | 'EXTRA_2'; url: string }[];
 }
 
 export interface Slot {
   start: string;
   end: string;
-  status: 'AVAILABLE' | 'BOOKED' | 'PAST' | 'UNAVAILABLE';
+  /** HELD = otro jugador lo apartó mientras confirma (o es el apartado propio). */
+  status: 'AVAILABLE' | 'BOOKED' | 'PAST' | 'UNAVAILABLE' | 'HELD';
   price: number;
+}
+
+/** Turnos apartados por el jugador mientras confirma. */
+export interface SlotHold {
+  courtId: string;
+  start: string;
+  end: string;
+  slots: number;
+  expiresAt: string;
 }
 
 export interface CourtSlots {

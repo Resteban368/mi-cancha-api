@@ -107,6 +107,7 @@ model User {
   reservations          Reservation[]
   cancelledReservations Reservation[] @relation("ReservationCancelledBy")
   refunds               Refund[]
+  slotHolds             SlotHold[]
 
   /// El celular no se repite entre jugadores (sí puede coincidir con el de un negocio).
   @@unique([role, phone])
@@ -140,6 +141,7 @@ model Business {
   refunds      Refund[]
   subscription Subscription?
   profileImage BusinessProfileImage?
+  slotHolds    SlotHold[]
 }
 
 /// Foto de portada del negocio. Una por negocio; el archivo vive en Koofr.
@@ -187,9 +189,32 @@ model Court {
   rates        CourtRate[]
   photos       CourtPhoto[]
   reservations Reservation[]
+  slotHolds    SlotHold[]
 
   @@unique([businessId, name])
   @@index([surfaceId])
+}
+
+/// Turnos que un jugador apartó en la web mientras confirma la reserva. Vencen
+/// solos (expiresAt) y cada jugador tiene como máximo uno por negocio.
+model SlotHold {
+  id         String   @id @default(uuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  courtId    String
+  court      Court    @relation(fields: [courtId], references: [id], onDelete: Cascade)
+  playerId   String
+  player     User     @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  /// Inicio del primer turno y fin del último.
+  start      DateTime
+  end        DateTime
+  slots      Int
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([businessId, playerId])
+  @@index([courtId, start])
 }
 
 /// Horario de una cancha para un día de la semana. Siempre hay 7 por cancha.

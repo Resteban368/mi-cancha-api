@@ -9,15 +9,22 @@ export class ApiError extends Error {
   }
 }
 
-type Method = 'GET' | 'POST' | 'PATCH';
+type Method = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
 
 /** Petición a /api/v1 con el token del jugador si hay sesión. */
 export async function api<T>(
   path: string,
-  options: { method?: Method; body?: unknown; token?: string | null } = {},
+  options: {
+    method?: Method;
+    body?: unknown;
+    token?: string | null;
+    /** Termina aunque se cierre la página (para soltar un apartado). */
+    keepalive?: boolean;
+  } = {},
 ): Promise<T> {
   const response = await fetch(`/api/v1${path}`, {
     method: options.method ?? 'GET',
+    keepalive: options.keepalive,
     headers: {
       'Content-Type': 'application/json',
       ...(options.token && { Authorization: `Bearer ${options.token}` }),
@@ -34,6 +41,7 @@ export async function api<T>(
       : (payload?.message ?? `Error ${response.status}`);
     throw new ApiError(response.status, message, payload?.code);
   }
+  if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
 }
 
