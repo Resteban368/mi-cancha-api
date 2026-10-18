@@ -8,6 +8,7 @@ import {
   IsBoolean,
   IsEnum,
   IsIn,
+  IsInt,
   IsNumber,
   IsOptional,
   IsString,
@@ -24,12 +25,17 @@ import {
   DayOfWeek,
   Sport,
 } from '../../generated/prisma/enums.js';
+import { CATALOG_CODE_PATTERN } from '../../catalogs/dto/catalog.dto.js';
 import { TIME_PATTERN } from '../court-time.js';
 
 export const SLOT_DURATIONS = [30, 60, 90, 120];
 const TIME_MESSAGE = 'debe tener formato HH:mm (00:00 a 23:59)';
 const MONEY = { maxDecimalPlaces: 2 };
 const MAX_PRICE = 1_000_000_000;
+const METERS = { maxDecimalPlaces: 2 };
+export const MIN_METERS = 1;
+export const MAX_METERS = 200;
+export const MAX_PLAYERS_PER_SIDE = 11;
 
 export class CourtScheduleDto {
   @ApiProperty({ enum: DayOfWeek })
@@ -118,6 +124,41 @@ export class CreateCourtDto {
   @IsIn(SLOT_DURATIONS)
   slotDuration?: number;
 
+  /**
+   * Código de la superficie o tipo de grama (GET /catalogs → courtSurfaces);
+   * debe aplicar al deporte. null la quita. @example GRAMA_SINTETICA
+   */
+  @ApiProperty({ type: String, nullable: true, required: false })
+  @IsOptional()
+  @Matches(CATALOG_CODE_PATTERN, {
+    message: 'surface debe ser un código del catálogo de superficies',
+  })
+  surface?: string | null;
+
+  /** Largo en metros; va junto con widthMeters. null quita las medidas. @example 42 */
+  @ApiProperty({ type: Number, nullable: true, required: false })
+  @IsOptional()
+  @IsNumber(METERS)
+  @Min(MIN_METERS)
+  @Max(MAX_METERS)
+  lengthMeters?: number | null;
+
+  /** Ancho en metros; va junto con lengthMeters. @example 25 */
+  @ApiProperty({ type: Number, nullable: true, required: false })
+  @IsOptional()
+  @IsNumber(METERS)
+  @Min(MIN_METERS)
+  @Max(MAX_METERS)
+  widthMeters?: number | null;
+
+  /** Formato: jugadores por equipo (5 = fútbol 5, 2 = pádel). null lo quita. @example 5 */
+  @ApiProperty({ type: Number, nullable: true, required: false })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(MAX_PLAYERS_PER_SIDE)
+  playersPerSide?: number | null;
+
   /** Los 7 días de la semana, cada uno una vez. */
   @IsArray()
   @ArrayMinSize(7)
@@ -137,6 +178,13 @@ export class CreateCourtDto {
 
 /** Los campos enviados reemplazan los actuales; schedules y rates reemplazan la lista completa. */
 export class UpdateCourtDto extends PartialType(CreateCourtDto) {}
+
+export class CourtSurfaceRefDto {
+  /** @example GRAMA_SINTETICA */
+  code: string;
+  /** @example Grama sintética */
+  name: string;
+}
 
 export class CourtPhotoDto {
   @ApiProperty({ enum: CourtPhotoSlot })
@@ -160,6 +208,14 @@ export class CourtDto {
   currency: string;
   basePricePerHour: number;
   slotDuration: number;
+  @ApiProperty({ type: CourtSurfaceRefDto, nullable: true })
+  surface: CourtSurfaceRefDto | null;
+  @ApiProperty({ type: Number, nullable: true })
+  lengthMeters: number | null;
+  @ApiProperty({ type: Number, nullable: true })
+  widthMeters: number | null;
+  @ApiProperty({ type: Number, nullable: true })
+  playersPerSide: number | null;
   @ApiProperty({ type: [CourtScheduleDto] })
   schedules: CourtScheduleDto[];
   @ApiProperty({ type: [CourtRateDto] })

@@ -59,6 +59,10 @@ trigger de la base a partir del nombre al crear el negocio (nunca queda nulo)."
     String currency "Código ISO 4217 de la moneda de los precios (COP, USD…)."
     Decimal basePricePerHour "Precio por hora cuando ninguna tarifa (CourtRate) cubre la franja."
     Int slotDuration "Duración de cada turno en minutos: 30, 60, 90 o 120."
+    String surfaceId FK "opcional · Superficie o tipo de grama (catálogo); null si no se indicó."
+    Decimal lengthMeters "opcional · Medidas en metros. Van las dos o ninguna."
+    Decimal widthMeters "opcional"
+    Int playersPerSide "opcional · Formato: jugadores por equipo (5 en fútbol 5, 2 en pádel); null si no se indicó."
     Boolean isActive
     DateTime createdAt
     DateTime updatedAt
@@ -163,6 +167,16 @@ trigger de la base a partir del nombre al crear el negocio (nunca queda nulo)."
     DateTime createdAt
     DateTime updatedAt
   }
+  CourtSurface {
+    String id PK
+    String code UK "Código estable que usan la API y la app (p. ej. GRAMA_SINTETICA)."
+    String name
+    Sport[] sports "Deportes en los que se ofrece; vacío = todos."
+    Boolean active
+    Int sortOrder
+    DateTime createdAt
+    DateTime updatedAt
+  }
   PaymentMethod {
     String id PK
     String code UK "Código estable que usan la API y la app (p. ej. NEQUI)."
@@ -192,6 +206,7 @@ trigger de la base a partir del nombre al crear el negocio (nunca queda nulo)."
   User ||--o| Business : "business"
   Business ||--o| BusinessProfileImage : "profileImage"
   Business ||--o{ Court : "courts"
+  CourtSurface |o--o{ Court : "courts"
   Court ||--o{ CourtSchedule : "schedules"
   Court ||--o{ CourtRate : "rates"
   Court ||--o{ CourtPhoto : "photos"
@@ -256,6 +271,7 @@ Cancha que el negocio alquila por turnos. Solo recibe reservas si está activa (
 completa (tiene las fotos MAIN, SURFACE y LIGHTING). El límite del plan cuenta las activas.
 
 - **Business**: Pertenece siempre a un Business mediante businessId; un Business puede tener varios Court. Si se borra el Business, se borran también sus Court.
+- **CourtSurface**: Puede pertenecer a un CourtSurface mediante surfaceId; un CourtSurface puede tener varios Court. Si se borra el CourtSurface, el Court se conserva sin CourtSurface.
 - **CourtSchedule**: Tiene cero o muchos CourtSchedule (campo schedules). Cada CourtSchedule apunta a este Court.
 - **CourtRate**: Tiene cero o muchos CourtRate (campo rates). Cada CourtRate apunta a este Court.
 - **CourtPhoto**: Tiene cero o muchos CourtPhoto (campo photos). Cada CourtPhoto apunta a este Court.
@@ -329,6 +345,12 @@ quedan pendientes hasta que el negocio los aprueba o rechaza.
 Catálogo editable desde el panel: servicios que ofrece un negocio.
 
 - **Business**: Muchos a muchos con Business: cada Amenity puede tener varios Business y cada Business puede estar en varios Amenity (campo businesses).
+
+### CourtSurface
+
+Catálogo editable desde el panel: superficie o tipo de grama de una cancha.
+
+- **Court**: Tiene cero o muchos Court (campo courts). Cada Court apunta a este CourtSurface.
 
 ### PaymentMethod
 

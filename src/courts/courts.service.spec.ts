@@ -10,6 +10,7 @@ import {
   PrismaMock,
 } from '../../test/support/prisma-mock.js';
 import { BusinessesService } from '../businesses/businesses.service.js';
+import { CatalogsService } from '../catalogs/catalogs.service.js';
 import { CourtPhotoSlot, DayOfWeek, Sport } from '../generated/prisma/enums.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { DAYS } from './court-time.js';
@@ -59,6 +60,11 @@ function storedCourt(overrides: Record<string, unknown> = {}) {
     schedules: [...schedules].reverse(),
     rates: [{ ...dto.rates![0], pricePerHour: { toString: () => '99900.5' } }],
     photos: [{ id: 'p-1', slot: CourtPhotoSlot.MAIN }],
+    surfaceId: null,
+    surface: null,
+    lengthMeters: null,
+    widthMeters: null,
+    playersPerSide: null,
     ...overrides,
   };
 }
@@ -66,9 +72,11 @@ function storedCourt(overrides: Record<string, unknown> = {}) {
 describe('CourtsService', () => {
   let service: CourtsService;
   let prisma: PrismaMock;
+  let resolveCourtSurfaceId: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     prisma = createPrismaMock();
+    resolveCourtSurfaceId = vi.fn().mockResolvedValue('s-1');
     const moduleRef = await Test.createTestingModule({
       providers: [
         CourtsService,
@@ -77,6 +85,7 @@ describe('CourtsService', () => {
           provide: BusinessesService,
           useValue: { requireBusinessId: vi.fn().mockResolvedValue('biz-1') },
         },
+        { provide: CatalogsService, useValue: { resolveCourtSurfaceId } },
         {
           provide: ConfigService,
           useValue: new ConfigService({ PUBLIC_API_URL: 'https://api.test' }),
@@ -156,6 +165,107 @@ describe('CourtsService', () => {
       prisma.subscription.findUnique.mockResolvedValue(subscription(3, false));
       const error = await service.create('owner-1', dto).catch((e) => e);
       expect(error.getResponse()).toMatchObject({ code: 'PLAN_INACTIVE' });
+    });
+  });
+
+  describe('superficie y medidas', () => {
+    const grass = {
+      surfaceId: 's-1',
+      surface: { code: 'GRAMA_SINTETICA', name: 'Grama sintética' },
+      lengthMeters: { toString: () => '20' },
+      widthMeters: { toString: () => '10.5' },
+      playersPerSide: 2,
+    };
+
+    it('crea la cancha con superficie, medidas y formato', async () => {
+      prisma.subscription.findUnique.mockResolvedValue(subscription(3));
+      prisma.court.count.mockResolvedValue(0);
+      prisma.court.create.mockResolvedValue(storedCourt(grass));
+
+      const result = await service.create('owner-1', {
+        ...dto,
+        surface: 'GRAMA_SINTETICA',
+        lengthMeters: 20,
+        widthMeters: 10.5,
+        playersPerSide: 2,
+      });
+
+      expect(resolveCourtSurfaceId).toHaveBeenCalledWith(
+        'GRAMA_SINTETICA',
+        Sport.PADEL,
+      );
+      expect(prisma.court.create.mock.calls[0][0].data).toMatchObject({
+        surfaceId: 's-1',
+        lengthMeters: 20,
+        widthMeters: 10.5,
+        playersPerSide: 2,
+      });
+      expect(result).toMatchObject({
+        surface: { code: 'GRAMA_SINTETICA', name: 'Grama sintética' },
+        lengthMeters: 20,
+        widthMeters: 10.5,
+        playersPerSide: 2,
+      });
+    });
+
+    it('sin los datos nuevos los guarda vacíos', async () => {
+      prisma.subscription.findUnique.mockResolvedValue(subscription(3));
+      prisma.court.count.mockResolvedValue(0);
+      prisma.court.create.mockResolvedValue(storedCourt());
+
+      const result = await service.create('owner-1', dto);
+
+      expect(resolveCourtSurfaceId).not.toHaveBeenCalled();
+      expect(prisma.court.create.mock.calls[0][0].data).toMatchObject({
+        surfaceId: null,
+        lengthMeters: null,
+        widthMeters: null,
+        playersPerSide: null,
+      });
+      expect(result.surface).toBeNull();
+      expect(result.lengthMeters).toBeNull();
+    });
+
+    it('exige las dos medidas juntas', async () => {
+      await expect(
+        service.create('owner-1', { ...dto, lengthMeters: 20 }),
+      ).rejects.toThrow(BadRequestException);
+
+      prisma.court.findFirst.mockResolvedValue(storedCourt(grass));
+      await expect(
+        service.update('owner-1', 'c-1', { widthMeters: null }),
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.court.update).not.toHaveBeenCalled();
+    });
+
+    it('al editar, null quita la superficie y omitirla la conserva', async () => {
+      prisma.court.findFirst.mockResolvedValue(storedCourt(grass));
+      prisma.court.update.mockResolvedValue(storedCourt());
+
+      await service.update('owner-1', 'c-1', { surface: null });
+      expect(prisma.court.update.mock.calls[0][0].data.surfaceId).toBeNull();
+
+      await service.update('owner-1', 'c-1', { name: 'Otra' });
+      expect(prisma.court.update.mock.calls[1][0].data).not.toHaveProperty(
+        'surfaceId',
+      );
+      expect(resolveCourtSurfaceId).not.toHaveBeenCalled();
+    });
+
+    it('al cambiar el deporte revalida la superficie actual', async () => {
+      prisma.court.findFirst.mockResolvedValue(storedCourt(grass));
+      resolveCourtSurfaceId.mockRejectedValue(
+        new BadRequestException('no aplica'),
+      );
+
+      await expect(
+        service.update('owner-1', 'c-1', { sport: Sport.BALONCESTO }),
+      ).rejects.toThrow(BadRequestException);
+      expect(resolveCourtSurfaceId).toHaveBeenCalledWith(
+        'GRAMA_SINTETICA',
+        Sport.BALONCESTO,
+        's-1',
+      );
     });
   });
 

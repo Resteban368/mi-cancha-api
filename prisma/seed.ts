@@ -63,7 +63,29 @@ const paymentMethods = [
   { code: 'BANCOLOMBIA_QR', name: 'Bancolombia QR', requiresReference: true },
   { code: 'TRANSFERENCIA', name: 'Transferencia', requiresReference: true },
 ];
-const UTC_OFFSET = process.env.APP_UTC_OFFSET ?? '-05:00';
+
+/** sports vacío = sirve para todos los deportes. */
+const courtSurfaces = [
+  {
+    code: 'GRAMA_SINTETICA',
+    name: 'Grama sintética',
+    sports: [Sport.FUTBOL, Sport.PADEL],
+  },
+  { code: 'GRAMA_NATURAL', name: 'Grama natural', sports: [Sport.FUTBOL] },
+  { code: 'CEMENTO', name: 'Cemento', sports: [] },
+  {
+    code: 'MADERA',
+    name: 'Madera',
+    sports: [Sport.BALONCESTO, Sport.VOLEIBOL],
+  },
+  {
+    code: 'PISO_SINTETICO',
+    name: 'Piso sintético',
+    sports: [Sport.BALONCESTO, Sport.VOLEIBOL, Sport.PADEL],
+  },
+  { code: 'ARENA', name: 'Arena', sports: [Sport.FUTBOL, Sport.VOLEIBOL] },
+];
+const UTC_OFFSET =process.env.APP_UTC_OFFSET ?? '-05:00';
 
 const plans = [
   {
@@ -152,6 +174,13 @@ async function seedBase() {
       create: { ...amenity, sortOrder: i + 1 },
     });
   }
+  for (const [i, surface] of courtSurfaces.entries()) {
+    await prisma.courtSurface.upsert({
+      where: { code: surface.code },
+      update: {},
+      create: { ...surface, sortOrder: i + 1 },
+    });
+  }
   for (const [i, method] of paymentMethods.entries()) {
     await prisma.paymentMethod.upsert({
       where: { code: method.code },
@@ -232,36 +261,59 @@ async function seedDemo() {
   await prisma.payment.deleteMany({ where: { businessId: business.id } });
   await prisma.reservation.deleteMany({ where: { businessId: business.id } });
 
+  const surfaceIds = new Map(
+    (await prisma.courtSurface.findMany()).map((s) => [s.code, s.id]),
+  );
   const courtSeeds = [
     {
       name: 'Sintética 1',
       sport: Sport.FUTBOL,
       basePricePerHour: 120_000,
       isCovered: false,
+      surface: 'GRAMA_SINTETICA',
+      lengthMeters: 42,
+      widthMeters: 25,
+      playersPerSide: 5,
     },
     {
       name: 'Sintética 2',
       sport: Sport.FUTBOL,
       basePricePerHour: 110_000,
       isCovered: false,
+      surface: 'GRAMA_SINTETICA',
+      lengthMeters: 60,
+      widthMeters: 40,
+      playersPerSide: 7,
     },
     {
       name: 'Pádel 1',
       sport: Sport.PADEL,
       basePricePerHour: 90_000,
       isCovered: true,
+      surface: 'GRAMA_SINTETICA',
+      lengthMeters: 20,
+      widthMeters: 10,
+      playersPerSide: 2,
     },
     {
       name: 'Pádel 2',
       sport: Sport.PADEL,
       basePricePerHour: 90_000,
       isCovered: true,
+      surface: 'GRAMA_SINTETICA',
+      lengthMeters: 20,
+      widthMeters: 10,
+      playersPerSide: 2,
     },
     {
       name: 'Cancha Múltiple',
       sport: Sport.BALONCESTO,
       basePricePerHour: 80_000,
       isCovered: true,
+      surface: 'PISO_SINTETICO',
+      lengthMeters: 28,
+      widthMeters: 15,
+      playersPerSide: 5,
     },
   ];
   // Abiertas de 06:00 a 23:00 entre semana y de 07:00 a 22:00 el fin de semana.
@@ -273,7 +325,8 @@ async function seedDemo() {
     closeTime: weekend.includes(dayOfWeek) ? '22:00' : '23:00',
   }));
   const courts: Record<string, string> = {};
-  for (const court of courtSeeds) {
+  for (const { surface, ...court } of courtSeeds) {
+    const surfaceId = surfaceIds.get(surface) ?? null;
     // Tarifa nocturna entre semana: 20 % sobre el precio base.
     const rates = [
       {
@@ -290,9 +343,10 @@ async function seedDemo() {
     };
     const saved = await prisma.court.upsert({
       where: { businessId_name: { businessId: business.id, name: court.name } },
-      update: { ...court, isActive: true, ...details },
+      update: { ...court, surfaceId, isActive: true, ...details },
       create: {
         ...court,
+        surfaceId,
         businessId: business.id,
         schedules: { create: schedules },
         rates: { create: rates },

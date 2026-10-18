@@ -1,6 +1,7 @@
 import { useRef, useState, type FormEvent } from 'react';
 import { api, errorMessage } from '../lib/api';
 import {
+  courtSpecs,
   DAY_LABELS,
   DAY_SHORT,
   DAYS,
@@ -10,7 +11,7 @@ import {
   SPORT_LABELS,
 } from '../lib/format';
 import { useToast } from '../lib/toast';
-import type { Court, CourtRate, CourtSchedule, DayOfWeek, Sport } from '../lib/types';
+import type { Catalogs, Court, CourtRate, CourtSchedule, DayOfWeek, Sport } from '../lib/types';
 import { useApi } from '../lib/useApi';
 import { ImageIcon, PlusIcon } from './icons';
 import {
@@ -96,6 +97,7 @@ export function ClientCourts({
                           {SPORT_LABELS[court.sport]} · {court.isCovered ? 'Cubierta' : 'Al aire libre'} ·
                           turnos de {court.slotDuration} min
                         </p>
+                        {courtSpecs(court) && <p className="text-xs text-fg-3">{courtSpecs(court)}</p>}
                       </div>
                     </div>
                   </Td>
@@ -212,7 +214,19 @@ function CourtEditor({
     currency: court.currency,
     basePricePerHour: String(court.basePricePerHour),
     slotDuration: court.slotDuration,
+    surface: court.surface?.code ?? '',
+    lengthMeters: court.lengthMeters === null ? '' : String(court.lengthMeters),
+    widthMeters: court.widthMeters === null ? '' : String(court.widthMeters),
+    playersPerSide: court.playersPerSide === null ? '' : String(court.playersPerSide),
   });
+  const catalogs = useApi<Catalogs>('/catalogs');
+  // Las que aplican al deporte, más la actual aunque se haya desactivado.
+  const surfaces = (catalogs.data?.courtSurfaces ?? []).filter(
+    (s) => s.sports.length === 0 || s.sports.includes(form.sport),
+  );
+  if (court.surface && form.surface === court.surface.code && !surfaces.some((s) => s.code === form.surface)) {
+    surfaces.unshift({ ...court.surface, sports: [] });
+  }
   const [schedules, setSchedules] = useState<CourtSchedule[]>(() =>
     DAYS.map(
       (day) =>
@@ -241,12 +255,18 @@ function CourtEditor({
     setSaving(true);
     setError(undefined);
     try {
+      const { surface, lengthMeters, widthMeters, playersPerSide, ...fields } = form;
+      const optionalNumber = (value: string) => (value.trim() === '' ? null : Number(value));
       await api<Court>(`/admin/clients/${clientId}/courts/${court.id}`, {
         method: 'PATCH',
         body: {
-          ...form,
+          ...fields,
           currency: form.currency.trim().toUpperCase(),
           basePricePerHour: Number(form.basePricePerHour),
+          surface: surface || null,
+          lengthMeters: optionalNumber(lengthMeters),
+          widthMeters: optionalNumber(widthMeters),
+          playersPerSide: optionalNumber(playersPerSide),
           schedules: schedules.map((s) =>
             s.isOpen ? s : { dayOfWeek: s.dayOfWeek, isOpen: false },
           ),
@@ -340,7 +360,13 @@ function CourtEditor({
               <Select
                 id={id}
                 value={form.sport}
-                onChange={(e) => setForm({ ...form, sport: e.target.value as Sport })}
+                onChange={(e) => {
+                  const sport = e.target.value as Sport;
+                  const applies = catalogs.data?.courtSurfaces.find((s) => s.code === form.surface);
+                  // Una superficie que no aplica al nuevo deporte se quita.
+                  const keep = !applies || applies.sports.length === 0 || applies.sports.includes(sport);
+                  setForm({ ...form, sport, surface: keep ? form.surface : '' });
+                }}
               >
                 {SPORTS.map((s) => (
                   <option key={s} value={s}>
@@ -390,6 +416,69 @@ function CourtEditor({
                     </option>
                   ))}
                 </Select>
+              )}
+            </Field>
+          </div>
+          <Field label="Superficie" hint="Tipo de grama o piso">
+            {(id) => (
+              <Select
+                id={id}
+                value={form.surface}
+                onChange={(e) => setForm({ ...form, surface: e.target.value })}
+              >
+                <option value="">Sin indicar</option>
+                {surfaces.map((s) => (
+                  <option key={s.code} value={s.code}>
+                    {s.name}
+                  </option>
+                ))}
+              </Select>
+            )}
+          </Field>
+          <Field label="Jugadores por equipo" hint="Formato, p. ej. 5 en fútbol 5">
+            {(id) => (
+              <Input
+                id={id}
+                type="number"
+                min={1}
+                max={11}
+                step={1}
+                inputMode="numeric"
+                placeholder="Sin indicar"
+                value={form.playersPerSide}
+                onChange={(e) => setForm({ ...form, playersPerSide: e.target.value })}
+              />
+            )}
+          </Field>
+          <div className="grid grid-cols-2 gap-4 sm:col-span-2">
+            <Field label="Largo (m)" hint="Junto con el ancho, o ninguno">
+              {(id) => (
+                <Input
+                  id={id}
+                  type="number"
+                  min={1}
+                  max={200}
+                  step="0.01"
+                  inputMode="decimal"
+                  required={form.widthMeters !== ''}
+                  value={form.lengthMeters}
+                  onChange={(e) => setForm({ ...form, lengthMeters: e.target.value })}
+                />
+              )}
+            </Field>
+            <Field label="Ancho (m)">
+              {(id) => (
+                <Input
+                  id={id}
+                  type="number"
+                  min={1}
+                  max={200}
+                  step="0.01"
+                  inputMode="decimal"
+                  required={form.lengthMeters !== ''}
+                  value={form.widthMeters}
+                  onChange={(e) => setForm({ ...form, widthMeters: e.target.value })}
+                />
               )}
             </Field>
           </div>

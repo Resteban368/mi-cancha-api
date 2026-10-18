@@ -85,6 +85,10 @@ export interface Court {
   currency: string;
   basePricePerHour: number;
   slotDuration: number;
+  surface: { code: string; name: string } | null;
+  lengthMeters: number | null;
+  widthMeters: number | null;
+  playersPerSide: number | null;
   schedules: CourtSchedule[];
   rates: CourtRate[];
   photos: { slot: CourtPhotoSlot; url: string }[];
@@ -191,6 +195,11 @@ export interface Amenity {
 
 export interface PaymentMethod extends Amenity {
   requiresReference: boolean;
+}
+
+export interface CourtSurface extends Amenity {
+  /** Vacío = todos los deportes. */
+  sports: Sport[];
 }
 
 export interface SystemEnum {
@@ -383,4 +392,5 @@ export interface Refund {
 export interface Catalogs {
   amenities: { code: string; name: string }[];
   paymentMethods: { code: string; name: string; requiresReference: boolean }[];
+  courtSurfaces: { code: string; name: string; sports: Sport[] }[];
 }

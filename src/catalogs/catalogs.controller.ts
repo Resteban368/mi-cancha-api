@@ -11,7 +11,7 @@ export class CatalogsController {
 
   @Get()
   @ApiOperation({
-    summary: 'Servicios y métodos de pago activos (para la app)',
+    summary: 'Servicios, métodos de pago y superficies de cancha activos (para la app)',
   })
   findActive(): Promise<CatalogsDto> {
     return this.catalogsService.findActive();

@@ -4,6 +4,7 @@ import {
   createPrismaMock,
   PrismaMock,
 } from '../../test/support/prisma-mock.js';
+import { Sport } from '../generated/prisma/enums.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CatalogsService } from './catalogs.service.js';
 
@@ -82,5 +83,86 @@ describe('CatalogsService', () => {
       name: 'Duchas',
     });
     expect(result.sortOrder).toBe(8);
+  });
+
+  describe('resolveCourtSurfaceId', () => {
+    const surface = {
+      id: 's1',
+      code: 'GRAMA_SINTETICA',
+      name: 'Grama sintética',
+      sports: [Sport.FUTBOL, Sport.PADEL],
+      active: true,
+    };
+
+    it('devuelve el id si aplica al deporte', async () => {
+      prisma.courtSurface.findUnique.mockResolvedValue(surface);
+      await expect(
+        service.resolveCourtSurfaceId('GRAMA_SINTETICA', Sport.PADEL),
+      ).resolves.toBe('s1');
+    });
+
+    it('sin deportes aplica a todos', async () => {
+      prisma.courtSurface.findUnique.mockResolvedValue({
+        ...surface,
+        sports: [],
+      });
+      await expect(
+        service.resolveCourtSurfaceId('CEMENTO', Sport.VOLEIBOL),
+      ).resolves.toBe('s1');
+    });
+
+    it('rechaza una superficie que no aplica al deporte', async () => {
+      prisma.courtSurface.findUnique.mockResolvedValue(surface);
+      await expect(
+        service.resolveCourtSurfaceId('GRAMA_SINTETICA', Sport.BALONCESTO),
+      ).rejects.toThrow('La superficie Grama sintética no aplica a este deporte');
+    });
+
+    it('rechaza códigos inexistentes o inactivos, salvo la que ya tiene la cancha', async () => {
+      prisma.courtSurface.findUnique.mockResolvedValue(null);
+      await expect(
+        service.resolveCourtSurfaceId('PISCINA', Sport.FUTBOL),
+      ).rejects.toThrow('Superficie no válida: PISCINA');
+
+      prisma.courtSurface.findUnique.mockResolvedValue({
+        ...surface,
+        active: false,
+      });
+      await expect(
+        service.resolveCourtSurfaceId('GRAMA_SINTETICA', Sport.FUTBOL),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.resolveCourtSurfaceId('GRAMA_SINTETICA', Sport.FUTBOL, 's1'),
+      ).resolves.toBe('s1');
+    });
+  });
+
+  it('incluye las superficies activas en los catálogos de la app', async () => {
+    prisma.amenity.findMany.mockResolvedValue([]);
+    prisma.paymentMethod.findMany.mockResolvedValue([]);
+    prisma.courtSurface.findMany.mockResolvedValue([
+      {
+        id: 's1',
+        code: 'MADERA',
+        name: 'Madera',
+        sports: [Sport.BALONCESTO],
+        active: true,
+        sortOrder: 1,
+      },
+    ]);
+    const result = await service.findActive();
+    expect(result.courtSurfaces).toEqual([
+      {
+        id: 's1',
+        code: 'MADERA',
+        name: 'Madera',
+        sports: ['BALONCESTO'],
+        active: true,
+        sortOrder: 1,
+      },
+    ]);
+    expect(prisma.courtSurface.findMany.mock.calls[0][0].where).toEqual({
+      active: true,
+    });
   });
 });

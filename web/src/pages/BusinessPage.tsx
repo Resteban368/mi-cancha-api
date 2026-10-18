@@ -4,6 +4,7 @@ import { Header } from '../components/Header';
 import { Alert, Button, Card, Dialog, inputClass, Skeleton } from '../components/ui';
 import { api, ApiError, errorMessage } from '../lib/api';
 import {
+  courtSpecs,
   bogotaDate,
   dayParts,
   formatLongDay,
@@ -353,6 +354,7 @@ function CourtCard({
             {SPORT_LABELS[court.sport]} · {court.isCovered ? 'Cubierta' : 'Al aire libre'} · Turnos de{' '}
             {court.slotDuration % 60 === 0 ? `${court.slotDuration / 60} h` : `${court.slotDuration} min`}
           </p>
+          {courtSpecs(court) && <p className="text-xs text-fg-3">{courtSpecs(court)}</p>}
         </div>
         <span className="shrink-0 rounded-full bg-accent-soft px-2.5 py-1 text-xs font-bold text-accent">
           {availableCount} libre{availableCount === 1 ? '' : 's'}

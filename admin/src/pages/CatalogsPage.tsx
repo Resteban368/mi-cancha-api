@@ -17,12 +17,14 @@ import {
 } from '../components/ui';
 import { useToast } from '../lib/toast';
 import { api, errorMessage } from '../lib/api';
-import { toCatalogCode } from '../lib/format';
-import type { Amenity, PaymentMethod, SystemEnum } from '../lib/types';
+import { SPORT_LABELS, toCatalogCode } from '../lib/format';
+import type { Amenity, CourtSurface, PaymentMethod, Sport, SystemEnum } from '../lib/types';
 import { useApi } from '../lib/useApi';
 
-type CatalogKind = 'amenities' | 'payment-methods';
-type CatalogItem = Amenity | PaymentMethod;
+type CatalogKind = 'amenities' | 'payment-methods' | 'court-surfaces';
+type CatalogItem = Amenity | PaymentMethod | CourtSurface;
+
+const SPORTS: Sport[] = ['FUTBOL', 'PADEL', 'BALONCESTO', 'VOLEIBOL'];
 
 const KIND_TEXT: Record<CatalogKind, { title: string; description: string; item: string; usage: string }> = {
   amenities: {
@@ -37,6 +39,12 @@ const KIND_TEXT: Record<CatalogKind, { title: string; description: string; item:
     item: 'método de pago',
     usage: 'Pagos',
   },
+  'court-surfaces': {
+    title: 'Superficies de cancha',
+    description: 'Tipo de grama o piso que el negocio elige al crear una cancha.',
+    item: 'superficie',
+    usage: 'Canchas',
+  },
 };
 
 export function CatalogsPage() {
@@ -50,6 +58,7 @@ export function CatalogsPage() {
       <div className="flex flex-col gap-6">
         <CatalogCard kind="amenities" />
         <CatalogCard kind="payment-methods" />
+        <CatalogCard kind="court-surfaces" />
 
         <Card
           title="Enums del sistema"
@@ -89,6 +98,7 @@ function CatalogCard({ kind }: { kind: CatalogKind }) {
   const [editing, setEditing] = useState<CatalogItem | 'new' | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const isPayment = kind === 'payment-methods';
+  const isSurface = kind === 'court-surfaces';
 
   async function patch(item: CatalogItem, body: Record<string, unknown>, message: string) {
     setBusyId(item.id);
@@ -131,6 +141,7 @@ function CatalogCard({ kind }: { kind: CatalogKind }) {
               <Th>Nombre</Th>
               <Th>Código</Th>
               {isPayment && <Th>Exige referencia</Th>}
+              {isSurface && <Th>Deportes</Th>}
               <Th align="right">{text.usage}</Th>
               <Th>Activo</Th>
               <Th />
@@ -155,6 +166,11 @@ function CatalogCard({ kind }: { kind: CatalogKind }) {
                     />
                   </Td>
                 )}
+                {isSurface && (
+                  <Td>
+                    <SportsList sports={(item as CourtSurface).sports} />
+                  </Td>
+                )}
                 <Td align="right" className="tabular">
                   {item.usageCount}
                 </Td>
@@ -163,7 +179,7 @@ function CatalogCard({ kind }: { kind: CatalogKind }) {
                     checked={item.active}
                     disabled={busyId === item.id}
                     label={item.active ? `Desactivar ${item.name}` : `Activar ${item.name}`}
-                    onChange={(active) => patch(item, { active }, `${item.name} ${active ? 'activado' : 'desactivado'}`)}
+                    onChange={(active) => patch(item, { active }, `${item.name} ${active ? 'activad' : 'desactivad'}${isSurface ? 'a' : 'o'}`)}
                   />
                 </Td>
                 <Td align="right">
@@ -184,12 +200,24 @@ function CatalogCard({ kind }: { kind: CatalogKind }) {
           onClose={() => setEditing(null)}
           onSaved={(name, created) => {
             setEditing(null);
-            notify(created ? `${name} agregado` : `${name} actualizado`);
+            const o = isSurface ? 'a' : 'o';
+            notify(created ? `${name} agregad${o}` : `${name} actualizad${o}`);
             items.reload();
           }}
         />
       )}
     </Card>
+  );
+}
+
+function SportsList({ sports }: { sports: Sport[] }) {
+  if (sports.length === 0) return <span className="text-xs text-fg-3">Todos</span>;
+  return (
+    <div className="flex flex-wrap gap-1">
+      {sports.map((s) => (
+        <Badge key={s}>{SPORT_LABELS[s]}</Badge>
+      ))}
+    </div>
   );
 }
 
@@ -205,6 +233,7 @@ function CatalogItemModal({
   onSaved: (name: string, created: boolean) => void;
 }) {
   const isPayment = kind === 'payment-methods';
+  const isSurface = kind === 'court-surfaces';
   const [name, setName] = useState(item?.name ?? '');
   const [code, setCode] = useState(item?.code ?? '');
   const [codeTouched, setCodeTouched] = useState(false);
@@ -212,6 +241,7 @@ function CatalogItemModal({
   const [requiresReference, setRequiresReference] = useState(
     item && 'requiresReference' in item ? item.requiresReference : true,
   );
+  const [sports, setSports] = useState<Sport[]>(item && 'sports' in item ? item.sports : []);
   const [error, setError] = useState<string>();
   const [saving, setSaving] = useState(false);
 
@@ -222,6 +252,7 @@ function CatalogItemModal({
     const body: Record<string, unknown> = { name: name.trim() };
     if (sortOrder !== '') body.sortOrder = Number(sortOrder);
     if (isPayment) body.requiresReference = requiresReference;
+    if (isSurface) body.sports = sports;
     try {
       if (item) {
         await api(`/admin/catalogs/${kind}/${item.id}`, { method: 'PATCH', body });
@@ -240,7 +271,7 @@ function CatalogItemModal({
     <Modal
       open
       onClose={onClose}
-      title={item ? `Editar ${title}` : `Nuevo ${title}`}
+      title={item ? `Editar ${title}` : `${isSurface ? 'Nueva' : 'Nuevo'} ${title}`}
       footer={
         <>
           <Button onClick={onClose}>Cancelar</Button>
@@ -297,6 +328,39 @@ function CatalogItemModal({
             </div>
             <Switch checked={requiresReference} onChange={setRequiresReference} label="Exige referencia" />
           </div>
+        )}
+        {isSurface && (
+          <fieldset>
+            <legend className="text-sm font-medium">Deportes</legend>
+            <p className="mb-2 text-xs text-fg-3">
+              Solo se ofrece en canchas de estos deportes. Sin ninguno marcado, aplica a todos.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {SPORTS.map((sport) => {
+                const on = sports.includes(sport);
+                return (
+                  <button
+                    key={sport}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() =>
+                      setSports(on ? sports.filter((s) => s !== sport) : SPORTS.filter((s) => s === sport || sports.includes(s)))
+                    }
+                    className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
+                      on ? 'bg-accent text-accent-fg' : 'border border-border bg-surface text-fg-2 hover:bg-surface-2'
+                    }`}
+                  >
+                    {SPORT_LABELS[sport]}
+                  </button>
+                );
+              })}
+            </div>
+            {item && (
+              <p className="mt-2 text-xs text-fg-3">
+                Quitar un deporte no cambia las canchas que ya la usan.
+              </p>
+            )}
+          </fieldset>
         )}
       </form>
     </Modal>

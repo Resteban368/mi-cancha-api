@@ -13,12 +13,16 @@ import { UserRole } from '../generated/prisma/enums.js';
 import { CatalogsService } from './catalogs.service.js';
 import {
   AdminAmenityDto,
+  AdminCourtSurfaceDto,
   AdminPaymentMethodDto,
   AmenityDto,
+  CourtSurfaceDto,
   CreateAmenityDto,
+  CreateCourtSurfaceDto,
   CreatePaymentMethodDto,
   PaymentMethodDto,
   UpdateAmenityDto,
+  UpdateCourtSurfaceDto,
   UpdatePaymentMethodDto,
 } from './dto/catalog.dto.js';
 
@@ -71,5 +75,28 @@ export class AdminCatalogsController {
     @Body() dto: UpdatePaymentMethodDto,
   ): Promise<PaymentMethodDto> {
     return this.catalogsService.updatePaymentMethod(id, dto);
+  }
+
+  @Get('court-surfaces')
+  @ApiOperation({ summary: 'Superficies de cancha (incluye inactivas y uso)' })
+  findCourtSurfaces(): Promise<AdminCourtSurfaceDto[]> {
+    return this.catalogsService.findAllCourtSurfaces();
+  }
+
+  @Post('court-surfaces')
+  @ApiOperation({ summary: 'Crear una superficie de cancha' })
+  createCourtSurface(
+    @Body() dto: CreateCourtSurfaceDto,
+  ): Promise<CourtSurfaceDto> {
+    return this.catalogsService.createCourtSurface(dto);
+  }
+
+  @Patch('court-surfaces/:id')
+  @ApiOperation({ summary: 'Editar o (des)activar una superficie de cancha' })
+  updateCourtSurface(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateCourtSurfaceDto,
+  ): Promise<CourtSurfaceDto> {
+    return this.catalogsService.updateCourtSurface(id, dto);
   }
 }

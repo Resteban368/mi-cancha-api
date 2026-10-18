@@ -254,6 +254,17 @@ export class AvailabilityCourtDto {
   currency: string;
   /** Foto principal (MAIN). */
   photoUrl: string | null;
+  /** Superficie o tipo de grama, p. ej. Grama sintética. */
+  @ApiProperty({ type: String, nullable: true })
+  surfaceName: string | null;
+  /** Medidas en metros (las dos o ninguna). */
+  @ApiProperty({ type: Number, nullable: true })
+  lengthMeters: number | null;
+  @ApiProperty({ type: Number, nullable: true })
+  widthMeters: number | null;
+  /** Jugadores por equipo (5 = fútbol 5). */
+  @ApiProperty({ type: Number, nullable: true })
+  playersPerSide: number | null;
 }
 
 export class CourtSlotsDto {

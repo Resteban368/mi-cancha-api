@@ -171,6 +171,14 @@ model Court {
   basePricePerHour Decimal  @db.Decimal(12, 2)
   /// Duración de cada turno en minutos: 30, 60, 90 o 120.
   slotDuration     Int      @default(60)
+  /// Superficie o tipo de grama (catálogo); null si no se indicó.
+  surfaceId        String?
+  surface          CourtSurface? @relation(fields: [surfaceId], references: [id])
+  /// Medidas en metros. Van las dos o ninguna.
+  lengthMeters     Decimal? @db.Decimal(5, 2)
+  widthMeters      Decimal? @db.Decimal(5, 2)
+  /// Formato: jugadores por equipo (5 en fútbol 5, 2 en pádel); null si no se indicó.
+  playersPerSide   Int?
   isActive         Boolean  @default(true)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
@@ -181,6 +189,7 @@ model Court {
   reservations Reservation[]
 
   @@unique([businessId, name])
+  @@index([surfaceId])
 }
 
 /// Horario de una cancha para un día de la semana. Siempre hay 7 por cancha.
@@ -370,6 +379,22 @@ model Amenity {
   updatedAt DateTime @updatedAt
 
   businesses Business[]
+}
+
+/// Catálogo editable desde el panel: superficie o tipo de grama de una cancha.
+model CourtSurface {
+  id        String   @id @default(uuid())
+  /// Código estable que usan la API y la app (p. ej. GRAMA_SINTETICA).
+  code      String   @unique
+  name      String
+  /// Deportes en los que se ofrece; vacío = todos.
+  sports    Sport[]  @default([])
+  active    Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  courts Court[]
 }
 
 /// Catálogo editable desde el panel: medios con los que se recibe un pago.

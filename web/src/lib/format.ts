@@ -63,3 +63,22 @@ export const STATUS_LABELS: Record<string, { label: string; className: string }>
   NO_SHOW: { label: 'No asististe', className: 'bg-warn-soft text-warn' },
   CANCELLED: { label: 'Cancelada', className: 'bg-danger-soft text-danger' },
 };
+
+const meters = new Intl.NumberFormat('es-CO', { maximumFractionDigits: 2 });
+
+/** "Grama sintética · 42 × 25 m · Fútbol 5"; vacío si la cancha no tiene esos datos. */
+export function courtSpecs(court: {
+  sport: string;
+  surfaceName: string | null;
+  lengthMeters: number | null;
+  widthMeters: number | null;
+  playersPerSide: number | null;
+}): string {
+  const size =
+    court.lengthMeters !== null && court.widthMeters !== null
+      ? `${meters.format(court.lengthMeters)} × ${meters.format(court.widthMeters)} m`
+      : null;
+  const n = court.playersPerSide;
+  const format = n === null ? null : court.sport === 'FUTBOL' ? `Fútbol ${n}` : `${n} vs ${n}`;
+  return [court.surfaceName, size, format].filter(Boolean).join(' · ');
+}

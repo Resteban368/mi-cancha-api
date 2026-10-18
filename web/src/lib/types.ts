@@ -42,6 +42,10 @@ export interface CourtSlots {
     slotDuration: number;
     currency: string;
     photoUrl: string | null;
+    surfaceName: string | null;
+    lengthMeters: number | null;
+    widthMeters: number | null;
+    playersPerSide: number | null;
   };
   availableCount: number;
   slots: Slot[];

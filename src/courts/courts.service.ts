@@ -6,9 +6,10 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { BusinessesService } from '../businesses/businesses.service.js';
+import { CatalogsService } from '../catalogs/catalogs.service.js';
 import { courtPhotoUrl, publicApiUrl } from '../common/public-url.js';
 import type { Prisma } from '../generated/prisma/client.js';
-import { CourtPhotoSlot } from '../generated/prisma/enums.js';
+import { CourtPhotoSlot, Sport } from '../generated/prisma/enums.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { DAYS, rateErrors, scheduleErrors } from './court-time.js';
 import {
@@ -33,6 +34,7 @@ export const courtInclude = {
   schedules: true,
   rates: { orderBy: { sortOrder: 'asc' } },
   photos: { select: { id: true, slot: true } },
+  surface: { select: { code: true, name: true } },
 } satisfies Prisma.CourtInclude;
 
 export type CourtWithDetails = Prisma.CourtGetPayload<{
@@ -46,6 +48,7 @@ export class CourtsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly businesses: BusinessesService,
+    private readonly catalogs: CatalogsService,
     config: ConfigService,
   ) {
     this.publicApiUrl = publicApiUrl(config);
@@ -74,8 +77,12 @@ export class CourtsService {
   async create(ownerId: string, dto: CreateCourtDto): Promise<CourtDto> {
     const businessId = await this.businesses.requireBusinessId(ownerId);
     assertValidTimes(dto.schedules, dto.rates);
+    assertValidDimensions(dto.lengthMeters, dto.widthMeters);
     const isActive = dto.isActive ?? true;
     await this.assertPlanAllows(businessId, isActive);
+    const surfaceId = dto.surface
+      ? await this.catalogs.resolveCourtSurfaceId(dto.surface, dto.sport)
+      : null;
 
     const court = await this.prisma.court.create({
       data: {
@@ -87,6 +94,10 @@ export class CourtsService {
         currency: dto.currency ?? DEFAULT_CURRENCY,
         basePricePerHour: dto.basePricePerHour,
         slotDuration: dto.slotDuration ?? DEFAULT_SLOT_DURATION,
+        surfaceId,
+        lengthMeters: dto.lengthMeters ?? null,
+        widthMeters: dto.widthMeters ?? null,
+        playersPerSide: dto.playersPerSide ?? null,
         schedules: { create: dto.schedules.map(scheduleData) },
         rates: { create: (dto.rates ?? []).map(rateData) },
       },
@@ -112,15 +123,21 @@ export class CourtsService {
   ): Promise<CourtDto> {
     const court = await this.findOwnedCourt(businessId, courtId);
     assertValidTimes(dto.schedules, dto.rates);
+    assertValidDimensions(
+      dto.lengthMeters !== undefined ? dto.lengthMeters : court.lengthMeters,
+      dto.widthMeters !== undefined ? dto.widthMeters : court.widthMeters,
+    );
     if (dto.isActive && !court.isActive) {
       await this.assertPlanAllows(businessId, true);
     }
 
-    const { schedules, rates, ...fields } = dto;
+    const { schedules, rates, surface, ...fields } = dto;
+    const surfaceId = await this.surfaceForUpdate(court, surface, dto.sport);
     const updated = await this.prisma.court.update({
       where: { id: court.id },
       data: {
         ...fields,
+        ...(surfaceId !== undefined && { surfaceId }),
         ...(schedules && {
           schedules: { deleteMany: {}, create: schedules.map(scheduleData) },
         }),
@@ -143,6 +160,25 @@ export class CourtsService {
       include: courtInclude,
     });
     return this.toDto(updated);
+  }
+
+  /**
+   * Superficie a guardar al editar; undefined = no cambia. Si solo cambia el
+   * deporte, la superficie actual tiene que seguir aplicando al nuevo.
+   */
+  private async surfaceForUpdate(
+    court: CourtWithDetails,
+    surface: string | null | undefined,
+    sport: Sport | undefined,
+  ): Promise<string | null | undefined> {
+    if (surface === null) return null;
+    const code = surface ?? (sport ? court.surface?.code : undefined);
+    if (!code) return undefined;
+    return this.catalogs.resolveCourtSurfaceId(
+      code,
+      sport ?? court.sport,
+      court.surfaceId,
+    );
   }
 
   async findOwnedCourt(
@@ -173,6 +209,10 @@ export class CourtsService {
       currency: court.currency,
       basePricePerHour: Number(court.basePricePerHour),
       slotDuration: court.slotDuration,
+      surface: court.surface,
+      lengthMeters: toMeters(court.lengthMeters),
+      widthMeters: toMeters(court.widthMeters),
+      playersPerSide: court.playersPerSide,
       schedules: [...court.schedules]
         .sort((a, b) => DAYS.indexOf(a.dayOfWeek) - DAYS.indexOf(b.dayOfWeek))
         .map((s) => ({
@@ -260,6 +300,22 @@ function assertValidTimes(
     ...(rates ? rateErrors(rates) : []),
   ];
   if (errors.length) throw new BadRequestException(errors);
+}
+
+/** Las medidas van las dos o ninguna. */
+function assertValidDimensions(
+  length: unknown,
+  width: unknown,
+): void {
+  if ((length == null) !== (width == null)) {
+    throw new BadRequestException([
+      'lengthMeters y widthMeters van juntos: envía las dos medidas o ninguna',
+    ]);
+  }
+}
+
+function toMeters(value: Prisma.Decimal | null): number | null {
+  return value === null ? null : Number(value);
 }
 
 function scheduleData(s: CourtScheduleDto) {

@@ -1,6 +1,9 @@
-import { PartialType, PickType } from '@nestjs/swagger';
+import { ApiProperty, PartialType, PickType } from '@nestjs/swagger';
 import {
+  ArrayUnique,
+  IsArray,
   IsBoolean,
+  IsEnum,
   IsInt,
   IsOptional,
   IsString,
@@ -10,6 +13,7 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
+import { Sport } from '../../generated/prisma/enums.js';
 
 /** Códigos en MAYÚSCULAS_CON_GUION_BAJO; no se pueden cambiar una vez creados. */
 export const CATALOG_CODE_PATTERN = /^[A-Z][A-Z0-9_]{1,39}$/;
@@ -54,6 +58,24 @@ export class UpdatePaymentMethodDto extends UpdateAmenityDto {
   requiresReference?: boolean;
 }
 
+export class CreateCourtSurfaceDto extends CreateAmenityDto {
+  /** Deportes en los que se ofrece; vacío = todos. @example ["FUTBOL","PADEL"] */
+  @ApiProperty({ enum: Sport, isArray: true })
+  @IsArray()
+  @ArrayUnique()
+  @IsEnum(Sport, { each: true })
+  sports: Sport[];
+}
+
+export class UpdateCourtSurfaceDto extends UpdateAmenityDto {
+  @ApiProperty({ enum: Sport, isArray: true, required: false })
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsEnum(Sport, { each: true })
+  sports?: Sport[];
+}
+
 export class AmenityDto {
   id: string;
   code: string;
@@ -66,6 +88,12 @@ export class PaymentMethodDto extends AmenityDto {
   requiresReference: boolean;
 }
 
+export class CourtSurfaceDto extends AmenityDto {
+  /** Deportes en los que se ofrece; vacío = todos. */
+  @ApiProperty({ enum: Sport, isArray: true })
+  sports: Sport[];
+}
+
 export class AdminAmenityDto extends AmenityDto {
   /** Negocios que lo ofrecen. */
   usageCount: number;
@@ -76,7 +104,13 @@ export class AdminPaymentMethodDto extends PaymentMethodDto {
   usageCount: number;
 }
 
+export class AdminCourtSurfaceDto extends CourtSurfaceDto {
+  /** Canchas con esta superficie. */
+  usageCount: number;
+}
+
 export class CatalogsDto {
   amenities: AmenityDto[];
   paymentMethods: PaymentMethodDto[];
+  courtSurfaces: CourtSurfaceDto[];
 }

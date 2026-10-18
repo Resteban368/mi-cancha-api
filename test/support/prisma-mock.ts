@@ -45,6 +45,7 @@ export function createPrismaMock() {
     subscription: modelMock(),
     amenity: modelMock(),
     paymentMethod: modelMock(),
+    courtSurface: modelMock(),
     businessProfileImage: modelMock(),
     courtPhoto: modelMock(),
     customer: modelMock(),

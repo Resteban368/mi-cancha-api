@@ -334,6 +334,12 @@ export class ReservationsService {
             slotDuration: court.slotDuration,
             currency: court.currency,
             photoUrl: main ? courtPhotoUrl(this.publicApiUrl, main.id) : null,
+            surfaceName: court.surface?.name ?? null,
+            lengthMeters:
+              court.lengthMeters === null ? null : Number(court.lengthMeters),
+            widthMeters:
+              court.widthMeters === null ? null : Number(court.widthMeters),
+            playersPerSide: court.playersPerSide,
           },
           availableCount: slots.filter((s) => s.status === 'AVAILABLE').length,
           slots,

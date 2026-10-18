@@ -4,17 +4,26 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { Amenity, PaymentMethod } from '../generated/prisma/client.js';
+import type {
+  Amenity,
+  CourtSurface,
+  PaymentMethod,
+} from '../generated/prisma/client.js';
+import type { Sport } from '../generated/prisma/enums.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
   AdminAmenityDto,
+  AdminCourtSurfaceDto,
   AdminPaymentMethodDto,
   AmenityDto,
   CatalogsDto,
+  CourtSurfaceDto,
   CreateAmenityDto,
+  CreateCourtSurfaceDto,
   CreatePaymentMethodDto,
   PaymentMethodDto,
   UpdateAmenityDto,
+  UpdateCourtSurfaceDto,
   UpdatePaymentMethodDto,
 } from './dto/catalog.dto.js';
 
@@ -26,7 +35,7 @@ export class CatalogsService {
 
   /** Catálogos activos, para la app. */
   async findActive(): Promise<CatalogsDto> {
-    const [amenities, paymentMethods] = await Promise.all([
+    const [amenities, paymentMethods, courtSurfaces] = await Promise.all([
       this.prisma.amenity.findMany({
         where: { active: true },
         orderBy: catalogOrder,
@@ -35,10 +44,15 @@ export class CatalogsService {
         where: { active: true },
         orderBy: catalogOrder,
       }),
+      this.prisma.courtSurface.findMany({
+        where: { active: true },
+        orderBy: catalogOrder,
+      }),
     ]);
     return {
       amenities: amenities.map(toAmenityDto),
       paymentMethods: paymentMethods.map(toPaymentMethodDto),
+      courtSurfaces: courtSurfaces.map(toCourtSurfaceDto),
     };
   }
 
@@ -70,6 +84,30 @@ export class CatalogsService {
       throw new BadRequestException(`Método de pago no válido: ${code}`);
     }
     return method;
+  }
+
+  /**
+   * Convierte el código de una superficie en su id. Debe existir, aplicar al
+   * deporte y estar activa; [currentId] es la que ya tiene la cancha, que se
+   * puede conservar aunque se haya desactivado después.
+   */
+  async resolveCourtSurfaceId(
+    code: string,
+    sport: Sport,
+    currentId?: string | null,
+  ): Promise<string> {
+    const surface = await this.prisma.courtSurface.findUnique({
+      where: { code },
+    });
+    if (!surface || (!surface.active && surface.id !== currentId)) {
+      throw new BadRequestException(`Superficie no válida: ${code}`);
+    }
+    if (surface.sports.length > 0 && !surface.sports.includes(sport)) {
+      throw new BadRequestException(
+        `La superficie ${surface.name} no aplica a este deporte`,
+      );
+    }
+    return surface.id;
   }
 
   // --- Administración (SUPER_ADMIN) ---
@@ -147,14 +185,55 @@ export class CatalogsService {
     return toPaymentMethodDto(method);
   }
 
+  async findAllCourtSurfaces(): Promise<AdminCourtSurfaceDto[]> {
+    const surfaces = await this.prisma.courtSurface.findMany({
+      orderBy: catalogOrder,
+      include: { _count: { select: { courts: true } } },
+    });
+    return surfaces.map((s) => ({
+      ...toCourtSurfaceDto(s),
+      usageCount: s._count.courts,
+    }));
+  }
+
+  async createCourtSurface(
+    dto: CreateCourtSurfaceDto,
+  ): Promise<CourtSurfaceDto> {
+    await this.assertCodeFree('courtSurface', dto.code);
+    const last = await this.prisma.courtSurface.findFirst({
+      orderBy: { sortOrder: 'desc' },
+      select: { sortOrder: true },
+    });
+    const surface = await this.prisma.courtSurface.create({
+      data: { ...dto, sortOrder: dto.sortOrder ?? (last?.sortOrder ?? 0) + 1 },
+    });
+    return toCourtSurfaceDto(surface);
+  }
+
+  /** Quitar un deporte no cambia las canchas que ya usan la superficie. */
+  async updateCourtSurface(
+    id: string,
+    dto: UpdateCourtSurfaceDto,
+  ): Promise<CourtSurfaceDto> {
+    const exists = await this.prisma.courtSurface.findUnique({ where: { id } });
+    if (!exists) throw new NotFoundException('La superficie no existe');
+    const surface = await this.prisma.courtSurface.update({
+      where: { id },
+      data: dto,
+    });
+    return toCourtSurfaceDto(surface);
+  }
+
   private async assertCodeFree(
-    catalog: 'amenity' | 'paymentMethod',
+    catalog: 'amenity' | 'paymentMethod' | 'courtSurface',
     code: string,
   ): Promise<void> {
     const existing =
       catalog === 'amenity'
         ? await this.prisma.amenity.findUnique({ where: { code } })
-        : await this.prisma.paymentMethod.findUnique({ where: { code } });
+        : catalog === 'paymentMethod'
+          ? await this.prisma.paymentMethod.findUnique({ where: { code } })
+          : await this.prisma.courtSurface.findUnique({ where: { code } });
     if (existing) {
       throw new ConflictException(`Ya existe un valor con el código ${code}`);
     }
@@ -173,4 +252,8 @@ function toAmenityDto(a: Amenity): AmenityDto {
 
 function toPaymentMethodDto(m: PaymentMethod): PaymentMethodDto {
   return { ...toAmenityDto(m), requiresReference: m.requiresReference };
+}
+
+function toCourtSurfaceDto(s: CourtSurface): CourtSurfaceDto {
+  return { ...toAmenityDto(s), sports: s.sports };
 }

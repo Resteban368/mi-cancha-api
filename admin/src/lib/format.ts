@@ -93,6 +93,27 @@ export const SPORT_LABELS: Record<string, string> = {
   VOLEIBOL: 'Voleibol',
 };
 
+const meters = new Intl.NumberFormat('es-CO', { maximumFractionDigits: 2 });
+
+/** "Grama sintética · 42 × 25 m · Fútbol 5"; vacío si la cancha no tiene esos datos. */
+export function courtSpecs(court: {
+  sport: string;
+  surface?: { name: string } | null;
+  surfaceName?: string | null;
+  lengthMeters: number | null;
+  widthMeters: number | null;
+  playersPerSide: number | null;
+}): string {
+  const surface = court.surface?.name ?? court.surfaceName;
+  const size =
+    court.lengthMeters !== null && court.widthMeters !== null
+      ? `${meters.format(court.lengthMeters)} × ${meters.format(court.widthMeters)} m`
+      : null;
+  const n = court.playersPerSide;
+  const format = n === null ? null : court.sport === 'FUTBOL' ? `Fútbol ${n}` : `${n} vs ${n}`;
+  return [surface, size, format].filter(Boolean).join(' · ');
+}
+
 export const DAYS = [
   'MONDAY',
   'TUESDAY',
