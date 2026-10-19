@@ -48,6 +48,12 @@ import {
   WebHoldDto,
   WebReservationDto,
 } from './dto/online-booking.dto.js';
+import {
+  PlayerReservationPageDto,
+  PlayerReservationsQueryDto,
+  PlayerStatsDto,
+} from '../reservations/dto/player-history.dto.js';
+import { PlayerHistoryService } from '../reservations/player-history.service.js';
 import { OnlineBookingService } from './online-booking.service.js';
 import { PlayerAuthService } from './player-auth.service.js';
 
@@ -162,6 +168,7 @@ export class PlayerController {
   constructor(
     private readonly booking: OnlineBookingService,
     private readonly players: PlayerAuthService,
+    private readonly history: PlayerHistoryService,
   ) {}
 
   @Get('me')
@@ -188,6 +195,27 @@ export class PlayerController {
   })
   myBusinesses(@CurrentUser() user: AuthPayload): Promise<PlayerBusinessDto[]> {
     return this.booking.myBusinesses(user.sub);
+  }
+
+  @Get('reservations')
+  @ApiOperation({
+    summary:
+      'Todas mis reservas en todas las sedes, con filtros por estado (próximas, jugadas, canceladas, no asistí), deporte y sede',
+  })
+  allReservations(
+    @CurrentUser() user: AuthPayload,
+    @Query() query: PlayerReservationsQueryDto,
+  ): Promise<PlayerReservationPageDto> {
+    return this.history.list(user.sub, query);
+  }
+
+  @Get('stats')
+  @ApiOperation({
+    summary:
+      'Mi resumen: partidos jugados, horas, próximas, canceladas, deporte y sede favoritos y actividad de los últimos meses',
+  })
+  stats(@CurrentUser() user: AuthPayload): Promise<PlayerStatsDto> {
+    return this.history.stats(user.sub);
   }
 
   @Post('businesses/:slug/reservations')

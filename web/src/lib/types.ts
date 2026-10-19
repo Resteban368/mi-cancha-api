@@ -174,3 +174,36 @@ export interface Reservation {
     balance: number;
   } | null;
 }
+
+/** Reserva del jugador en cualquiera de sus sedes. */
+export interface PlayerReservation extends Reservation {
+  businessName: string;
+  businessSlug: string;
+}
+
+export interface PlayerReservationPage {
+  items: PlayerReservation[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export type ReservationFilter = 'ALL' | 'UPCOMING' | 'PLAYED' | 'CANCELLED' | 'NO_SHOW';
+
+/** Mi resumen: cuánto he jugado. Una reserva de varias canchas cuenta como un partido. */
+export interface PlayerStats {
+  total: number;
+  played: number;
+  upcoming: number;
+  cancelled: number;
+  noShow: number;
+  hoursPlayed: number;
+  spent: number;
+  currency: string;
+  favoriteSport: Sport | null;
+  topBusiness: { name: string; slug: string; played: number } | null;
+  bySport: { sport: Sport; played: number }[];
+  /** Últimos 6 meses (YYYY-MM), del más antiguo al actual. */
+  byMonth: { month: string; played: number }[];
+  next: { start: string; end: string; businessName: string; businessSlug: string; courtName: string } | null;
+}

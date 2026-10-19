@@ -8,6 +8,7 @@ import {
   ReservationsController,
   SportAvailabilityController,
 } from './reservations.controller.js';
+import { PlayerHistoryService } from './player-history.service.js';
 import { ReservationsService } from './reservations.service.js';
 
 @Module({
@@ -22,7 +23,7 @@ import { ReservationsService } from './reservations.service.js';
     CourtAvailabilityController,
     SportAvailabilityController,
   ],
-  providers: [ReservationsService],
-  exports: [ReservationsService],
+  providers: [ReservationsService, PlayerHistoryService],
+  exports: [ReservationsService, PlayerHistoryService],
 })
 export class ReservationsModule {}

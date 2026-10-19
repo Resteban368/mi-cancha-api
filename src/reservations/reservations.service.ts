@@ -78,7 +78,7 @@ type Claimed = { court: CourtWithDetails; first: Slot; last: Slot };
 export type WebSlotsInput = { courtIds: string[]; start: string; slots: number };
 type Prices = { subtotal: number; discount: number; totalPrice: number };
 
-const reservationInclude = {
+export const reservationInclude = {
   court: { select: { name: true, sport: true, currency: true } },
   customer: true,
   cancelledBy: { select: { displayName: true } },
