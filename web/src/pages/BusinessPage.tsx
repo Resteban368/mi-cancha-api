@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { CourtDetails } from '../components/CourtDetails';
-import { BusinessHeader, ChevronRightIcon, CloseIcon, PinIcon, usePitchTheme } from '../components/PitchChrome';
+import { BusinessHeader, ChevronRightIcon, CloseIcon, PinIcon } from '../components/PitchChrome';
 import { Alert, Button, Card, Dialog, inputClass, Skeleton } from '../components/ui';
 import { api, ApiError, errorMessage } from '../lib/api';
 import { accountPath } from '../lib/next';
@@ -76,7 +76,6 @@ function takePending(slug: string): Pending | null {
 }
 
 export function BusinessPage() {
-  usePitchTheme();
   const { slug = '' } = useParams();
   const business = useApi<PublicBusiness>(`/public/businesses/${slug}`);
   const [info, setInfo] = useState(false);

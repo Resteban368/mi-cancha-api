@@ -36,20 +36,20 @@ function CourtBackground() {
         <line x1="80" y1="520" x2="320" y2="520" strokeDasharray="6 4" strokeWidth="1.5" />
         <line x1="200" y1="280" x2="200" y2="520" strokeWidth="1.5" />
       </svg>
-      <div className="absolute left-1/2 top-1/2 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#22C1AC]/15 blur-3xl" />
+      <div className="absolute left-1/2 top-1/2 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-500/10 blur-3xl" />
     </div>
   );
 }
 
 function AuthLayout({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
   return (
-    <div className="relative isolate flex min-h-screen flex-col overflow-hidden bg-gradient-to-b from-[#0F8B7A] via-[#00685B] to-[#084C43]">
+    <div className="relative isolate flex min-h-screen flex-col overflow-hidden bg-bg">
       <CourtBackground />
       <div className="relative z-10 flex min-h-screen flex-col">
         <Header />
         <main className="flex flex-1 items-center justify-center px-4 py-8 sm:py-12">
-          <div className="w-full max-w-md overflow-hidden rounded-2xl border border-white/15 bg-[#084C43]/70 shadow-2xl backdrop-blur-md">
-            <div className="h-1 bg-gradient-to-r from-[#22C1AC] via-[#D2F824] to-[#22C1AC]" />
+          <div className="w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-surface/90 shadow-2xl backdrop-blur-md">
+            <div className="h-1 bg-gradient-to-r from-emerald-600 via-emerald-300 to-emerald-600" />
             <div className="p-6 sm:p-8">
               <div className="mb-6 flex justify-center">
                 <img

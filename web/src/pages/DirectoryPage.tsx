@@ -8,7 +8,6 @@ import {
   PitchBottomNav,
   PitchHeader,
   SearchIcon,
-  usePitchTheme,
 } from '../components/PitchChrome';
 import { Alert, Button, Card, Skeleton } from '../components/ui';
 import { api, errorMessage } from '../lib/api';
@@ -40,7 +39,6 @@ interface Listing {
 
 /** Directorio general: todas las sedes que reciben reservas, con búsqueda, filtros y "cerca de mí". */
 export function DirectoryPage() {
-  usePitchTheme();
   const [search, setSearch] = useState('');
   const [term, setTerm] = useState('');
   const [sport, setSport] = useState<Sport | ''>('');

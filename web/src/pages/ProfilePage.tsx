@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Navigate } from 'react-router';
 import { Header } from '../components/Header';
+import { PitchBottomNav } from '../components/PitchChrome';
 import { Alert, Button, Card, Field, inputClass, Skeleton } from '../components/ui';
 import { api, errorMessage } from '../lib/api';
 import { accountPath } from '../lib/next';
@@ -23,8 +24,11 @@ export function ProfilePage() {
   return (
     <>
       <Header />
-      <main className="mx-auto flex max-w-md flex-col gap-4 px-4 py-4">
-        <h1 className="text-xl font-bold">Mi perfil</h1>
+      <main className="mx-auto flex max-w-md flex-col gap-4 px-4 pb-28 pt-5 sm:pb-12">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Mi perfil</h1>
+          <p className="mt-0.5 text-xs text-fg-3">Tus datos sirven para todas las sedes.</p>
+        </div>
         {me.error && me.status !== 401 && <Alert>{me.error}</Alert>}
         {me.data ? (
           <ProfileForm
@@ -37,9 +41,10 @@ export function ProfilePage() {
             }}
           />
         ) : (
-          <Skeleton className="h-96" />
+          <Skeleton className="h-96 rounded-2xl" />
         )}
       </main>
+      <PitchBottomNav />
     </>
   );
 }

@@ -1,25 +1,7 @@
-import { useLayoutEffect, type ReactNode, type SVGProps } from 'react';
+import type { ReactNode, SVGProps } from 'react';
 import { Link, NavLink, useLocation } from 'react-router';
 import { accountPath } from '../lib/next';
 import { useSession } from '../lib/session';
-
-const THEME_CLASS = 'theme-pitch';
-const PITCH_COLOR = '#0b1120';
-
-/** Activa el tema oscuro del directorio mientras la página está montada (incluye el fondo del body). */
-export function usePitchTheme() {
-  useLayoutEffect(() => {
-    const html = document.documentElement;
-    const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
-    const previousColor = meta?.content;
-    html.classList.add(THEME_CLASS);
-    if (meta) meta.content = PITCH_COLOR;
-    return () => {
-      html.classList.remove(THEME_CLASS);
-      if (meta && previousColor) meta.content = previousColor;
-    };
-  }, []);
-}
 
 const icon = (path: ReactNode) =>
   function Icon(props: SVGProps<SVGSVGElement>) {
@@ -97,7 +79,7 @@ export function PitchHeader() {
             height={36}
             className="rounded-xl shadow-lg shadow-emerald-500/20 ring-1 ring-white/20"
           />
-          <span className="flex items-center gap-1 text-lg font-extrabold tracking-tight">
+          <span className="flex items-center gap-1 whitespace-nowrap text-lg font-extrabold tracking-tight">
             Mi Cancha <span className="size-1.5 rounded-full bg-accent" aria-hidden />
           </span>
         </Link>
@@ -107,7 +89,7 @@ export function PitchHeader() {
             <>
               <Link
                 to="/mis-sedes"
-                className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold tracking-wide text-accent transition active:scale-95"
+                className="whitespace-nowrap rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold tracking-wide text-accent transition active:scale-95"
               >
                 Mis sedes
               </Link>
@@ -129,7 +111,7 @@ export function PitchHeader() {
           ) : (
             <Link
               to={accountPath('ingresar', `${pathname}${search}`)}
-              className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold tracking-wide text-accent transition active:scale-95"
+              className="whitespace-nowrap rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold tracking-wide text-accent transition active:scale-95"
             >
               Ingresar
             </Link>
@@ -255,7 +237,7 @@ export function BusinessHeader({
           ) : (
             <Link
               to={accountPath('ingresar', `${pathname}${search}`)}
-              className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold tracking-wide text-accent transition active:scale-95"
+              className="whitespace-nowrap rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold tracking-wide text-accent transition active:scale-95"
             >
               Ingresar
             </Link>
