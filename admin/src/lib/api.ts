@@ -22,13 +22,22 @@ export async function api<T>(
   path: string,
   options: { method?: Method; body?: unknown } = {},
 ): Promise<T> {
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
+  const headers: Record<string, string> = {
+    ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
+  };
+  if (!isFormData) {
+    headers['Content-Type'] = 'application/json';
+  }
+
   const response = await fetch(`/api/v1${path}`, {
     method: options.method ?? 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
-    },
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    headers,
+    body: isFormData
+      ? (options.body as FormData)
+      : options.body === undefined
+        ? undefined
+        : JSON.stringify(options.body),
   });
 
   if (response.status === 401 && accessToken) onUnauthorized?.();
