@@ -1,5 +1,5 @@
 import { ApiProperty, OmitType, PartialType } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   IsArray,
@@ -238,6 +238,14 @@ export class UsersQueryDto extends PageQueryDto {
   @IsOptional()
   @IsEnum(UserRole)
   role?: UserRole;
+
+  /** true = solo cuentas bloqueadas; false = solo activas. */
+  @IsOptional()
+  @Transform(({ value }) =>
+    value === 'true' ? true : value === 'false' ? false : value,
+  )
+  @IsBoolean()
+  banned?: boolean;
 }
 
 export class AdminUserDto {
@@ -253,6 +261,9 @@ export class AdminUserDto {
   businessName: string | null;
   /** Formas de iniciar sesión: password, google, apple. */
   authProviders: string[];
+  /** Cuándo se bloqueó la cuenta; null si está activa. */
+  bannedAt: Date | null;
+  bannedReason: string | null;
 }
 
 export class UserPageDto {

@@ -1,4 +1,8 @@
-import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import bcrypt from 'bcryptjs';
@@ -207,6 +211,34 @@ describe('PlayerAuthService', () => {
     await expect(
       service.login({ identifier: '3120001111', password: 'mala' }),
     ).rejects.toThrow(UnauthorizedException);
+  });
+
+  it('una cuenta bloqueada no inicia sesión ni cambia su clave, aunque los datos sean correctos', async () => {
+    const banned = {
+      id: 'u-1',
+      role: UserRole.JUGADOR,
+      displayName: 'Pedro',
+      passwordHash: await bcrypt.hash('clave1234', 4),
+      bannedAt: new Date(),
+      phoneVerifiedAt: null,
+      birthDate: null,
+    };
+    prisma.user.findFirst.mockResolvedValue(banned);
+    await expect(
+      service.login({ identifier: '3120001111', password: 'clave1234' }),
+    ).rejects.toThrow(ForbiddenException);
+
+    // Recuperar la clave con el código SMS tampoco la desbloquea.
+    prisma.user.findUnique.mockResolvedValue(banned);
+    prisma.user.update.mockClear();
+    await expect(
+      service.resetPassword({
+        phone: '3120001111',
+        code: '123456',
+        password: 'nueva1234',
+      }),
+    ).rejects.toThrow(ForbiddenException);
+    expect(prisma.user.update).not.toHaveBeenCalled();
   });
 });
 

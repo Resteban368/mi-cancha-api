@@ -4,7 +4,7 @@ import { Header } from '../components/Header';
 import { Alert, Button, Field, PasswordField } from '../components/ui';
 import { api, errorMessage } from '../lib/api';
 import { accountPath, safeNext } from '../lib/next';
-import { useSession } from '../lib/session';
+import { takeBannedNotice, useSession } from '../lib/session';
 import type { PlayerSession } from '../lib/types';
 
 /** Fondo del diseño "Pantalla de Bienvenida": cancha multideporte en líneas tenues y un resplandor central. */
@@ -79,7 +79,10 @@ export function LoginPage() {
   const { signIn } = useSession();
   const navigate = useNavigate();
   const [form, setForm] = useState({ identifier: '', password: '' });
-  const [error, setError] = useState<string>();
+  // Si la sesión se cerró porque bloquearon la cuenta, se avisa una vez.
+  const [error, setError] = useState<string | undefined>(() =>
+    takeBannedNotice() ? 'Tu cuenta está bloqueada. Contacta a soporte.' : undefined,
+  );
   const [saving, setSaving] = useState(false);
 
   async function onSubmit(event: FormEvent) {

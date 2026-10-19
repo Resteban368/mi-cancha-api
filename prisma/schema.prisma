@@ -99,6 +99,13 @@ model User {
   /// Previsto para verificar correo y celular con un código (aún no se usa).
   emailVerifiedAt    DateTime?
   phoneVerifiedAt    DateTime?
+  /// Cuándo el super admin bloqueó la cuenta; null = activa. Una cuenta bloqueada no puede
+  /// iniciar sesión ni usar la API (sus tokens dejan de valer).
+  bannedAt           DateTime?
+  /// Motivo que escribió el super admin al bloquearla.
+  bannedReason       String?
+  /// Super admin que la bloqueó (sin llave foránea: el dato sobrevive si se borra esa cuenta).
+  bannedById         String?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
@@ -504,4 +511,40 @@ model OtpCode {
   @@index([phone, createdAt])
   @@index([ipHash, createdAt])
   @@map("otp_codes")
+}
+
+/// De dónde viene un evento de auditoría: lo que hace el super admin en el panel o un evento de
+/// seguridad (ingresos, registros, recuperación de clave, bloqueos).
+enum AuditCategory {
+  ADMIN
+  SECURITY
+}
+
+/// Auditoría: quién hizo qué y cuándo. La app solo agrega filas; nunca las edita ni las borra.
+/// Sin llave foránea al usuario a propósito: el registro debe sobrevivir si se borra la cuenta.
+model AuditLog {
+  id         String        @id @default(uuid())
+  category   AuditCategory
+  /// Código estable del evento, p. ej. client.created o player.login_failed.
+  action     String
+  /// false en intentos rechazados (ingreso fallido, límite de códigos).
+  success    Boolean       @default(true)
+  /// Cuenta que lo hizo; null si no había sesión (p. ej. un ingreso fallido).
+  actorId    String?
+  actorRole  UserRole?
+  /// Nombre, correo o celular de quien lo hizo, como se veía en ese momento.
+  actorLabel String?
+  /// Sobre qué actuó: tipo (Business, User, Plan…) e id.
+  entityType String?
+  entityId   String?
+  /// Detalle del evento (ruta, cambios, motivo). Nunca contraseñas, códigos ni tokens.
+  metadata   Json?
+  /// HMAC de la IP (la misma de los códigos SMS); la IP real no se guarda.
+  ipHash     String?
+  createdAt  DateTime      @default(now())
+
+  @@index([createdAt])
+  @@index([category, createdAt])
+  @@index([actorId, createdAt])
+  @@index([entityType, entityId])
 }

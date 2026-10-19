@@ -4,7 +4,9 @@ import { ServeStaticModule } from '@nestjs/serve-static';
 import { join, sep } from 'node:path';
 import { AccountModule } from './account/account.module.js';
 import { AdminModule } from './admin/admin.module.js';
+import { AuditModule } from './audit/audit.module.js';
 import { AuthModule } from './auth/auth.module.js';
+import { AccountStatusModule } from './common/auth/account-status.module.js';
 import { BusinessDashboardModule } from './business-dashboard/business-dashboard.module.js';
 import { BusinessesModule } from './businesses/businesses.module.js';
 import { CatalogsModule } from './catalogs/catalogs.module.js';
@@ -17,6 +19,7 @@ import { PaymentsModule } from './payments/payments.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { RefundsModule } from './refunds/refunds.module.js';
 import { ReservationsModule } from './reservations/reservations.module.js';
+import { SecurityModule } from './security/security.module.js';
 import { StorageModule } from './storage/storage.module.js';
 
 @Module({
@@ -50,6 +53,8 @@ import { StorageModule } from './storage/storage.module.js';
       })),
     ),
     PrismaModule,
+    AccountStatusModule,
+    AuditModule,
     StorageModule,
     AuthModule,
     BusinessesModule,
@@ -63,6 +68,7 @@ import { StorageModule } from './storage/storage.module.js';
     AccountModule,
     CatalogsModule,
     AdminModule,
+    SecurityModule,
   ],
   controllers: [HealthController],
 })

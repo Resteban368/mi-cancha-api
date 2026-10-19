@@ -11,6 +11,9 @@ export class ApiError extends Error {
 
 type Method = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
 
+/** Se emite cuando la API rechaza una sesión iniciada porque la cuenta fue bloqueada. */
+export const ACCOUNT_BANNED_EVENT = 'mi-cancha:account-banned';
+
 /** Petición a /api/v1 con el token del jugador si hay sesión. */
 export async function api<T>(
   path: string,
@@ -39,6 +42,10 @@ export async function api<T>(
     const message = Array.isArray(payload?.message)
       ? payload.message.join('. ')
       : (payload?.message ?? `Error ${response.status}`);
+    // Con sesión iniciada, la cuenta pudo bloquearse mientras estaba abierta.
+    if (options.token && payload?.code === 'ACCOUNT_BANNED') {
+      window.dispatchEvent(new Event(ACCOUNT_BANNED_EVENT));
+    }
     throw new ApiError(response.status, message, payload?.code);
   }
   if (response.status === 204) return undefined as T;

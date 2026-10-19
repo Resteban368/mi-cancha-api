@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router';
 import { Layout } from './components/Layout';
 import { useAuth } from './lib/auth-context';
+import { AuditPage } from './pages/AuditPage';
 import { CatalogsPage } from './pages/CatalogsPage';
 import { ClientDetailPage } from './pages/ClientDetailPage';
 import { ClientsPage } from './pages/ClientsPage';
@@ -21,6 +22,7 @@ export function App() {
         <Route path="usuarios" element={<UsersPage />} />
         <Route path="planes" element={<PlansPage />} />
         <Route path="catalogos" element={<CatalogsPage />} />
+        <Route path="auditoria" element={<AuditPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

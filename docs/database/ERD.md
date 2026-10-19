@@ -23,6 +23,10 @@ erDiagram
     String dataConsentVersion "opcional"
     DateTime emailVerifiedAt "opcional · Previsto para verificar correo y celular con un código (aún no se usa)."
     DateTime phoneVerifiedAt "opcional"
+    DateTime bannedAt "opcional · Cuándo el super admin bloqueó la cuenta; null = activa. Una cuenta bloqueada no puede
+iniciar sesión ni usar la API (sus tokens dejan de valer)."
+    String bannedReason "opcional · Motivo que escribió el super admin al bloquearla."
+    String bannedById "opcional · Super admin que la bloqueó (sin llave foránea: el dato sobrevive si se borra esa cuenta)."
     DateTime createdAt
     DateTime updatedAt
   }
@@ -233,6 +237,20 @@ llegaron por la web y aún no la registran (el negocio siempre la pide)."
     DateTime usedAt "opcional · Cuándo se usó; un código usado no se acepta otra vez."
     DateTime createdAt
   }
+  AuditLog {
+    String id PK
+    AuditCategory category
+    String action "Código estable del evento, p. ej. client.created o player.login_failed."
+    Boolean success "false en intentos rechazados (ingreso fallido, límite de códigos)."
+    String actorId "opcional · Cuenta que lo hizo; null si no había sesión (p. ej. un ingreso fallido)."
+    UserRole actorRole "opcional"
+    String actorLabel "opcional · Nombre, correo o celular de quien lo hizo, como se veía en ese momento."
+    String entityType "opcional · Sobre qué actuó: tipo (Business, User, Plan…) e id."
+    String entityId "opcional"
+    Json metadata "opcional · Detalle del evento (ruta, cambios, motivo). Nunca contraseñas, códigos ni tokens."
+    String ipHash "opcional · HMAC de la IP (la misma de los códigos SMS); la IP real no se guarda."
+    DateTime createdAt
+  }
   User ||--o| Business : "business"
   Business ||--o| BusinessProfileImage : "profileImage"
   Business ||--o{ Court : "courts"
@@ -437,6 +455,13 @@ invalidan tras 5 intentos fallidos.
 
 
 
+### AuditLog
+
+Auditoría: quién hizo qué y cuándo. La app solo agrega filas; nunca las edita ni las borra.
+Sin llave foránea al usuario a propósito: el registro debe sobrevivir si se borra la cuenta.
+
+
+
 ## Enums
 
 | Enum | Valores |
@@ -449,6 +474,7 @@ invalidan tras 5 intentos fallidos.
 | `ReservationStatus` | `CONFIRMED`, `COMPLETED`, `NO_SHOW`, `CANCELLED` |
 | `PaymentConcept` | `ANTICIPO`, `SALDO`, `TOTAL` |
 | `PaymentStatus` | `PENDING`, `APPROVED`, `REJECTED`, `REFUNDED` |
+| `AuditCategory` | `ADMIN`, `SECURITY` |
 
 ## Únicos compuestos
 

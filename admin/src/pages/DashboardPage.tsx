@@ -1,6 +1,8 @@
 import { BarList } from '../components/charts/BarList';
 import { GroupedColumns } from '../components/charts/GroupedColumns';
 import { StatTile } from '../components/charts/StatTile';
+import { OtpStatsSection } from '../components/OtpStatsSection';
+import { RecentAudit } from '../components/RecentAudit';
 import { Card, ErrorBanner, PageHeader, Skeleton } from '../components/ui';
 import { formatCop, formatNumber } from '../lib/format';
 import type { Dashboard } from '../lib/types';
@@ -86,6 +88,11 @@ export function DashboardPage() {
           </div>
         )
       )}
+
+      <div className="mt-10 flex flex-col gap-10">
+        <OtpStatsSection />
+        <RecentAudit />
+      </div>
     </>
   );
 }

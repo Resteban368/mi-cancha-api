@@ -7,6 +7,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import bcrypt from 'bcryptjs';
 import type { AuthPayload } from '../common/auth/auth-payload.js';
+import { assertNotBanned } from '../common/auth/banned-users.service.js';
 import type { Prisma, User } from '../generated/prisma/client.js';
 import { UserRole } from '../generated/prisma/enums.js';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -103,7 +104,10 @@ export class AuthService {
     identity: SocialIdentity,
   ): Promise<User> {
     const linked = await this.prisma.user.findUnique({ where: providerKey });
-    if (linked) return linked;
+    if (linked) {
+      assertNotBanned(linked);
+      return linked;
+    }
 
     const verifiedEmail = identity.emailVerified
       ? identity.email?.toLowerCase()
@@ -119,6 +123,8 @@ export class AuthService {
             'Este email pertenece a una cuenta de negocio',
           );
         }
+        // No se vincula un proveedor nuevo a una cuenta bloqueada.
+        assertNotBanned(byEmail);
         return this.prisma.user.update({
           where: { id: byEmail.id },
           data: providerKey,
@@ -137,6 +143,7 @@ export class AuthService {
   }
 
   private async issueSession(user: User): Promise<AuthResponseDto> {
+    assertNotBanned(user);
     const payload: AuthPayload = { sub: user.id, role: user.role };
     return {
       accessToken: await this.jwt.signAsync(payload),

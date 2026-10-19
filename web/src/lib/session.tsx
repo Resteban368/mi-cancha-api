@@ -1,7 +1,20 @@
-import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { ACCOUNT_BANNED_EVENT } from './api';
 import type { Player, PlayerSession } from './types';
 
 const STORAGE_KEY = 'mi-cancha-player-session';
+const BANNED_NOTICE_KEY = 'mi-cancha-banned-notice';
+
+/** true una sola vez si la sesión se cerró porque la cuenta fue bloqueada (para avisarlo al ingresar). */
+export function takeBannedNotice(): boolean {
+  try {
+    const banned = sessionStorage.getItem(BANNED_NOTICE_KEY) === '1';
+    sessionStorage.removeItem(BANNED_NOTICE_KEY);
+    return banned;
+  } catch {
+    return false;
+  }
+}
 
 interface SessionContext {
   token: string | null;
@@ -44,6 +57,19 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     write(null);
     setSession(null);
   }, []);
+  // Si bloquean la cuenta con la sesión abierta, se cierra y se avisa en la pantalla de ingreso.
+  useEffect(() => {
+    const onBanned = () => {
+      try {
+        sessionStorage.setItem(BANNED_NOTICE_KEY, '1');
+      } catch {
+        // Sin almacenamiento solo se pierde el aviso.
+      }
+      signOut();
+    };
+    window.addEventListener(ACCOUNT_BANNED_EVENT, onBanned);
+    return () => window.removeEventListener(ACCOUNT_BANNED_EVENT, onBanned);
+  }, [signOut]);
   const setPlayer = useCallback((player: Player) => {
     setSession((current) => {
       if (!current) return current;

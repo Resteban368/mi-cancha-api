@@ -18,6 +18,9 @@ export class UsersService {
     const search = query.search?.trim();
     const where: Prisma.UserWhereInput = {
       role: query.role,
+      ...(query.banned === undefined
+        ? {}
+        : { bannedAt: query.banned ? { not: null } : null }),
       ...(search && {
         OR: [
           { displayName: { contains: search, mode: 'insensitive' } },
@@ -61,5 +64,7 @@ function toAdminUserDto(u: UserRecord): AdminUserDto {
     createdAt: u.createdAt,
     businessName: u.business?.name ?? null,
     authProviders,
+    bannedAt: u.bannedAt,
+    bannedReason: u.bannedReason,
   };
 }

@@ -1,4 +1,8 @@
-import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Test } from '@nestjs/testing';
 import bcrypt from 'bcryptjs';
@@ -119,6 +123,29 @@ describe('AuthService', () => {
         role: UserRole.ADMIN_NEGOCIO,
       });
     });
+
+    it('rechaza a una cuenta bloqueada aunque la contraseña coincida, sin emitir token', async () => {
+      prisma.user.findUnique.mockResolvedValue({
+        ...baseUser,
+        bannedAt: new Date(),
+        passwordHash: await bcrypt.hash('correcta1', 4),
+      });
+      await expect(
+        service.loginBusiness({ email: baseUser.email, password: 'correcta1' }),
+      ).rejects.toThrow(ForbiddenException);
+      expect(jwt.signAsync).not.toHaveBeenCalled();
+    });
+
+    it('una contraseña incorrecta sigue siendo 401 aunque la cuenta esté bloqueada (no revela el bloqueo)', async () => {
+      prisma.user.findUnique.mockResolvedValue({
+        ...baseUser,
+        bannedAt: new Date(),
+        passwordHash: await bcrypt.hash('correcta1', 4),
+      });
+      await expect(
+        service.loginBusiness({ email: baseUser.email, password: 'otra' }),
+      ).rejects.toThrow(UnauthorizedException);
+    });
   });
 
   describe('signInWithGoogle', () => {
@@ -168,6 +195,37 @@ describe('AuthService', () => {
         data: { googleSub: 'google-123' },
       });
       expect(prisma.user.create).not.toHaveBeenCalled();
+    });
+
+    it('no deja entrar con Google a una cuenta bloqueada', async () => {
+      social.verifyGoogle.mockResolvedValue(identity);
+      prisma.user.findUnique.mockResolvedValue({
+        ...baseUser,
+        role: UserRole.JUGADOR,
+        googleSub: 'google-123',
+        bannedAt: new Date(),
+      });
+
+      await expect(
+        service.signInWithGoogle({ idToken: 'token' }),
+      ).rejects.toThrow(ForbiddenException);
+      expect(jwt.signAsync).not.toHaveBeenCalled();
+    });
+
+    it('no vincula Google a una cuenta bloqueada con el mismo email', async () => {
+      social.verifyGoogle.mockResolvedValue(identity);
+      prisma.user.findUnique
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({
+          ...baseUser,
+          role: UserRole.JUGADOR,
+          bannedAt: new Date(),
+        });
+
+      await expect(
+        service.signInWithGoogle({ idToken: 'token' }),
+      ).rejects.toThrow(ForbiddenException);
+      expect(prisma.user.update).not.toHaveBeenCalled();
     });
 
     it('no vincula un email que pertenece a un negocio', async () => {

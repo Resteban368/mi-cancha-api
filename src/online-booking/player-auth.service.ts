@@ -8,6 +8,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import bcrypt from 'bcryptjs';
 import type { AuthPayload } from '../common/auth/auth-payload.js';
+import { assertNotBanned } from '../common/auth/banned-users.service.js';
 import {
   normalizeDocument,
   normalizePhone,
@@ -92,6 +93,8 @@ export class PlayerAuthService {
     if (!user || !(await this.otp.confirm(phone, dto))) {
       throw new BadRequestException(WRONG_CODE);
     }
+    // Una cuenta bloqueada no puede recuperar su clave para volver a entrar.
+    assertNotBanned(user);
     const updated = await this.prisma.user.update({
       where: { id: user.id },
       data: {
@@ -240,6 +243,7 @@ export class PlayerAuthService {
   }
 
   private async session(user: User): Promise<PlayerSessionDto> {
+    assertNotBanned(user);
     const payload: AuthPayload = { sub: user.id, role: user.role };
     return {
       accessToken: await this.jwt.signAsync(payload),

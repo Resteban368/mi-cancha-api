@@ -7,15 +7,20 @@ import {
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import type { AuthPayload } from './auth-payload.js';
+import { accountBanned, BannedUsersService } from './banned-users.service.js';
 import type { AuthenticatedRequest } from './current-user.decorator.js';
 import { IS_PUBLIC_KEY } from './public.decorator.js';
 
-/** Guard global: exige un Bearer token válido salvo en endpoints @Public(). */
+/**
+ * Guard global: exige un Bearer token válido salvo en endpoints @Public(), y
+ * corta las cuentas bloqueadas aunque su token siga vigente.
+ */
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
   constructor(
     private readonly jwt: JwtService,
     private readonly reflector: Reflector,
+    private readonly banned: BannedUsersService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -36,6 +41,7 @@ export class JwtAuthGuard implements CanActivate {
     } catch {
       throw new UnauthorizedException('Token inválido o expirado');
     }
+    if (await this.banned.isBanned(request.user.sub)) throw accountBanned();
     return true;
   }
 }
