@@ -111,6 +111,7 @@ model User {
 
   business              Business?
   pushSubscriptions     PushSubscription[]
+  notifications         Notification[]
   customers             Customer[]
   reservations          Reservation[]
   cancelledReservations Reservation[] @relation("ReservationCancelledBy")
@@ -565,4 +566,57 @@ model PushSubscription {
   lastSeenAt DateTime @default(now())
 
   @@index([userId])
+}
+
+enum NotificationType {
+  NEW_RESERVATION
+  ADMIN_BROADCAST
+}
+
+/// Aviso que el super admin envió a los negocios: el historial del panel.
+model NotificationBroadcast {
+  id          String   @id @default(uuid())
+  /// Super admin que lo envió (sin llave foránea: el dato sobrevive si se borra la cuenta).
+  sentById    String
+  /// Nombre de quien lo envió al momento del envío.
+  sentByLabel String?
+  title       String
+  body        String
+  url         String?
+  /// ALL = todos los negocios; SELECTED = solo los elegidos.
+  scope       String
+  /// Negocios a los que iba dirigido.
+  targeted    Int
+  /// De ellos, cuántos tenían avisos activados en algún navegador.
+  reachable   Int
+  /// Navegadores que lo aceptaron.
+  delivered   Int
+  createdAt   DateTime @default(now())
+
+  notifications Notification[]
+
+  @@index([createdAt])
+}
+
+/// Notificación de un usuario (su bandeja): existe aunque no tenga el push activado.
+model Notification {
+  id          String                 @id @default(uuid())
+  userId      String
+  user        User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        NotificationType
+  title       String
+  body        String
+  /// Ruta de la app que se abre al tocarla.
+  url         String?
+  /// Datos para la app (p. ej. reservationId).
+  data        Json?
+  broadcastId String?
+  broadcast   NotificationBroadcast? @relation(fields: [broadcastId], references: [id], onDelete: SetNull)
+  /// null = sin leer.
+  readAt      DateTime?
+  createdAt   DateTime               @default(now())
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([userId, readAt])
+  @@index([broadcastId])
 }

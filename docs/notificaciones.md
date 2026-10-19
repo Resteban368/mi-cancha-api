@@ -50,7 +50,10 @@ Reglas de diseño:
 | `src/notifications/notifications.controller.ts` | Endpoints de clave pública y suscripción |
 | `src/notifications/notifications.module.ts` | Elige la implementación según `VAPID_*` |
 | `src/reservations/reservations.service.ts` | Llama a `notifyNewReservation` tras crear la reserva web |
+| `src/notifications/admin-notifications.controller.ts` | Super admin: destinatarios, envío e historial de avisos |
+| `src/notifications/public-notifications.controller.ts` | Corte de avisos al cerrar sesión, sin token |
 | `prisma/migrations/20261019170556_push_subscriptions` | Tabla `PushSubscription` |
+| `prisma/migrations/20261019181901_notifications` | Tablas `Notification` y `NotificationBroadcast` |
 
 Cambiar de proveedor solo requiere otra clase que extienda `PushService`.
 
@@ -81,13 +84,67 @@ Es idempotente: repetirlo con el mismo `endpoint` solo actualiza `lastSeenAt`.
 
 ### Quitar la suscripción
 
-`DELETE /api/v1/business/notifications/subscriptions` → `204`
+`DELETE /api/v1/business/notifications/subscriptions` → `204` (con sesión)
 
 ```json
 { "endpoint": "https://fcm.googleapis.com/fcm/send/…" }
 ```
 
 Solo borra si pertenece a la cuenta que llama.
+
+### Dejar de recibir avisos al cerrar sesión
+
+Al cerrar sesión **ese navegador no debe recibir más avisos**. Hay tres capas, y la app debe usar las tres:
+
+1. `DELETE /api/v1/public/notifications/subscriptions` → `204`, **sin token**, mismo cuerpo
+   `{ "endpoint": "…" }`. Es la recomendada para el cierre de sesión: funciona aunque la sesión ya haya
+   vencido (el `DELETE` autenticado respondería 401). El `endpoint` es una URL secreta de ese navegador, así
+   que conocerla basta para darlo de baja.
+2. `subscription.unsubscribe()` en el navegador. Es el corte definitivo: aunque la llamada al servidor falle
+   por red, el servicio push responde 410 en el siguiente envío y el servidor borra la suscripción solo.
+3. Si otra cuenta inicia sesión en el mismo navegador y activa los avisos, la suscripción pasa a esa cuenta
+   (`endpoint` es único): la cuenta anterior deja de recibirlos.
+
+Orden en la app: llamar al endpoint público → `unsubscribe()` → borrar el token de sesión. Un error en los
+dos primeros pasos no debe impedir cerrar la sesión.
+
+Además, las cuentas **bloqueadas** no reciben avisos.
+
+## Bandeja de notificaciones
+
+Cada aviso se guarda en la tabla `Notification` del destinatario **aunque no tenga el push activado**, así
+la app puede mostrar el listado de todo lo que le llegó (reservas nuevas y avisos del admin).
+
+| Endpoint (rol `ADMIN_NEGOCIO`) | Qué hace |
+|---|---|
+| `GET /api/v1/business/notifications?page=&pageSize=&unread=true` | Listado, la más reciente primero. Responde `{ items, total, unread, page, pageSize }` |
+| `GET /api/v1/business/notifications/unread-count` | `{ "unread": 3 }`, para la insignia de la campana |
+| `POST /api/v1/business/notifications/:id/read` | Marca una como leída (`204`, idempotente) |
+| `POST /api/v1/business/notifications/read-all` | Marca todas como leídas (`204`) |
+
+Cada elemento de `items`:
+
+```json
+{
+  "id": "…", "type": "NEW_RESERVATION", "title": "Nueva reserva",
+  "body": "Pedro Pérez · Cancha 1 · mar 22 oct, 6:30 p. m.",
+  "url": "/negocio/reservas", "data": { "reservationId": "…" },
+  "readAt": null, "createdAt": "2026-10-19T18:22:02.432Z"
+}
+```
+
+`type`: `NEW_RESERVATION` o `ADMIN_BROADCAST`. Solo ve las suyas. El push de una reserva trae
+`data.notificationId` para marcarla como leída al tocarla.
+
+### Tablas
+
+- `Notification`: `userId`, `type`, `title`, `body`, `url`, `data` (JSON), `broadcastId`, `readAt`,
+  `createdAt`. Índices por `(userId, createdAt)` y `(userId, readAt)`.
+- `NotificationBroadcast`: un registro por aviso del super admin (quién lo envió, `scope`, `targeted`,
+  `reachable`, `delivered`). Es el historial del panel; cada `Notification` de ese aviso apunta a él.
+
+> No hay purga automática: la tabla crece con cada reserva y aviso. Conviene borrar las leídas con más de
+> ~90 días cuando el volumen lo justifique.
 
 ### Contenido del push
 
@@ -117,6 +174,7 @@ reciben nada).
 |---|---|
 | `GET /api/v1/admin/notifications/recipients` | Negocios con `devices` (navegadores suscritos) y `banned` |
 | `POST /api/v1/admin/notifications/broadcast` | Envía el aviso; responde `{ businesses, reachable, delivered }` |
+| `GET /api/v1/admin/notifications/broadcasts?page=&pageSize=` | Historial de avisos enviados, con cuántos dueños ya los leyeron (`read`) |
 
 Cuerpo de `broadcast`:
 
@@ -130,6 +188,8 @@ Cuerpo de `broadcast`:
 - El push lleva `data.type = "ADMIN_BROADCAST"` (el de reservas es `NEW_RESERVATION`); el Service Worker de la
   app no necesita cambios.
 - Si el servidor no tiene claves VAPID responde `503`.
+- El aviso se guarda en la bandeja de **cada dueño** (con cuenta activa), tenga o no el push activado, y en el
+  historial de la pantalla Avisos.
 - Cada envío queda en la **Auditoría** como "Aviso enviado a negocios", con el alcance y cuántos lo recibieron.
 
 ## Puesta en marcha
@@ -240,16 +300,22 @@ class WebPush {
     return true;
   }
 
-  /// Al cerrar sesión o al desactivar los avisos, ANTES de borrar el JWT.
+  /// Al cerrar sesión (o al desactivar los avisos). Nunca debe impedir el cierre de sesión.
   Future<void> disable() async {
-    final registration = await web.window.navigator.serviceWorker
-        .getRegistration('push/'.toJS)
-        .toDart;
-    final subscription = await registration?.pushManager.getSubscription().toDart;
-    if (subscription == null) return;
-    await api.delete('/business/notifications/subscriptions',
-        body: {'endpoint': subscription.endpoint});
-    await subscription.unsubscribe().toDart;
+    try {
+      final registration = await web.window.navigator.serviceWorker
+          .getRegistration('push/'.toJS)
+          .toDart;
+      final subscription = await registration?.pushManager.getSubscription().toDart;
+      if (subscription == null) return;
+      // 1) Endpoint público: funciona aunque el token ya haya vencido.
+      await api.delete('/public/notifications/subscriptions',
+          body: {'endpoint': subscription.endpoint}, skipAuth: true);
+      // 2) Corte definitivo en el navegador.
+      await subscription.unsubscribe().toDart;
+    } catch (_) {
+      // Sin red u otro error: el siguiente envío recibe 410 y el servidor la borra sola.
+    }
   }
 
   // La clave VAPID viene en base64url; el navegador la quiere en bytes.
@@ -267,7 +333,10 @@ class WebPush {
 - Mostrarlo solo si `supported` y el endpoint `vapid-key` no devolvió `404`.
 - Si `Notification.permission == 'denied'`, explicar que el usuario debe permitirlas desde el
   candado de la barra de direcciones.
-- Llamar `disable()` en el cierre de sesión.
+- Llamar `disable()` en el cierre de sesión **y** cuando la sesión venza (401), antes de borrar el token.
+- Una campana con insignia (`GET /business/notifications/unread-count`) que abra la bandeja
+  (`GET /business/notifications`), con "marcar todas como leídas" y, al tocar una, `POST …/:id/read` y
+  navegar a su `url`.
 
 **4.4 Reserva en tiempo real** — con la pestaña abierta el Service Worker igual muestra el aviso.
 Si además quieres refrescar la lista al instante, el Service Worker puede avisar a la página con

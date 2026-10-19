@@ -94,3 +94,26 @@ export interface BroadcastResult {
   reachable: number;
   delivered: number;
 }
+
+/** Un aviso ya enviado, con a cuántos llegó. */
+export interface BroadcastHistoryItem {
+  id: string;
+  title: string;
+  body: string;
+  url: string | null;
+  scope: 'ALL' | 'SELECTED';
+  sentByLabel: string | null;
+  targeted: number;
+  reachable: number;
+  delivered: number;
+  /** Dueños que ya lo leyeron en su bandeja. */
+  read: number;
+  createdAt: string;
+}
+
+export interface BroadcastHistoryPage {
+  items: BroadcastHistoryItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+}

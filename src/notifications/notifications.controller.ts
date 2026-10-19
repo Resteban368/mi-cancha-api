@@ -4,6 +4,9 @@ import {
   Delete,
   Get,
   Headers,
+  Param,
+  ParseUUIDPipe,
+  Query,
   HttpCode,
   NotFoundException,
   Post,
@@ -13,6 +16,11 @@ import type { AuthPayload } from '../common/auth/auth-payload.js';
 import { CurrentUser } from '../common/auth/current-user.decorator.js';
 import { Roles } from '../common/auth/roles.decorator.js';
 import { UserRole } from '../generated/prisma/enums.js';
+import {
+  InboxPageDto,
+  InboxQueryDto,
+  UnreadCountDto,
+} from './dto/inbox.dto.js';
 import {
   SubscribeDto,
   UnsubscribeDto,
@@ -26,6 +34,41 @@ import { NotificationsService } from './notifications.service.js';
 @Controller('business/notifications')
 export class NotificationsController {
   constructor(private readonly notifications: NotificationsService) {}
+
+  @Get()
+  @ApiOperation({
+    summary:
+      'Bandeja del negocio: sus notificaciones (reservas nuevas y avisos), de la más reciente a la más antigua',
+  })
+  list(
+    @CurrentUser() user: AuthPayload,
+    @Query() query: InboxQueryDto,
+  ): Promise<InboxPageDto> {
+    return this.notifications.inbox(user.sub, query);
+  }
+
+  @Get('unread-count')
+  @ApiOperation({ summary: 'Cuántas notificaciones no ha leído (para la insignia)' })
+  async unreadCount(@CurrentUser() user: AuthPayload): Promise<UnreadCountDto> {
+    return { unread: await this.notifications.unreadCount(user.sub) };
+  }
+
+  @Post('read-all')
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Marcar todas como leídas' })
+  readAll(@CurrentUser() user: AuthPayload): Promise<void> {
+    return this.notifications.markAllRead(user.sub);
+  }
+
+  @Post(':id/read')
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Marcar una notificación como leída' })
+  read(
+    @CurrentUser() user: AuthPayload,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<void> {
+    return this.notifications.markRead(user.sub, id);
+  }
 
   @Get('vapid-key')
   @ApiOperation({

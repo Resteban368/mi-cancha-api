@@ -55,6 +55,8 @@ export function createPrismaMock() {
     otpCode: modelMock(),
     auditLog: modelMock(),
     pushSubscription: modelMock(),
+    notification: modelMock(),
+    notificationBroadcast: modelMock(),
     businessProfileImage: modelMock(),
     courtPhoto: modelMock(),
     customer: modelMock(),

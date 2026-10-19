@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post, Query, Req } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { SkipAudit } from '../audit/audit-skip.decorator.js';
@@ -6,12 +6,14 @@ import type { AuthPayload } from '../common/auth/auth-payload.js';
 import { CurrentUser } from '../common/auth/current-user.decorator.js';
 import { Roles } from '../common/auth/roles.decorator.js';
 import { UserRole } from '../generated/prisma/enums.js';
+import { PageQueryDto } from '../common/dto/page.dto.js';
 import { clientIp } from '../otp/client-ip.js';
 import {
   BroadcastDto,
   BroadcastRecipientDto,
   BroadcastResultDto,
 } from './dto/broadcast.dto.js';
+import { BroadcastHistoryPageDto } from './dto/inbox.dto.js';
 import { NotificationsService } from './notifications.service.js';
 
 @ApiTags('admin / notificaciones')
@@ -27,6 +29,14 @@ export class AdminNotificationsController {
   })
   recipients(): Promise<BroadcastRecipientDto[]> {
     return this.notifications.recipients();
+  }
+
+  @Get('broadcasts')
+  @ApiOperation({
+    summary: 'Historial de avisos enviados, con a cuántos llegó y cuántos lo leyeron',
+  })
+  broadcasts(@Query() query: PageQueryDto): Promise<BroadcastHistoryPageDto> {
+    return this.notifications.broadcasts(query);
   }
 
   // Registra su propio evento de auditoría, con el alcance y cuántos lo recibieron.

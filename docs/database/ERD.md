@@ -261,6 +261,31 @@ llegaron por la web y aún no la registran (el negocio siempre la pide)."
     DateTime createdAt
     DateTime lastSeenAt
   }
+  NotificationBroadcast {
+    String id PK
+    String sentById "Super admin que lo envió (sin llave foránea: el dato sobrevive si se borra la cuenta)."
+    String sentByLabel "opcional · Nombre de quien lo envió al momento del envío."
+    String title
+    String body
+    String url "opcional"
+    String scope "ALL = todos los negocios; SELECTED = solo los elegidos."
+    Int targeted "Negocios a los que iba dirigido."
+    Int reachable "De ellos, cuántos tenían avisos activados en algún navegador."
+    Int delivered "Navegadores que lo aceptaron."
+    DateTime createdAt
+  }
+  Notification {
+    String id PK
+    String userId FK
+    NotificationType type
+    String title
+    String body
+    String url "opcional · Ruta de la app que se abre al tocarla."
+    Json data "opcional · Datos para la app (p. ej. reservationId)."
+    String broadcastId FK "opcional"
+    DateTime readAt "opcional · null = sin leer."
+    DateTime createdAt
+  }
   User ||--o| Business : "business"
   Business ||--o| BusinessProfileImage : "profileImage"
   Business ||--o{ Court : "courts"
@@ -292,6 +317,8 @@ llegaron por la web y aún no la registran (el negocio siempre la pide)."
   Business ||--o| Subscription : "subscription"
   Plan ||--o{ Subscription : "subscriptions"
   User ||--o{ PushSubscription : "pushSubscriptions"
+  User ||--o{ Notification : "notifications"
+  NotificationBroadcast |o--o{ Notification : "notifications"
 ```
 
 **Leyenda:** PK llave primaria · FK llave foránea · UK única · `||` exactamente uno · `|o` cero o uno · `o{` cero o muchos · `}o--o{` muchos a muchos.
@@ -305,6 +332,7 @@ Los negocios entran con email y contraseña; los jugadores con Google o Apple.
 
 - **Business**: Puede tener un Business (campo business); la llave foránea está en Business.
 - **PushSubscription**: Tiene cero o muchos PushSubscription (campo pushSubscriptions). Cada PushSubscription apunta a este User.
+- **Notification**: Tiene cero o muchos Notification (campo notifications). Cada Notification apunta a este User.
 - **Customer**: Tiene cero o muchos Customer (campo customers). Cada Customer apunta a este User.
 - **Reservation**: Tiene cero o muchos Reservation (campo reservations). Cada Reservation apunta a este User.
 - **Reservation**: Tiene cero o muchos Reservation (campo cancelledReservations). Cada Reservation apunta a este User.
@@ -480,6 +508,19 @@ Navegador del usuario suscrito a notificaciones push web (Web Push / VAPID).
 
 - **User**: Pertenece siempre a un User mediante userId; un User puede tener varios PushSubscription. Si se borra el User, se borran también sus PushSubscription.
 
+### NotificationBroadcast
+
+Aviso que el super admin envió a los negocios: el historial del panel.
+
+- **Notification**: Tiene cero o muchos Notification (campo notifications). Cada Notification apunta a este NotificationBroadcast.
+
+### Notification
+
+Notificación de un usuario (su bandeja): existe aunque no tenga el push activado.
+
+- **User**: Pertenece siempre a un User mediante userId; un User puede tener varios Notification. Si se borra el User, se borran también sus Notification.
+- **NotificationBroadcast**: Puede pertenecer a un NotificationBroadcast mediante broadcastId; un NotificationBroadcast puede tener varios Notification. Si se borra el NotificationBroadcast, el Notification se conserva sin NotificationBroadcast.
+
 ## Enums
 
 | Enum | Valores |
@@ -493,6 +534,7 @@ Navegador del usuario suscrito a notificaciones push web (Web Push / VAPID).
 | `PaymentConcept` | `ANTICIPO`, `SALDO`, `TOTAL` |
 | `PaymentStatus` | `PENDING`, `APPROVED`, `REJECTED`, `REFUNDED` |
 | `AuditCategory` | `ADMIN`, `SECURITY` |
+| `NotificationType` | `NEW_RESERVATION`, `ADMIN_BROADCAST` |
 
 ## Únicos compuestos
 

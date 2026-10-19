@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AdminNotificationsController } from './admin-notifications.controller.js';
+import { PublicNotificationsController } from './public-notifications.controller.js';
 import { NotificationsController } from './notifications.controller.js';
 import { NotificationsService } from './notifications.service.js';
 import {
@@ -17,7 +18,11 @@ import {
  * como error y no envía.
  */
 @Module({
-  controllers: [NotificationsController, AdminNotificationsController],
+  controllers: [
+    NotificationsController,
+    AdminNotificationsController,
+    PublicNotificationsController,
+  ],
   providers: [
     NotificationsService,
     {

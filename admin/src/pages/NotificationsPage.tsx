@@ -8,16 +8,25 @@ import {
   Field,
   Input,
   PageHeader,
+  Pagination,
   Skeleton,
+  Table,
+  Td,
+  Th,
 } from '../components/ui';
 import { api, errorMessage } from '../lib/api';
-import { formatNumber } from '../lib/format';
-import type { BroadcastRecipient, BroadcastResult } from '../lib/security-types';
+import { formatDateTime, formatNumber } from '../lib/format';
+import type {
+  BroadcastHistoryPage,
+  BroadcastRecipient,
+  BroadcastResult,
+} from '../lib/security-types';
 import { useToast } from '../lib/toast';
 import { useApi, useDebounced } from '../lib/useApi';
 
 const TITLE_MAX = 60;
 const BODY_MAX = 240;
+const HISTORY_PAGE_SIZE = 10;
 
 type Scope = 'ALL' | 'SELECTED';
 
@@ -25,6 +34,10 @@ type Scope = 'ALL' | 'SELECTED';
 export function NotificationsPage() {
   const notify = useToast();
   const recipients = useApi<BroadcastRecipient[]>('/admin/notifications/recipients');
+  const [historyPage, setHistoryPage] = useState(1);
+  const history = useApi<BroadcastHistoryPage>(
+    `/admin/notifications/broadcasts?page=${historyPage}&pageSize=${HISTORY_PAGE_SIZE}`,
+  );
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [scope, setScope] = useState<Scope>('ALL');
@@ -88,6 +101,8 @@ export function NotificationsPage() {
       setTitle('');
       setBody('');
       recipients.reload();
+      setHistoryPage(1);
+      history.reload();
     } catch (e) {
       setError(errorMessage(e));
     } finally {
@@ -255,6 +270,76 @@ export function NotificationsPage() {
           )}
         </Card>
       </div>
+
+      <Card
+        className="mt-6"
+        title="Historial"
+        description="Avisos enviados, a cuántos negocios llegaron y cuántos ya los leyeron"
+      >
+        {history.error ? (
+          <div className="p-4">
+            <ErrorBanner message={history.error} onRetry={history.reload} />
+          </div>
+        ) : !history.data ? (
+          <div className="flex flex-col gap-2 p-4">
+            <Skeleton className="h-10" />
+            <Skeleton className="h-10" />
+          </div>
+        ) : history.data.items.length === 0 ? (
+          <EmptyState title="Todavía no has enviado avisos" />
+        ) : (
+          <>
+            <Table>
+              <thead>
+                <tr>
+                  <Th>Enviado</Th>
+                  <Th>Aviso</Th>
+                  <Th>Destinatarios</Th>
+                  <Th align="right">Con avisos activos</Th>
+                  <Th align="right">Entregados</Th>
+                  <Th align="right">Leídos</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {history.data.items.map((b) => (
+                  <tr key={b.id}>
+                    <Td className="whitespace-nowrap">
+                      <span className="tabular">{formatDateTime(b.createdAt)}</span>
+                      {b.sentByLabel && <span className="block text-xs text-fg-3">{b.sentByLabel}</span>}
+                    </Td>
+                    <Td className="max-w-sm">
+                      <span className="block font-medium">{b.title}</span>
+                      <span className="block truncate text-xs text-fg-3" title={b.body}>
+                        {b.body}
+                      </span>
+                    </Td>
+                    <Td>
+                      {b.scope === 'ALL' ? (
+                        <Badge>Todos ({formatNumber(b.targeted)})</Badge>
+                      ) : (
+                        <Badge tone="warn">
+                          {formatNumber(b.targeted)} {b.targeted === 1 ? 'elegido' : 'elegidos'}
+                        </Badge>
+                      )}
+                    </Td>
+                    <Td align="right" className="tabular">{formatNumber(b.reachable)}</Td>
+                    <Td align="right" className="tabular">{formatNumber(b.delivered)}</Td>
+                    <Td align="right" className="tabular">
+                      {formatNumber(b.read)} / {formatNumber(b.targeted)}
+                    </Td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+            <Pagination
+              page={history.data.page}
+              pageSize={history.data.pageSize}
+              total={history.data.total}
+              onChange={setHistoryPage}
+            />
+          </>
+        )}
+      </Card>
     </>
   );
 }
