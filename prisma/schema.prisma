@@ -110,6 +110,7 @@ model User {
   updatedAt          DateTime  @updatedAt
 
   business              Business?
+  pushSubscriptions     PushSubscription[]
   customers             Customer[]
   reservations          Reservation[]
   cancelledReservations Reservation[] @relation("ReservationCancelledBy")
@@ -547,4 +548,21 @@ model AuditLog {
   @@index([category, createdAt])
   @@index([actorId, createdAt])
   @@index([entityType, entityId])
+}
+
+/// Navegador del usuario suscrito a notificaciones push web (Web Push / VAPID).
+model PushSubscription {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// URL del servicio push del navegador; única: si el navegador cambia de cuenta, pasa a la nueva.
+  endpoint   String   @unique
+  /// Claves de cifrado de la suscripción (PushSubscription.toJSON().keys).
+  p256dh     String
+  auth       String
+  userAgent  String?
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+
+  @@index([userId])
 }

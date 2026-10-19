@@ -29,6 +29,7 @@ import {
   normalizeDocument,
   toCustomerDto,
 } from '../customers/customers.service.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 import { Prisma, type SlotHold, type User } from '../generated/prisma/client.js';
 import {
   CourtPhotoSlot,
@@ -115,6 +116,7 @@ export class ReservationsService {
     private readonly businesses: BusinessesService,
     private readonly customers: CustomersService,
     private readonly catalogs: CatalogsService,
+    private readonly notifications: NotificationsService,
     config: ConfigService,
   ) {
     this.utcOffset = config.getOrThrow<string>('APP_UTC_OFFSET');
@@ -710,6 +712,10 @@ export class ReservationsService {
         return created;
       },
     );
+    await this.notifications.notifyNewReservation({
+      ...reservation,
+      courtCount: reservation.group?.reservations.length,
+    });
     return toReservationDto(reservation);
   }
 

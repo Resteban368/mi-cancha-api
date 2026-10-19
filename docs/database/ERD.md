@@ -251,6 +251,16 @@ llegaron por la web y aún no la registran (el negocio siempre la pide)."
     String ipHash "opcional · HMAC de la IP (la misma de los códigos SMS); la IP real no se guarda."
     DateTime createdAt
   }
+  PushSubscription {
+    String id PK
+    String userId FK
+    String endpoint UK "URL del servicio push del navegador; única: si el navegador cambia de cuenta, pasa a la nueva."
+    String p256dh "Claves de cifrado de la suscripción (PushSubscription.toJSON().keys)."
+    String auth
+    String userAgent "opcional"
+    DateTime createdAt
+    DateTime lastSeenAt
+  }
   User ||--o| Business : "business"
   Business ||--o| BusinessProfileImage : "profileImage"
   Business ||--o{ Court : "courts"
@@ -281,6 +291,7 @@ llegaron por la web y aún no la registran (el negocio siempre la pide)."
   Amenity }o--o{ Business : "AmenityToBusiness"
   Business ||--o| Subscription : "subscription"
   Plan ||--o{ Subscription : "subscriptions"
+  User ||--o{ PushSubscription : "pushSubscriptions"
 ```
 
 **Leyenda:** PK llave primaria · FK llave foránea · UK única · `||` exactamente uno · `|o` cero o uno · `o{` cero o muchos · `}o--o{` muchos a muchos.
@@ -293,6 +304,7 @@ Cualquier persona que inicia sesión: super admin, administrador de negocio o ju
 Los negocios entran con email y contraseña; los jugadores con Google o Apple.
 
 - **Business**: Puede tener un Business (campo business); la llave foránea está en Business.
+- **PushSubscription**: Tiene cero o muchos PushSubscription (campo pushSubscriptions). Cada PushSubscription apunta a este User.
 - **Customer**: Tiene cero o muchos Customer (campo customers). Cada Customer apunta a este User.
 - **Reservation**: Tiene cero o muchos Reservation (campo reservations). Cada Reservation apunta a este User.
 - **Reservation**: Tiene cero o muchos Reservation (campo cancelledReservations). Cada Reservation apunta a este User.
@@ -461,6 +473,12 @@ Auditoría: quién hizo qué y cuándo. La app solo agrega filas; nunca las edit
 Sin llave foránea al usuario a propósito: el registro debe sobrevivir si se borra la cuenta.
 
 
+
+### PushSubscription
+
+Navegador del usuario suscrito a notificaciones push web (Web Push / VAPID).
+
+- **User**: Pertenece siempre a un User mediante userId; un User puede tener varios PushSubscription. Si se borra el User, se borran también sus PushSubscription.
 
 ## Enums
 

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { NotificationsModule } from '../notifications/notifications.module.js';
 import { BusinessesModule } from '../businesses/businesses.module.js';
 import { CatalogsModule } from '../catalogs/catalogs.module.js';
 import { CustomersModule } from '../customers/customers.module.js';
@@ -10,7 +11,12 @@ import {
 import { ReservationsService } from './reservations.service.js';
 
 @Module({
-  imports: [BusinessesModule, CustomersModule, CatalogsModule],
+  imports: [
+    BusinessesModule,
+    CustomersModule,
+    CatalogsModule,
+    NotificationsModule,
+  ],
   controllers: [
     ReservationsController,
     CourtAvailabilityController,

@@ -7,6 +7,7 @@ import {
 } from '../../test/support/prisma-mock.js';
 import { BusinessesService } from '../businesses/businesses.service.js';
 import { CatalogsService } from '../catalogs/catalogs.service.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 import { DAYS } from '../courts/court-time.js';
 import { CustomersService } from '../customers/customers.service.js';
 import {
@@ -74,6 +75,10 @@ describe('ReservationsService', () => {
         CustomersService,
         { provide: PrismaService, useValue: prisma },
         { provide: CatalogsService, useValue: catalogs },
+        {
+          provide: NotificationsService,
+          useValue: { notifyNewReservation: vi.fn() },
+        },
         {
           provide: BusinessesService,
           useValue: { requireBusinessId: vi.fn().mockResolvedValue('biz-1') },

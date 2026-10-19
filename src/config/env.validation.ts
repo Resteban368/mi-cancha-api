@@ -33,6 +33,20 @@ export class EnvironmentVariables {
   @Matches(/^[+-]\d{2}:\d{2}$/)
   APP_UTC_OFFSET: string = '-05:00';
 
+  /** Claves VAPID de las notificaciones push web (`npx web-push generate-vapid-keys`). */
+  @IsOptional()
+  @IsString()
+  VAPID_PUBLIC_KEY?: string;
+
+  @IsOptional()
+  @IsString()
+  VAPID_PRIVATE_KEY?: string;
+
+  /** Contacto del servidor push (mailto:…). */
+  @IsOptional()
+  @IsString()
+  VAPID_SUBJECT?: string;
+
   /** Client IDs de Google aceptados como audiencia, separados por coma. */
   @IsOptional()
   @IsString()
