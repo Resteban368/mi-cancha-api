@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { Header } from '../components/Header';
-import { Alert, Button, Card, Field, PasswordField } from '../components/ui';
+import { Alert, Button, Field, PasswordField } from '../components/ui';
 import { api, errorMessage } from '../lib/api';
 import { useSession } from '../lib/session';
 import type { PlayerSession } from '../lib/types';
@@ -9,23 +9,34 @@ import type { PlayerSession } from '../lib/types';
 function AuthLayout({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
   const { slug = '' } = useParams();
   return (
-    <>
+    <div className="flex min-h-screen flex-col bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       <Header slug={slug} />
-      <main className="mx-auto max-w-md px-4 py-6">
-        <img
-          src={`${import.meta.env.BASE_URL}brand/logo-full.png`}
-          alt="Mi Cancha · Encuentra, reserva, juega"
-          width={320}
-          height={271}
-          className="mx-auto mb-5 h-auto w-full max-w-[220px] rounded-2xl border border-border shadow-sm"
-        />
-        <Card>
-          <h1 className="text-xl font-bold">{title}</h1>
-          <p className="mb-5 mt-1 text-sm text-fg-2">{subtitle}</p>
-          {children}
-        </Card>
+      <main className="flex flex-1 items-center justify-center px-4 py-8 sm:py-12">
+        <div className="w-full max-w-md">
+          <div className="rounded-2xl border border-slate-700 bg-slate-800/50 backdrop-blur-sm shadow-2xl">
+            <div className="border-t-4 border-accent"></div>
+            <div className="p-6 sm:p-8">
+              <div className="mb-6 flex justify-center">
+                <div className="rounded-2xl bg-slate-700/50 p-3">
+                  <img
+                    src={`${import.meta.env.BASE_URL}brand/icon.png`}
+                    alt="Mi Cancha"
+                    width={48}
+                    height={48}
+                    className="h-12 w-12"
+                  />
+                </div>
+              </div>
+              <div className="mb-8 text-center">
+                <h1 className="text-2xl font-bold text-white">{title}</h1>
+                <p className="mt-2 text-sm text-slate-400">{subtitle}</p>
+              </div>
+              {children}
+            </div>
+          </div>
+        </div>
       </main>
-    </>
+    </div>
   );
 }
 
