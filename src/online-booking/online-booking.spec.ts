@@ -7,7 +7,10 @@ import {
   PrismaMock,
 } from '../../test/support/prisma-mock.js';
 import type { BusinessesService } from '../businesses/businesses.service.js';
-import type { CourtsService } from '../courts/courts.service.js';
+import {
+  REQUIRED_PHOTOS,
+  type CourtsService,
+} from '../courts/courts.service.js';
 import { CourtPhotoSlot, Sport, UserRole } from '../generated/prisma/enums.js';
 import type { PrismaService } from '../prisma/prisma.service.js';
 import type { ReservationsService } from '../reservations/reservations.service.js';
@@ -366,5 +369,160 @@ describe('OnlineBookingService', () => {
     await expect(
       service.availability('el-golazo', Sport.FUTBOL, '2026-10-14', now),
     ).rejects.toThrow('Elige una fecha');
+  });
+
+  describe('Directorio de sedes', () => {
+    const photos = REQUIRED_PHOTOS.map((slot) => ({ slot }));
+    const sede = (id: string, overrides: Record<string, unknown> = {}) =>
+      business({
+        id,
+        slug: `sede-${id}`,
+        name: `Sede ${id}`,
+        courts: [
+          {
+            sport: Sport.FUTBOL,
+            currency: 'COP',
+            basePricePerHour: 80000,
+            photos,
+          },
+          {
+            sport: Sport.PADEL,
+            currency: 'COP',
+            basePricePerHour: 60000,
+            photos,
+          },
+          // Sin fotos: no se reserva en línea, no cuenta.
+          {
+            sport: Sport.PADEL,
+            currency: 'COP',
+            basePricePerHour: 10000,
+            photos: [],
+          },
+        ],
+        ...overrides,
+      });
+
+    it('lista solo sedes reservables con canchas, deportes y precio desde', async () => {
+      prisma.business.findMany
+        .mockResolvedValueOnce([{ id: 'biz-1', latitude: 1.6, longitude: -75.6 }])
+        .mockResolvedValueOnce([sede('biz-1')]);
+
+      const page = await service.directory({});
+
+      expect(page).toEqual({
+        url: 'https://api.test/reservar',
+        total: 1,
+        page: 1,
+        limit: 12,
+        businesses: [
+          expect.objectContaining({
+            slug: 'sede-biz-1',
+            imageUrl: 'https://api.test/api/v1/images/business-profile/img-1',
+            sports: [Sport.FUTBOL, Sport.PADEL],
+            courtCount: 2,
+            amenities: [{ code: 'WIFI', name: 'WiFi' }],
+            fromPricePerHour: 60000,
+            currency: 'COP',
+            distanceKm: null,
+          }),
+        ],
+      });
+    });
+
+    it('aplica búsqueda, deporte y servicio en la consulta', async () => {
+      prisma.business.findMany.mockResolvedValue([]);
+
+      await service.directory({
+        q: ' gol ',
+        sport: Sport.PADEL,
+        amenity: 'PARQUEADERO',
+      });
+
+      const where = prisma.business.findMany.mock.calls[0][0].where;
+      expect(where).toMatchObject({
+        onlineBookingEnabled: true,
+        subscription: { is: { isActive: true } },
+        amenities: { some: { code: 'PARQUEADERO', active: true } },
+        courts: {
+          some: { isActive: true, sport: Sport.PADEL },
+        },
+      });
+      expect(where.OR).toContainEqual({
+        name: { contains: 'gol', mode: 'insensitive' },
+      });
+    });
+
+    it('ordena por cercanía, deja sin punto al final y pagina después de ordenar', async () => {
+      prisma.business.findMany
+        .mockResolvedValueOnce([
+          { id: 'lejos', latitude: 4.6, longitude: -74.08 },
+          { id: 'cerca', latitude: 1.6, longitude: -75.6 },
+          { id: 'sin-punto', latitude: null, longitude: null },
+        ])
+        .mockResolvedValueOnce([
+          sede('lejos', { slug: 'lejos' }),
+          sede('cerca', { slug: 'cerca' }),
+        ]);
+
+      const page = await service.directory({
+        lat: 1.6,
+        lng: -75.6,
+        limit: 2,
+      });
+
+      expect(page.total).toBe(3);
+      expect(prisma.business.findMany.mock.calls[1][0].where).toEqual({
+        id: { in: ['cerca', 'lejos'] },
+      });
+      expect(page.businesses.map((b) => b.slug)).toEqual(['cerca', 'lejos']);
+      expect(page.businesses[0].distanceKm).toBe(0);
+      expect(page.businesses[1].distanceKm).toBeGreaterThan(100);
+    });
+
+    it('exige lat y lng juntos', async () => {
+      await expect(service.directory({ lat: 1.6 })).rejects.toThrow(
+        'Envía lat y lng juntos',
+      );
+    });
+  });
+
+  it('Mis sedes: solo las sedes donde el jugador ya tiene cliente', async () => {
+    const since = new Date('2026-10-01T15:00:00Z');
+    prisma.customer.findMany.mockResolvedValue([
+      {
+        createdAt: since,
+        business: {
+          name: 'El Golazo',
+          slug: 'el-golazo',
+          address: 'Calle 15',
+          neighborhood: 'Centro',
+          profileImage: { id: 'img-1' },
+        },
+      },
+    ]);
+
+    const list = await service.myBusinesses('u-1');
+
+    expect(prisma.customer.findMany.mock.calls[0][0].where).toEqual({
+      userId: 'u-1',
+      business: { slug: { not: null } },
+    });
+    expect(list).toEqual([
+      {
+        slug: 'el-golazo',
+        name: 'El Golazo',
+        address: 'Calle 15',
+        neighborhood: 'Centro',
+        imageUrl: 'https://api.test/api/v1/images/business-profile/img-1',
+        clientSince: since,
+      },
+    ]);
+  });
+
+  it('no deja usar como link una ruta fija de la web (perfil, ingresar…)', async () => {
+    await expect(
+      service.updateSettingsFor('biz-1', { slug: 'perfil' }),
+    ).rejects.toThrow('reservado');
+    expect(prisma.business.update).not.toHaveBeenCalled();
   });
 });

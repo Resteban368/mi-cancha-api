@@ -4,6 +4,7 @@ import { Header } from '../components/Header';
 import { Alert, Card, Skeleton } from '../components/ui';
 import { formatLongDay, formatMoney, formatTime, STATUS_LABELS } from '../lib/format';
 import { useSession } from '../lib/session';
+import { accountPath } from '../lib/next';
 import type { PublicBusiness, Reservation } from '../lib/types';
 import { useApi } from '../lib/useApi';
 
@@ -18,7 +19,7 @@ export function MyReservationsPage() {
     if (reservations.status === 401) signOut();
   }, [reservations.status, signOut]);
 
-  if (!token) return <Navigate to={`/${slug}/ingresar`} replace />;
+  if (!token) return <Navigate to={accountPath('ingresar', `/${slug}/mis-reservas`)} replace />;
 
   const now = Date.now();
   // Una reserva de varias canchas llega como una fila por cancha: se muestra una vez.

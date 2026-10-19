@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
 import { ChevronRightIcon, PlusIcon, SearchIcon } from '../components/icons';
+import { GeneralBookingLink } from '../components/GeneralBookingLink';
 import {
   Badge,
   Button,
@@ -68,6 +69,10 @@ export function ClientsPage() {
           </Button>
         }
       />
+
+      <div className="mb-6">
+        <GeneralBookingLink />
+      </div>
 
       <Card>
         <div className="border-b border-border p-4">

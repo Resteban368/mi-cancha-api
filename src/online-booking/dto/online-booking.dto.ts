@@ -11,6 +11,7 @@ import {
   IsEnum,
   IsInt,
   IsISO8601,
+  IsNumber,
   IsOptional,
   IsPhoneNumber,
   IsString,
@@ -335,4 +336,95 @@ export class UpdateOnlineBookingDto {
     message: 'slug solo puede tener minúsculas, números y guiones',
   })
   slug?: string;
+}
+
+export class DirectoryQueryDto {
+  /** Busca en nombre, barrio y dirección. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  q?: string;
+
+  @IsOptional()
+  @IsEnum(Sport)
+  sport?: Sport;
+
+  /** Código de un servicio del catálogo, p. ej. PARQUEADERO. */
+  @IsOptional()
+  @Matches(/^[A-Z_]{2,40}$/, { message: 'amenity no es un código válido' })
+  amenity?: string;
+
+  /** Latitud del usuario (solo si pidió "cerca de mí"). Va junto con lng. */
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  lat?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  lng?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(50)
+  limit?: number;
+}
+
+export class DirectoryBusinessDto {
+  name: string;
+  slug: string;
+  address: string;
+  neighborhood: string;
+  imageUrl: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  @ApiProperty({ enum: Sport, isArray: true })
+  sports: Sport[];
+  /** Canchas reservables (activas y con sus fotos obligatorias). */
+  courtCount: number;
+  amenities: { code: string; name: string }[];
+  /** Precio por hora más bajo entre sus canchas reservables; null si no hay. */
+  fromPricePerHour: number | null;
+  currency: string;
+  /** Solo si se pidieron lat y lng. */
+  distanceKm: number | null;
+}
+
+export class DirectoryPageDto {
+  /** Link general de reservas para compartir: /reservar. */
+  url: string;
+  total: number;
+  page: number;
+  limit: number;
+  @ApiProperty({ type: [DirectoryBusinessDto] })
+  businesses: DirectoryBusinessDto[];
+}
+
+export class PublicAmenityDto {
+  code: string;
+  name: string;
+}
+
+/** Sede donde el jugador ya es cliente. */
+export class PlayerBusinessDto {
+  slug: string;
+  name: string;
+  address: string;
+  neighborhood: string;
+  imageUrl: string | null;
+  /** Desde cuándo es cliente (su primera reserva en la sede). */
+  clientSince: Date;
 }

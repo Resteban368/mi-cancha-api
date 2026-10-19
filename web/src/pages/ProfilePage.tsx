@@ -1,29 +1,28 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Navigate, useParams } from 'react-router';
+import { Navigate } from 'react-router';
 import { Header } from '../components/Header';
 import { Alert, Button, Card, Field, inputClass, Skeleton } from '../components/ui';
 import { api, errorMessage } from '../lib/api';
+import { accountPath } from '../lib/next';
 import { SPORT_LABELS } from '../lib/format';
 import { useSession } from '../lib/session';
-import type { Player, PublicBusiness } from '../lib/types';
+import type { Player } from '../lib/types';
 import { useApi } from '../lib/useApi';
 
-/** "Mi perfil": el jugador completa correo, cédula y lo demás después de registrarse. */
+/** "Mi perfil": una sola cuenta para todas las sedes; el jugador completa correo, cédula y lo demás. */
 export function ProfilePage() {
-  const { slug = '' } = useParams();
   const { token, setPlayer, signOut } = useSession();
-  const business = useApi<PublicBusiness>(`/public/businesses/${slug}`);
   const me = useApi<Player>(token ? '/player/me' : null, token);
 
   useEffect(() => {
     if (me.status === 401) signOut();
   }, [me.status, signOut]);
 
-  if (!token) return <Navigate to={`/${slug}/ingresar`} replace />;
+  if (!token) return <Navigate to={accountPath('ingresar', '/perfil')} replace />;
 
   return (
     <>
-      <Header slug={slug} businessName={business.data?.name} />
+      <Header />
       <main className="mx-auto flex max-w-md flex-col gap-4 px-4 py-4">
         <h1 className="text-xl font-bold">Mi perfil</h1>
         {me.error && me.status !== 401 && <Alert>{me.error}</Alert>}

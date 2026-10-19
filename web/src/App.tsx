@@ -1,40 +1,37 @@
-import { Route, Routes } from 'react-router';
-import { Header } from './components/Header';
-import { Card } from './components/ui';
+import { Navigate, Route, Routes, useParams } from 'react-router';
 import { LoginPage, RegisterPage, ResetPasswordPage } from './pages/AuthPages';
 import { ProfilePage } from './pages/ProfilePage';
 import { BusinessPage } from './pages/BusinessPage';
+import { DirectoryPage } from './pages/DirectoryPage';
 import { MyReservationsPage } from './pages/MyReservationsPage';
+import { MySitesPage } from './pages/MySitesPage';
 import { PolicyPage } from './pages/PolicyPage';
+import { accountPath } from './lib/next';
 
 export function App() {
   return (
     <Routes>
-      <Route index element={<NoBusiness />} />
+      <Route index element={<DirectoryPage />} />
       <Route path="politica-de-datos" element={<PolicyPage />} />
+      {/* Una sola cuenta para todas las sedes. */}
+      <Route path="ingresar" element={<LoginPage />} />
+      <Route path="registro" element={<RegisterPage />} />
+      <Route path="recuperar" element={<ResetPasswordPage />} />
+      <Route path="perfil" element={<ProfilePage />} />
+      <Route path="mis-sedes" element={<MySitesPage />} />
       <Route path=":slug" element={<BusinessPage />} />
-      <Route path=":slug/ingresar" element={<LoginPage />} />
-      <Route path=":slug/registro" element={<RegisterPage />} />
-      <Route path=":slug/recuperar" element={<ResetPasswordPage />} />
-      <Route path=":slug/perfil" element={<ProfilePage />} />
       <Route path=":slug/mis-reservas" element={<MyReservationsPage />} />
-      <Route path="*" element={<NoBusiness />} />
+      {/* Links antiguos de cuenta por sede: llevan a la cuenta general. */}
+      <Route path=":slug/ingresar" element={<LegacyAccountRedirect page="ingresar" />} />
+      <Route path=":slug/registro" element={<LegacyAccountRedirect page="registro" />} />
+      <Route path=":slug/recuperar" element={<LegacyAccountRedirect page="recuperar" />} />
+      <Route path=":slug/perfil" element={<Navigate to="/perfil" replace />} />
+      <Route path="*" element={<DirectoryPage />} />
     </Routes>
   );
 }
 
-function NoBusiness() {
-  return (
-    <>
-      <Header />
-      <main className="mx-auto max-w-md px-4 py-10">
-        <Card>
-          <h1 className="text-xl font-bold">Reserva tu cancha</h1>
-          <p className="mt-2 text-sm text-fg-2">
-            Abre el link de reservas que te compartió tu sede deportiva para ver sus canchas y horarios.
-          </p>
-        </Card>
-      </main>
-    </>
-  );
+function LegacyAccountRedirect({ page }: { page: 'ingresar' | 'registro' | 'recuperar' }) {
+  const { slug = '' } = useParams();
+  return <Navigate to={accountPath(page, `/${slug}`)} replace />;
 }

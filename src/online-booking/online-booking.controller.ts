@@ -28,11 +28,15 @@ import {
 } from '../reservations/dto/reservation.dto.js';
 import {
   CurrentHoldDto,
+  DirectoryPageDto,
+  DirectoryQueryDto,
   LoginPlayerDto,
   OnlineBookingSettingsDto,
   PasswordResetCodeDto,
+  PlayerBusinessDto,
   PlayerDto,
   PlayerSessionDto,
+  PublicAmenityDto,
   PublicAvailabilityQueryDto,
   PublicBusinessDto,
   RegisterPlayerDto,
@@ -55,6 +59,23 @@ export class PublicBookingController {
     private readonly booking: OnlineBookingService,
     private readonly players: PlayerAuthService,
   ) {}
+
+  @Public()
+  @Get('businesses')
+  @ApiOperation({
+    summary:
+      'Directorio de sedes que reciben reservas: filtros, orden por cercanía (lat y lng) y paginación',
+  })
+  directory(@Query() query: DirectoryQueryDto): Promise<DirectoryPageDto> {
+    return this.booking.directory(query);
+  }
+
+  @Public()
+  @Get('amenities')
+  @ApiOperation({ summary: 'Servicios activos para filtrar el directorio' })
+  amenities(): Promise<PublicAmenityDto[]> {
+    return this.booking.publicAmenities();
+  }
 
   @Public()
   @Get('businesses/:slug')
@@ -159,6 +180,14 @@ export class PlayerController {
     @Body() dto: UpdatePlayerProfileDto,
   ): Promise<PlayerDto> {
     return this.players.updateProfile(user.sub, dto);
+  }
+
+  @Get('businesses')
+  @ApiOperation({
+    summary: 'Mis sedes: los negocios donde ya soy cliente (tengo al menos una reserva)',
+  })
+  myBusinesses(@CurrentUser() user: AuthPayload): Promise<PlayerBusinessDto[]> {
+    return this.booking.myBusinesses(user.sub);
   }
 
   @Post('businesses/:slug/reservations')

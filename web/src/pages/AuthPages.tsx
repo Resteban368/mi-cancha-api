@@ -1,8 +1,9 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Link, useNavigate, useParams } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { Header } from '../components/Header';
 import { Alert, Button, Field, PasswordField } from '../components/ui';
 import { api, errorMessage } from '../lib/api';
+import { accountPath, safeNext } from '../lib/next';
 import { useSession } from '../lib/session';
 import type { PlayerSession } from '../lib/types';
 
@@ -41,12 +42,11 @@ function CourtBackground() {
 }
 
 function AuthLayout({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
-  const { slug = '' } = useParams();
   return (
     <div className="relative isolate flex min-h-screen flex-col overflow-hidden bg-gradient-to-b from-[#0F8B7A] via-[#00685B] to-[#084C43]">
       <CourtBackground />
       <div className="relative z-10 flex min-h-screen flex-col">
-        <Header slug={slug} />
+        <Header />
         <main className="flex flex-1 items-center justify-center px-4 py-8 sm:py-12">
           <div className="w-full max-w-md overflow-hidden rounded-2xl border border-white/15 bg-[#084C43]/70 shadow-2xl backdrop-blur-md">
             <div className="h-1 bg-gradient-to-r from-[#22C1AC] via-[#D2F824] to-[#22C1AC]" />
@@ -74,7 +74,8 @@ function AuthLayout({ title, subtitle, children }: { title: string; subtitle: st
 }
 
 export function LoginPage() {
-  const { slug = '' } = useParams();
+  const [params] = useSearchParams();
+  const next = safeNext(params.get('next'));
   const { signIn } = useSession();
   const navigate = useNavigate();
   const [form, setForm] = useState({ identifier: '', password: '' });
@@ -87,7 +88,7 @@ export function LoginPage() {
     setError(undefined);
     try {
       signIn(await api<PlayerSession>('/public/auth/login', { method: 'POST', body: form }));
-      navigate(`/${slug}`);
+      navigate(next);
     } catch (e) {
       setError(errorMessage(e));
     } finally {
@@ -118,12 +119,12 @@ export function LoginPage() {
         <Button type="submit" loading={saving}>
           Ingresar
         </Button>
-        <Link to={`/${slug}/recuperar`} className="-mt-1 text-center text-sm font-semibold text-accent">
+        <Link to={accountPath('recuperar', next)} className="-mt-1 text-center text-sm font-semibold text-accent">
           ¿Olvidaste tu contraseña?
         </Link>
         <p className="text-center text-sm text-fg-2">
           ¿No tienes cuenta?{' '}
-          <Link to={`/${slug}/registro`} className="font-semibold text-accent">
+          <Link to={accountPath('registro', next)} className="font-semibold text-accent">
             Regístrate
           </Link>
         </p>
@@ -135,7 +136,8 @@ export function LoginPage() {
 const EMPTY = { fullName: '', phone: '', password: '' };
 
 export function RegisterPage() {
-  const { slug = '' } = useParams();
+  const [params] = useSearchParams();
+  const next = safeNext(params.get('next'));
   const { signIn } = useSession();
   const navigate = useNavigate();
   const [form, setForm] = useState(EMPTY);
@@ -174,7 +176,7 @@ export function RegisterPage() {
       body: { ...payload(), code },
     });
     signIn(session);
-    navigate(`/${slug}`);
+    navigate(next);
   }
 
   if (codeSent) {
@@ -239,7 +241,7 @@ export function RegisterPage() {
         </Button>
         <p className="text-center text-sm text-fg-2">
           ¿Ya tienes cuenta?{' '}
-          <Link to={`/${slug}/ingresar`} className="font-semibold text-accent">
+          <Link to={accountPath('ingresar', next)} className="font-semibold text-accent">
             Ingresa
           </Link>
         </p>
@@ -354,7 +356,8 @@ function CodeStep({
 
 /** "Olvidé mi contraseña": celular → código por SMS → contraseña nueva. */
 export function ResetPasswordPage() {
-  const { slug = '' } = useParams();
+  const [params] = useSearchParams();
+  const next = safeNext(params.get('next'));
   const { signIn } = useSession();
   const navigate = useNavigate();
   const [phone, setPhone] = useState('');
@@ -388,7 +391,7 @@ export function ResetPasswordPage() {
         body: { phone, code, password },
       }),
     );
-    navigate(`/${slug}`);
+    navigate(next);
   }
 
   if (codeSent) {
@@ -436,7 +439,7 @@ export function ResetPasswordPage() {
         </Button>
         <p className="text-center text-sm text-fg-2">
           ¿La recordaste?{' '}
-          <Link to={`/${slug}/ingresar`} className="font-semibold text-accent">
+          <Link to={accountPath('ingresar', next)} className="font-semibold text-accent">
             Ingresa
           </Link>
         </p>

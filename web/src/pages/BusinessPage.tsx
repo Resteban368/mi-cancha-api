@@ -4,6 +4,7 @@ import { CourtDetails } from '../components/CourtDetails';
 import { Header } from '../components/Header';
 import { Alert, Button, Card, Dialog, inputClass, Skeleton } from '../components/ui';
 import { api, ApiError, errorMessage } from '../lib/api';
+import { accountPath } from '../lib/next';
 import {
   courtSpecs,
   bogotaDate,
@@ -81,6 +82,9 @@ export function BusinessPage() {
     <>
       <Header slug={slug} businessName={business.data?.name} />
       <main className="mx-auto flex max-w-3xl flex-col gap-4 px-4 pb-40 pt-4">
+        <Link to="/" className="text-sm font-medium text-accent hover:underline">
+          ← Todas las sedes
+        </Link>
         {business.error ? (
           <Alert>{business.error}</Alert>
         ) : !business.data ? (
@@ -289,7 +293,7 @@ function Booking({ business }: { business: PublicBusiness }) {
 
   function goToLogin(pending: Selection) {
     savePending(business.slug, { ...pending, sport, date, notes });
-    navigate(`/${business.slug}/ingresar`);
+    navigate(accountPath('ingresar', `/${business.slug}`));
   }
 
   /** Aparta los turnos elegidos (reemplaza el apartado anterior). */

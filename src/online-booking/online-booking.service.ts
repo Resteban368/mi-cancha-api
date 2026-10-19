@@ -28,7 +28,12 @@ import {
 } from '../reservations/reservations.service.js';
 import {
   CurrentHoldDto,
+  DirectoryBusinessDto,
+  DirectoryPageDto,
+  DirectoryQueryDto,
   OnlineBookingSettingsDto,
+  PlayerBusinessDto,
+  PublicAmenityDto,
   PublicBusinessDto,
   PublicCourtDto,
   SlotHoldDto,
@@ -60,7 +65,12 @@ const businessInclude = {
   },
   courts: {
     where: { isActive: true },
-    select: { sport: true, currency: true, photos: { select: { slot: true } } },
+    select: {
+      sport: true,
+      currency: true,
+      basePricePerHour: true,
+      photos: { select: { slot: true } },
+    },
     orderBy: { name: 'asc' },
   },
 } satisfies Prisma.BusinessInclude;
@@ -169,7 +179,96 @@ export class OnlineBookingService {
     };
   }
 
+  // ---------- Directorio general (/reservar) ----------
+
+  /**
+   * Sedes que reciben reservas en línea. Sin lat y lng salen por nombre; con
+   * ellas, por cercanía (las que no tienen punto van al final). Se pagina después de ordenar.
+   */
+  async directory(query: DirectoryQueryDto): Promise<DirectoryPageDto> {
+    if ((query.lat === undefined) !== (query.lng === undefined)) {
+      throw new BadRequestException('Envía lat y lng juntos');
+    }
+    const origin =
+      query.lat !== undefined && query.lng !== undefined
+        ? { lat: query.lat, lng: query.lng }
+        : null;
+    const page = query.page ?? 1;
+    const limit = query.limit ?? DIRECTORY_PAGE_SIZE;
+
+    // Solo id y punto: el detalle se pide únicamente para la página que se ve.
+    const candidates = await this.prisma.business.findMany({
+      where: directoryWhere(query),
+      select: { id: true, latitude: true, longitude: true },
+      orderBy: { name: 'asc' },
+    });
+    const ranked = candidates
+      .map((b) => ({
+        id: b.id,
+        distance: origin ? distanceKm(origin, b) : null,
+      }))
+      .sort(byDistance);
+
+    const pageItems = ranked.slice((page - 1) * limit, page * limit);
+    const rows = await this.prisma.business.findMany({
+      where: { id: { in: pageItems.map((r) => r.id) } },
+      include: businessInclude,
+    });
+    const byId = new Map(rows.map((b) => [b.id, b]));
+    return {
+      url: `${this.publicApiUrl}/reservar`,
+      total: ranked.length,
+      page,
+      limit,
+      businesses: pageItems.flatMap(({ id, distance }) => {
+        const business = byId.get(id);
+        return business
+          ? [toDirectoryBusiness(this.publicApiUrl, business, distance)]
+          : [];
+      }),
+    };
+  }
+
+  /** Servicios activos para filtrar el directorio. */
+  async publicAmenities(): Promise<PublicAmenityDto[]> {
+    return this.prisma.amenity.findMany({
+      where: { active: true },
+      select: { code: true, name: true },
+      orderBy: { sortOrder: 'asc' },
+    });
+  }
+
   // ---------- Jugador ----------
+
+  /** Sedes donde el jugador ya es cliente (lo es desde su primera reserva en ella). */
+  async myBusinesses(playerId: string): Promise<PlayerBusinessDto[]> {
+    const rows = await this.prisma.customer.findMany({
+      where: { userId: playerId, business: { slug: { not: null } } },
+      select: {
+        createdAt: true,
+        business: {
+          select: {
+            name: true,
+            slug: true,
+            address: true,
+            neighborhood: true,
+            profileImage: { select: { id: true } },
+          },
+        },
+      },
+      orderBy: { business: { name: 'asc' } },
+    });
+    return rows.map(({ createdAt, business }) => ({
+      slug: business.slug!,
+      name: business.name,
+      address: business.address,
+      neighborhood: business.neighborhood,
+      imageUrl: business.profileImage
+        ? businessImageUrl(this.publicApiUrl, business.profileImage.id)
+        : null,
+      clientSince: createdAt,
+    }));
+  }
 
   async book(
     slug: string,
@@ -252,6 +351,11 @@ export class OnlineBookingService {
     dto: UpdateOnlineBookingDto,
   ): Promise<OnlineBookingSettingsDto> {
     if (dto.slug) {
+      if (RESERVED_SLUGS.includes(dto.slug)) {
+        throw new BadRequestException(
+          'Ese link está reservado para la web de reservas; elige otro',
+        );
+      }
       const taken = await this.prisma.business.findUnique({
         where: { slug: dto.slug },
         select: { id: true },
@@ -333,13 +437,106 @@ export class OnlineBookingService {
   }
 }
 
+/** Canchas con todas sus fotos obligatorias (las únicas que se reservan en línea). */
+function bookableCourts(business: PublicBusiness) {
+  return business.courts.filter((c) =>
+    REQUIRED_PHOTOS.every((slot) => c.photos.some((p) => p.slot === slot)),
+  );
+}
+
 function bookableSports(business: PublicBusiness): Sport[] {
-  const sports = business.courts
-    .filter((c) =>
-      REQUIRED_PHOTOS.every((slot) => c.photos.some((p) => p.slot === slot)),
-    )
-    .map((c) => c.sport);
-  return [...new Set(sports)];
+  return [...new Set(bookableCourts(business).map((c) => c.sport))];
+}
+
+const DIRECTORY_PAGE_SIZE = 12;
+
+/** Rutas fijas de la web de reservas: ningún negocio puede usarlas como link. */
+export const RESERVED_SLUGS = [
+  'ingresar',
+  'registro',
+  'recuperar',
+  'perfil',
+  'mis-sedes',
+  'politica-de-datos',
+];
+
+/** Sedes con reservas activas y al menos una cancha reservable, con los filtros pedidos. */
+function directoryWhere(query: DirectoryQueryDto): Prisma.BusinessWhereInput {
+  const q = query.q?.trim();
+  const court: Prisma.CourtWhereInput = {
+    isActive: true,
+    AND: REQUIRED_PHOTOS.map((slot) => ({ photos: { some: { slot } } })),
+    ...(query.sport ? { sport: query.sport } : {}),
+  };
+  return {
+    onlineBookingEnabled: true,
+    subscription: { is: { isActive: true } },
+    courts: { some: court },
+    ...(q
+      ? {
+          OR: [
+            { name: { contains: q, mode: 'insensitive' } },
+            { neighborhood: { contains: q, mode: 'insensitive' } },
+            { address: { contains: q, mode: 'insensitive' } },
+          ],
+        }
+      : {}),
+    ...(query.amenity
+      ? { amenities: { some: { code: query.amenity, active: true } } }
+      : {}),
+  };
+}
+
+/** Distancia en km (fórmula de Haversine); null si la sede no tiene punto. */
+function distanceKm(
+  from: { lat: number; lng: number },
+  to: { latitude: number | null; longitude: number | null },
+): number | null {
+  if (to.latitude === null || to.longitude === null) return null;
+  const rad = (degrees: number) => (degrees * Math.PI) / 180;
+  const dLat = rad(to.latitude - from.lat);
+  const dLng = rad(to.longitude - from.lng);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(rad(from.lat)) * Math.cos(rad(to.latitude)) * Math.sin(dLng / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.sqrt(a));
+}
+
+/** Más cerca primero; sin punto al final. El orden por nombre se conserva en empates. */
+function byDistance(
+  a: { distance: number | null },
+  b: { distance: number | null },
+): number {
+  if (a.distance === b.distance) return 0;
+  if (a.distance === null) return 1;
+  if (b.distance === null) return -1;
+  return a.distance - b.distance;
+}
+
+function toDirectoryBusiness(
+  origin: string,
+  business: PublicBusiness,
+  distance: number | null,
+): DirectoryBusinessDto {
+  const courts = bookableCourts(business);
+  const prices = courts.map((c) => Number(c.basePricePerHour));
+  return {
+    name: business.name,
+    slug: business.slug!,
+    address: business.address,
+    neighborhood: business.neighborhood,
+    imageUrl: business.profileImage
+      ? businessImageUrl(origin, business.profileImage.id)
+      : null,
+    latitude: business.latitude,
+    longitude: business.longitude,
+    sports: bookableSports(business),
+    courtCount: courts.length,
+    amenities: business.amenities,
+    fromPricePerHour: prices.length ? Math.min(...prices) : null,
+    currency: courts[0]?.currency ?? 'COP',
+    distanceKm: distance === null ? null : Math.round(distance * 10) / 10,
+  };
 }
 
 function bookingState(business: PublicBusiness): {

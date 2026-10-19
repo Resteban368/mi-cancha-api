@@ -69,6 +69,47 @@ export interface SlotHold {
   expiresAt: string;
 }
 
+/** Sede del directorio general (/reservar). */
+export interface DirectoryBusiness {
+  name: string;
+  slug: string;
+  address: string;
+  neighborhood: string;
+  imageUrl: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  sports: Sport[];
+  courtCount: number;
+  amenities: { code: string; name: string }[];
+  fromPricePerHour: number | null;
+  currency: string;
+  /** Solo si se pidió "cerca de mí". */
+  distanceKm: number | null;
+}
+
+export interface DirectoryPage {
+  url: string;
+  total: number;
+  page: number;
+  limit: number;
+  businesses: DirectoryBusiness[];
+}
+
+export interface PublicAmenity {
+  code: string;
+  name: string;
+}
+
+/** Sede donde el jugador ya es cliente (desde su primera reserva en ella). */
+export interface PlayerBusiness {
+  slug: string;
+  name: string;
+  address: string;
+  neighborhood: string;
+  imageUrl: string | null;
+  clientSince: string;
+}
+
 export interface CourtSlots {
   court: {
     id: string;
