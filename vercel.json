@@ -6,20 +6,12 @@
   ],
   "rewrites": [
     {
-      "source": "/admin",
-      "destination": "/admin/index.html"
+      "source": "/admin/:path*",
+      "destination": "/public/admin/index.html"
     },
     {
-      "source": "/admin/:path((?!assets/|brand/).*)",
-      "destination": "/admin/index.html"
-    },
-    {
-      "source": "/reservar",
-      "destination": "/reservar/index.html"
-    },
-    {
-      "source": "/reservar/:path((?!assets/|brand/).*)",
-      "destination": "/reservar/index.html"
+      "source": "/reservar/:path*",
+      "destination": "/public/reservar/index.html"
     }
   ]
 }

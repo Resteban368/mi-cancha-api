@@ -4,8 +4,6 @@
 !.env.example
 node_modules
 admin/node_modules
-dist
-public/admin
 coverage
 .agents
 .windsurf
