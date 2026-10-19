@@ -157,3 +157,24 @@ body {
   .pitch-pop, .pitch-ring, .pitch-particle { animation: none; }
   .pitch-check { animation: none; stroke-dashoffset: 0; }
 }
+
+/* Marcador de posición mientras carga una imagen: barrido de luz sobre el fondo. */
+@keyframes shimmer-sweep {
+  100% { transform: translateX(100%); }
+}
+.shimmer {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-2);
+}
+.shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.09), transparent);
+  animation: shimmer-sweep 1.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .shimmer::after { animation: none; }
+}

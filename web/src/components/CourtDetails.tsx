@@ -10,6 +10,9 @@ import {
   SPORT_LABELS,
 } from '../lib/format';
 import type { PublicCourt } from '../lib/types';
+import { PhotoLightbox } from './PhotoLightbox';
+import { SearchIcon } from './PitchChrome';
+import { ShimmerImage } from './ShimmerImage';
 import { Button, Dialog } from './ui';
 
 const PHOTO_LABELS: Record<string, string> = {
@@ -28,6 +31,7 @@ export function CourtDetails({ court, onClose }: { court: PublicCourt | null; on
 
 function CourtDetailsDialog({ court, onClose }: { court: PublicCourt; onClose: () => void }) {
   const [photoIndex, setPhotoIndex] = useState(0);
+  const [zoom, setZoom] = useState(false);
   const photo = court.photos[photoIndex];
   const specs = courtSpecs({ ...court, surfaceName: court.surface?.name ?? null });
   const turn = court.slotDuration % 60 === 0 ? `${court.slotDuration / 60} h` : `${court.slotDuration} min`;
@@ -72,12 +76,27 @@ function CourtDetailsDialog({ court, onClose }: { court: PublicCourt; onClose: (
 
       {photo && (
         <figure className="relative mt-4">
-          <img
-            src={photo.url}
-            alt={`${court.name}: ${PHOTO_LABELS[photo.slot] ?? 'foto'}`}
-            className="aspect-[4/3] max-h-[50dvh] w-full rounded-2xl bg-surface-2 object-cover"
-          />
-          <figcaption className="absolute inset-x-0 bottom-2.5 mx-auto w-fit rounded-full border border-white/10 bg-black/60 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-md">
+          <button
+            type="button"
+            onClick={() => setZoom(true)}
+            aria-label={`Ampliar foto: ${PHOTO_LABELS[photo.slot] ?? 'foto'}`}
+            className="group relative block w-full cursor-zoom-in rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          >
+            <ShimmerImage
+              key={photo.url}
+              src={photo.url}
+              alt={`${court.name}: ${PHOTO_LABELS[photo.slot] ?? 'foto'}`}
+              wrapperClassName="aspect-[4/3] max-h-[50dvh] w-full rounded-2xl"
+              className="object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+            />
+            <span
+              className="absolute right-2.5 top-2.5 flex size-8 items-center justify-center rounded-full border border-white/10 bg-black/60 text-white backdrop-blur-md"
+              aria-hidden="true"
+            >
+              <SearchIcon className="size-4" />
+            </span>
+          </button>
+          <figcaption className="pointer-events-none absolute inset-x-0 bottom-2.5 mx-auto w-fit rounded-full border border-white/10 bg-black/60 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-md">
             {PHOTO_LABELS[photo.slot]} · {photoIndex + 1} de {court.photos.length}
           </figcaption>
         </figure>
@@ -95,7 +114,7 @@ function CourtDetailsDialog({ court, onClose }: { court: PublicCourt; onClose: (
                 i === photoIndex ? 'border-accent' : 'border-transparent opacity-70 hover:opacity-100'
               }`}
             >
-              <img src={p.url} alt="" className="size-full object-cover" />
+              <ShimmerImage src={p.url} alt="" wrapperClassName="size-full" className="object-cover" />
             </button>
           ))}
         </div>
@@ -161,6 +180,15 @@ function CourtDetailsDialog({ court, onClose }: { court: PublicCourt; onClose: (
       <Button onClick={onClose} className="mt-5 w-full">
         Ver turnos
       </Button>
+
+      {zoom && (
+        <PhotoLightbox
+          photos={court.photos.map((p) => ({ url: p.url, label: `${court.name}: ${PHOTO_LABELS[p.slot] ?? 'foto'}` }))}
+          index={photoIndex}
+          onIndexChange={setPhotoIndex}
+          onClose={() => setZoom(false)}
+        />
+      )}
     </Dialog>
   );
 }

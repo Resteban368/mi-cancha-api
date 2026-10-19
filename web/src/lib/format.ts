@@ -8,6 +8,18 @@ const monthShort = new Intl.DateTimeFormat('es-CO', { month: 'short', timeZone: 
 
 export const formatTime = (iso: string) => time.format(new Date(iso));
 
+const hourOfDay = new Intl.DateTimeFormat('en-US', { hour: 'numeric', hourCycle: 'h23', timeZone: ZONE });
+
+export type DayPeriod = 'day' | 'afternoon' | 'night';
+
+/** Franja del turno en hora de Colombia: día 6–12, tarde 12–18, noche 18–6. */
+export function dayPeriod(iso: string): DayPeriod {
+  const hour = Number(hourOfDay.format(new Date(iso)));
+  if (hour >= 6 && hour < 12) return 'day';
+  if (hour >= 12 && hour < 18) return 'afternoon';
+  return 'night';
+}
+
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
 /** "Jueves, 15 de octubre" de un instante, en hora de Colombia. */

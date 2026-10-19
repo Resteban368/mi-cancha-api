@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { CourtDetails } from '../components/CourtDetails';
+import { ShimmerImage } from '../components/ShimmerImage';
 import { BusinessHeader, ChevronRightIcon, CloseIcon, PinIcon } from '../components/PitchChrome';
 import { Alert, Button, Card, Dialog, inputClass, Skeleton } from '../components/ui';
 import { api, ApiError, errorMessage } from '../lib/api';
@@ -11,6 +12,8 @@ import {
   bogotaDateOf,
   dayParts,
   formatCountdown,
+  dayPeriod,
+  type DayPeriod,
   formatLongDay,
   formatMoney,
   formatTime,
@@ -38,6 +41,13 @@ const UNAVAILABLE_MESSAGES: Record<string, string> = {
 };
 
 /** Turnos elegidos: 1 a 3 canchas en la misma franja (la primera es la que se tocó). */
+const PERIODS: { id: DayPeriod | 'all'; label: string }[] = [
+  { id: 'all', label: 'Todos' },
+  { id: 'day', label: 'Día' },
+  { id: 'afternoon', label: 'Tarde' },
+  { id: 'night', label: 'Noche' },
+];
+
 interface Selection {
   courtIds: string[];
   start: string;
@@ -129,7 +139,7 @@ function VenueInfoDialog({ business: b, open, onClose }: { business: PublicBusin
       </div>
       <div className="flex flex-col gap-4">
         {b.imageUrl ? (
-          <img src={b.imageUrl} alt={`Sede ${b.name}`} className="aspect-video w-full rounded-2xl border border-border object-cover" />
+          <ShimmerImage src={b.imageUrl} alt={`Sede ${b.name}`} wrapperClassName="aspect-video w-full rounded-2xl border border-border" className="object-cover" />
         ) : (
           <div className="flex aspect-video items-center justify-center rounded-2xl bg-surface-2 text-5xl" aria-hidden="true">
             🏟️
@@ -195,6 +205,7 @@ function Booking({ business }: { business: PublicBusiness }) {
   const [notice, setNotice] = useState<string>();
   const [booked, setBooked] = useState<Reservation | null>(null);
   const [details, setDetails] = useState<PublicCourt | null>(null);
+  const [period, setPeriod] = useState<DayPeriod | 'all'>('all');
   // Apartado propio; expiresAt en el reloj del navegador.
   const [hold, setHold] = useState<{ value: SlotHold; expiresAt: number } | null>(null);
   const [holding, setHolding] = useState(false);
@@ -520,6 +531,23 @@ function Booking({ business }: { business: PublicBusiness }) {
             );
           })}
         </div>
+        <div className="mt-3 flex gap-2" role="group" aria-label="Horario">
+          {PERIODS.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              aria-pressed={period === p.id}
+              onClick={() => setPeriod(p.id)}
+              className={`flex-1 rounded-xl border px-2 py-2 text-xs transition active:scale-[0.98] ${
+                period === p.id
+                  ? 'border-transparent bg-accent font-bold text-accent-fg'
+                  : 'border-border bg-surface-2 font-medium text-fg-2 hover:border-slate-500'
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
         <p className="mt-3 flex items-center gap-1.5 border-t border-white/5 pt-2.5 text-[11px] font-medium text-fg-3">
           <span className="size-2 animate-pulse rounded-full bg-accent" aria-hidden="true" />
           Los turnos se actualizan en vivo.
@@ -546,6 +574,7 @@ function Booking({ business }: { business: PublicBusiness }) {
             chosenCount={count}
             startIndex={runs.find((r) => r.id === c.court.id)?.index ?? -1}
             isFree={isFree}
+            period={period}
             onChoose={choose}
             onDetails={
               business.courts.some((x) => x.id === c.court.id)
@@ -688,6 +717,7 @@ function CourtCard({
   chosenCount,
   startIndex,
   isFree,
+  period,
   onChoose,
   onDetails,
 }: {
@@ -697,6 +727,7 @@ function CourtCard({
   chosenCount: number;
   startIndex: number;
   isFree: (courtId: string, slot: Slot) => boolean;
+  period: DayPeriod | 'all';
   onChoose: (courtId: string, start: string) => void;
   onDetails?: () => void;
 }) {
@@ -708,7 +739,7 @@ function CourtCard({
       const free = selected || isFree(court.id, slot);
       return { slot, selected, free, inProcess: !free && slot.status === 'HELD' };
     })
-    .filter((s) => s.free || s.inProcess);
+    .filter((s) => (s.free || s.inProcess) && (period === 'all' || dayPeriod(s.slot.start) === period));
 
   return (
     <Card className="shadow-sm">
@@ -722,7 +753,7 @@ function CourtCard({
             className="shrink-0 rounded-xl disabled:cursor-default"
           >
             {court.photoUrl ? (
-              <img src={court.photoUrl} alt="" className="size-12 rounded-xl border border-border object-cover" />
+              <ShimmerImage src={court.photoUrl} alt="" wrapperClassName="size-12 rounded-xl border border-border" className="object-cover" />
             ) : (
               <span className="flex size-12 items-center justify-center rounded-xl bg-accent-soft text-2xl" aria-hidden="true">
                 {SPORT_EMOJI[court.sport]}
@@ -755,7 +786,7 @@ function CourtCard({
       {slots.length === 0 ? (
         <p className="text-sm text-fg-3">Cerrada este día.</p>
       ) : visible.length === 0 ? (
-        <p className="text-sm text-fg-3">No quedan turnos disponibles este día.</p>
+        <p className="text-sm text-fg-3">{period === 'all' ? 'No quedan turnos disponibles este día.' : 'No hay turnos disponibles en este horario.'}</p>
       ) : (
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4">
           {visible.map(({ slot, selected, free, inProcess }) => {
