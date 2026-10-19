@@ -46,9 +46,13 @@ export class TwilioSmsService extends SmsService {
       await this.client.messages.create({ to, body, ...sender });
     } catch (error) {
       // Nunca se registra el cuerpo del mensaje (lleva el código).
-      const { code, status } = error as { code?: number; status?: number };
+      const { code, status, message } = error as {
+        code?: number;
+        status?: number;
+        message?: string;
+      };
       this.logger.error(
-        `Twilio no envió el SMS (status ${status}, código ${code})`,
+        `Twilio no envió el SMS (status ${status}, código ${code}): ${message}`,
       );
       throw new ServiceUnavailableException(
         'No pudimos enviar el SMS. Intenta de nuevo en un momento.',
