@@ -11,13 +11,17 @@ import {
   Post,
   Put,
   Query,
+  Req,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { AuthPayload } from '../common/auth/auth-payload.js';
 import { CurrentUser } from '../common/auth/current-user.decorator.js';
 import { Public } from '../common/auth/public.decorator.js';
 import { Roles } from '../common/auth/roles.decorator.js';
 import { UserRole } from '../generated/prisma/enums.js';
+import { clientIp } from '../otp/client-ip.js';
+import { OtpSentDto } from '../otp/dto/otp.dto.js';
 import {
   ReservationDto,
   SportAvailabilityDto,
@@ -26,12 +30,16 @@ import {
   CurrentHoldDto,
   LoginPlayerDto,
   OnlineBookingSettingsDto,
+  PasswordResetCodeDto,
   PlayerDto,
   PlayerSessionDto,
   PublicAvailabilityQueryDto,
   PublicBusinessDto,
   RegisterPlayerDto,
+  ResetPasswordDto,
   SlotHoldDto,
+  StartRegistrationDto,
+  UpdatePlayerProfileDto,
   UpdateOnlineBookingDto,
   WebHoldDto,
   WebReservationDto,
@@ -69,10 +77,51 @@ export class PublicBookingController {
   }
 
   @Public()
+  @Post('auth/register/code')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'Registro, paso 1: si el celular está libre, le envía el código por SMS',
+  })
+  startRegistration(
+    @Body() dto: StartRegistrationDto,
+    @Req() req: Request,
+  ): Promise<OtpSentDto> {
+    return this.players.startRegistration(dto, clientIp(req));
+  }
+
+  @Public()
   @Post('auth/register')
-  @ApiOperation({ summary: 'Registrar una cuenta de jugador' })
+  @ApiOperation({
+    summary:
+      'Registro, paso 2: crea la cuenta con el código del SMS o el token de /otp/verify',
+  })
   register(@Body() dto: RegisterPlayerDto): Promise<PlayerSessionDto> {
     return this.players.register(dto);
+  }
+
+  @Public()
+  @Post('auth/password/code')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'Olvidé mi contraseña: envía un código por SMS si el celular tiene cuenta (responde igual si no)',
+  })
+  requestPasswordReset(
+    @Body() dto: PasswordResetCodeDto,
+    @Req() req: Request,
+  ): Promise<OtpSentDto> {
+    return this.players.requestPasswordReset(dto, clientIp(req));
+  }
+
+  @Public()
+  @Post('auth/password/reset')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Nueva contraseña con el código del SMS; deja la sesión iniciada',
+  })
+  resetPassword(@Body() dto: ResetPasswordDto): Promise<PlayerSessionDto> {
+    return this.players.resetPassword(dto);
   }
 
   @Public()
@@ -98,6 +147,18 @@ export class PlayerController {
   @ApiOperation({ summary: 'Datos de la cuenta del jugador' })
   me(@CurrentUser() user: AuthPayload): Promise<PlayerDto> {
     return this.players.me(user.sub);
+  }
+
+  @Patch('me')
+  @ApiOperation({
+    summary:
+      'Mi perfil: completar o cambiar nombre, correo, cédula, nacimiento y deporte',
+  })
+  updateMe(
+    @CurrentUser() user: AuthPayload,
+    @Body() dto: UpdatePlayerProfileDto,
+  ): Promise<PlayerDto> {
+    return this.players.updateProfile(user.sub, dto);
   }
 
   @Post('businesses/:slug/reservations')

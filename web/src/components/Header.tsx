@@ -19,6 +19,9 @@ export function Header({ slug, businessName }: { slug?: string; businessName?: s
                 <Link to={`${base}/mis-reservas`} className="rounded-lg px-3 py-2 font-medium text-accent hover:bg-accent-soft">
                   Mis reservas
                 </Link>
+                <Link to={`${base}/perfil`} className="rounded-lg px-3 py-2 font-medium text-fg-2 hover:bg-surface-2">
+                  Mi perfil
+                </Link>
                 <button type="button" onClick={signOut} className="rounded-lg px-3 py-2 text-fg-2 hover:bg-surface-2">
                   Salir
                 </button>

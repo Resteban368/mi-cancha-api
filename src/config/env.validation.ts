@@ -65,6 +65,29 @@ export class EnvironmentVariables {
   @IsOptional()
   @IsString()
   PUBLIC_API_URL?: string;
+
+  // --- SMS con Twilio (códigos OTP). Sin estas variables, fuera de
+  // producción no se envían SMS y el código es el fijo de desarrollo. ---
+
+  /** Account SID (AC…). */
+  @IsOptional()
+  @Matches(/^AC[0-9a-f]{32}$/)
+  TWILIO_ACCOUNT_SID?: string;
+
+  @IsOptional()
+  @IsString()
+  TWILIO_AUTH_TOKEN?: string;
+
+  /** Número de Twilio en E.164 (+1…) o Messaging Service SID (MG…). */
+  @IsOptional()
+  @Matches(/^(\+[1-9]\d{6,14}|MG[0-9a-f]{32})$/)
+  TWILIO_FROM_NUMBER?: string;
+
+  /** Secreto para el HMAC de los códigos OTP (mín. 32). Si falta se deriva de JWT_SECRET. */
+  @IsOptional()
+  @IsString()
+  @MinLength(32)
+  OTP_SECRET?: string;
 }
 
 export function validateEnv(

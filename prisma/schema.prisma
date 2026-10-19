@@ -340,8 +340,9 @@ model Customer {
   business       Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
   name           String
   phone          String
-  /// Número de cédula u otro documento de identidad.
-  documentId     String
+  /// Número de cédula u otro documento de identidad. null solo en clientes que
+  /// llegaron por la web y aún no la registran (el negocio siempre la pide).
+  documentId     String?
   /// Deporte habitual elegido por el negocio; si es null se usa el más reservado.
   preferredSport Sport?
   /// Notas internas del negocio (no las ve el cliente).
@@ -482,4 +483,25 @@ model Subscription {
   nextPayment DateTime
   isActive    Boolean  @default(true)
   autoBilling Boolean  @default(true)
+}
+
+/// Códigos de un solo uso (OTP) enviados por SMS para verificar un celular. Se
+/// guarda solo su HMAC-SHA256, nunca el código; vencen a los 5 minutos y se
+/// invalidan tras 5 intentos fallidos.
+model OtpCode {
+  id        String    @id @default(uuid())
+  /// Celular en formato E.164 (+573001234567).
+  phone     String
+  codeHash  String    @map("code_hash")
+  /// HMAC de la IP que lo pidió: limita solicitudes por IP sin guardarla.
+  ipHash    String?   @map("ip_hash")
+  expiresAt DateTime  @map("expires_at")
+  attempts  Int       @default(0)
+  /// Cuándo se usó; un código usado no se acepta otra vez.
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([phone, createdAt])
+  @@index([ipHash, createdAt])
+  @@map("otp_codes")
 }

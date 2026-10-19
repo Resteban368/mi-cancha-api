@@ -28,7 +28,7 @@ export class RefundDto {
     id: string;
     name: string;
     phone: string;
-    documentId: string;
+    documentId: string | null;
   } | null;
 }
 

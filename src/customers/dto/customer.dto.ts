@@ -125,7 +125,9 @@ export class CustomerDto {
   name: string;
   /** Con indicativo, p. ej. +573114567890. */
   phone: string;
-  documentId: string;
+  /** null en clientes que llegaron por la web sin cédula. */
+  @ApiProperty({ type: String, nullable: true })
+  documentId: string | null;
   @ApiProperty({ enum: Sport, nullable: true })
   preferredSport: Sport | null;
   notes: string | null;
@@ -253,7 +255,8 @@ export class CustomerDetailDto {
   businessId: string;
   name: string;
   phone: string;
-  documentId: string;
+  @ApiProperty({ type: String, nullable: true })
+  documentId: string | null;
   @ApiProperty({ enum: Sport, nullable: true })
   preferredSport: Sport | null;
   notes: string | null;

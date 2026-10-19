@@ -502,14 +502,17 @@ export class CustomersService {
     if (linked) return linked;
 
     const phone = player.phone ?? '';
-    const documentId = player.documentId ?? '';
+    // Sin cédula (se registró solo con celular) se busca únicamente por celular.
+    const documentId = player.documentId || null;
     const [byPhone, byDocument] = await Promise.all([
       db.customer.findUnique({
         where: { businessId_phone: { businessId, phone } },
       }),
-      db.customer.findUnique({
-        where: { businessId_documentId: { businessId, documentId } },
-      }),
+      documentId
+        ? db.customer.findUnique({
+            where: { businessId_documentId: { businessId, documentId } },
+          })
+        : null,
     ]);
     if (byPhone && byDocument && byPhone.id !== byDocument.id) {
       throw new ConflictException(

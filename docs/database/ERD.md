@@ -143,7 +143,8 @@ se pagan y se cancelan juntas. null = reserva de una sola cancha."
     String businessId FK
     String name
     String phone
-    String documentId "Número de cédula u otro documento de identidad."
+    String documentId "opcional · Número de cédula u otro documento de identidad. null solo en clientes que
+llegaron por la web y aún no la registran (el negocio siempre la pide)."
     Sport preferredSport "opcional · Deporte habitual elegido por el negocio; si es null se usa el más reservado."
     String notes "opcional · Notas internas del negocio (no las ve el cliente)."
     String userId FK "opcional · Cuenta de jugador vinculada (si se registró en la web)."
@@ -221,6 +222,16 @@ se pagan y se cancelan juntas. null = reserva de una sola cancha."
     DateTime nextPayment
     Boolean isActive
     Boolean autoBilling
+  }
+  OtpCode {
+    String id PK
+    String phone "Celular en formato E.164 (+573001234567)."
+    String codeHash
+    String ipHash "opcional · HMAC de la IP que lo pidió: limita solicitudes por IP sin guardarla."
+    DateTime expiresAt
+    Int attempts
+    DateTime usedAt "opcional · Cuándo se usó; un código usado no se acepta otra vez."
+    DateTime createdAt
   }
   User ||--o| Business : "business"
   Business ||--o| BusinessProfileImage : "profileImage"
@@ -417,6 +428,14 @@ Plan que tiene contratado un negocio, su estado (activo o suspendido) y la fecha
 
 - **Business**: Pertenece siempre a un Business mediante businessId; un Business tiene como máximo un Subscription. Si se borra el Business, se borra también su Subscription.
 - **Plan**: Pertenece siempre a un Plan mediante planId; un Plan puede tener varios Subscription. No se puede borrar un Plan mientras tenga Subscription.
+
+### OtpCode
+
+Códigos de un solo uso (OTP) enviados por SMS para verificar un celular. Se
+guarda solo su HMAC-SHA256, nunca el código; vencen a los 5 minutos y se
+invalidan tras 5 intentos fallidos.
+
+
 
 ## Enums
 

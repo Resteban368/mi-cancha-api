@@ -9,7 +9,7 @@ export interface CustomerMetricsRow {
   id: string;
   name: string;
   phone: string;
-  documentId: string;
+  documentId: string | null;
   preferredSport: string | null;
   notes: string | null;
   createdAt: Date;

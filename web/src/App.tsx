@@ -1,7 +1,8 @@
 import { Route, Routes } from 'react-router';
 import { Header } from './components/Header';
 import { Card } from './components/ui';
-import { LoginPage, RegisterPage } from './pages/AuthPages';
+import { LoginPage, RegisterPage, ResetPasswordPage } from './pages/AuthPages';
+import { ProfilePage } from './pages/ProfilePage';
 import { BusinessPage } from './pages/BusinessPage';
 import { MyReservationsPage } from './pages/MyReservationsPage';
 import { PolicyPage } from './pages/PolicyPage';
@@ -14,6 +15,8 @@ export function App() {
       <Route path=":slug" element={<BusinessPage />} />
       <Route path=":slug/ingresar" element={<LoginPage />} />
       <Route path=":slug/registro" element={<RegisterPage />} />
+      <Route path=":slug/recuperar" element={<ResetPasswordPage />} />
+      <Route path=":slug/perfil" element={<ProfilePage />} />
       <Route path=":slug/mis-reservas" element={<MyReservationsPage />} />
       <Route path="*" element={<NoBusiness />} />
     </Routes>

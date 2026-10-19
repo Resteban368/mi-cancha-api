@@ -13,6 +13,7 @@ import type { PrismaService } from '../prisma/prisma.service.js';
 import type { ReservationsService } from '../reservations/reservations.service.js';
 import { OnlineBookingService, WEB_RULES } from './online-booking.service.js';
 import { PlayerAuthService } from './player-auth.service.js';
+import type { OtpService } from '../otp/otp.service.js';
 
 const jwt = {
   signAsync: vi.fn().mockResolvedValue('token'),
@@ -21,19 +22,24 @@ const jwt = {
 describe('PlayerAuthService', () => {
   let prisma: PrismaMock;
   let service: PlayerAuthService;
+  const otp = { request: vi.fn(), confirm: vi.fn() };
   const dto = {
     fullName: ' Pedro Jugador ',
-    email: 'Pedro@Correo.co',
     phone: '312 000 1111',
-    documentId: '1.098.111.222',
     password: 'clave1234',
-    birthDate: '1995-04-21',
-    acceptDataPolicy: true,
+    acceptDataPolicy: true as const,
+    code: '123456',
   };
 
   beforeEach(() => {
     prisma = createPrismaMock();
-    service = new PlayerAuthService(prisma as unknown as PrismaService, jwt);
+    otp.request.mockReset().mockResolvedValue({ message: 'enviado' });
+    otp.confirm.mockReset().mockResolvedValue(true);
+    service = new PlayerAuthService(
+      prisma as unknown as PrismaService,
+      jwt,
+      otp as unknown as OtpService,
+    );
     prisma.user.findUnique.mockResolvedValue(null);
     prisma.user.create.mockImplementation(({ data }) => ({
       id: 'u-1',
@@ -41,38 +47,148 @@ describe('PlayerAuthService', () => {
     }));
   });
 
-  it('registra al jugador con datos normalizados y la aceptación de datos', async () => {
+  it('registra solo con nombre, celular verificado y contraseña', async () => {
     const session = await service.register(dto);
 
+    expect(otp.confirm).toHaveBeenCalledWith('+573120001111', dto);
     const { data } = prisma.user.create.mock.calls[0][0];
     expect(data).toMatchObject({
       role: UserRole.JUGADOR,
       displayName: 'Pedro Jugador',
-      email: 'pedro@correo.co',
       phone: '+573120001111',
-      documentId: '1098111222',
-      birthDate: new Date('1995-04-21T00:00:00Z'),
       dataConsentVersion: expect.any(String),
     });
-    expect(data.dataConsentAt).toBeInstanceOf(Date);
+    expect(data).not.toHaveProperty('email');
+    expect(data).not.toHaveProperty('documentId');
+    expect(data.phoneVerifiedAt).toBeInstanceOf(Date);
     expect(await bcrypt.compare('clave1234', data.passwordHash)).toBe(true);
-    expect(session).toMatchObject({
-      accessToken: 'token',
-      player: { fullName: 'Pedro Jugador', birthDate: '1995-04-21' },
+    expect(session.accessToken).toBe('token');
+  });
+
+  it('paso 1: con el celular libre pide el código (con la IP); si ya tiene cuenta, no', async () => {
+    const { code: _code, ...data } = dto;
+    await service.startRegistration(data, '1.2.3.4');
+    expect(otp.request).toHaveBeenCalledWith('+573120001111', '1.2.3.4');
+
+    otp.request.mockClear();
+    prisma.user.findUnique.mockResolvedValue({ id: 'otro' });
+    await expect(service.startRegistration(data)).rejects.toThrow(
+      ConflictException,
+    );
+    expect(otp.request).not.toHaveBeenCalled();
+  });
+
+  it('paso 2: sin prueba válida del celular no crea la cuenta', async () => {
+    otp.confirm.mockResolvedValue(false);
+    await expect(service.register(dto)).rejects.toThrow(
+      'El código no es correcto o ya venció',
+    );
+    expect(prisma.user.create).not.toHaveBeenCalled();
+  });
+
+  it('olvidé mi contraseña: responde igual con o sin cuenta, y solo envía si la hay', async () => {
+    const a = await service.requestPasswordReset({ phone: '3120001111' });
+    expect(otp.request).not.toHaveBeenCalled();
+
+    prisma.user.findUnique.mockResolvedValue({ id: 'u-1' });
+    otp.request.mockResolvedValue(a);
+    const b = await service.requestPasswordReset({ phone: '3120001111' });
+    expect(otp.request).toHaveBeenCalledWith('+573120001111', undefined);
+    expect(b).toEqual(a);
+  });
+
+  it('cambia la contraseña con la prueba del celular y deja la sesión iniciada', async () => {
+    prisma.user.findUnique.mockResolvedValue({
+      id: 'u-1',
+      role: UserRole.JUGADOR,
+      phoneVerifiedAt: null,
+    });
+    prisma.user.update.mockImplementation(({ data }) => ({
+      id: 'u-1',
+      role: UserRole.JUGADOR,
+      displayName: 'Pedro',
+      birthDate: null,
+      ...data,
+    }));
+    const session = await service.resetPassword({
+      phone: '3120001111',
+      code: '123456',
+      password: 'nueva1234',
+    });
+    const { data } = prisma.user.update.mock.calls[0][0];
+    expect(await bcrypt.compare('nueva1234', data.passwordHash)).toBe(true);
+    expect(session.accessToken).toBe('token');
+
+    otp.confirm.mockResolvedValue(false);
+    prisma.user.update.mockClear();
+    await expect(
+      service.resetPassword({
+        phone: '3120001111',
+        code: '000000',
+        password: 'nueva1234',
+      }),
+    ).rejects.toThrow('El código no es correcto');
+    expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+
+  describe('Mi perfil', () => {
+    const player = { id: 'u-1', role: UserRole.JUGADOR, displayName: 'Pedro' };
+
+    beforeEach(() => {
+      prisma.user.findUnique.mockImplementation(({ where }) =>
+        where.id === 'u-1' ? player : null,
+      );
+      prisma.user.update.mockImplementation(({ data }) => ({
+        ...player,
+        birthDate: null,
+        ...data,
+      }));
+      prisma.customer.findMany.mockResolvedValue([
+        { id: 'cus-1', businessId: 'b-1' },
+        { id: 'cus-2', businessId: 'b-2' },
+      ]);
+      // En la sede b-2 otro cliente ya usa esa cédula.
+      prisma.customer.findUnique.mockImplementation(({ where }) =>
+        where.businessId_documentId.businessId === 'b-2'
+          ? { id: 'otro' }
+          : null,
+      );
+    });
+
+    it('completa correo y cédula, y anota la cédula en sus clientes sin ella', async () => {
+      const me = await service.updateProfile('u-1', {
+        email: ' Pedro@Correo.co ',
+        documentId: '1.098.111.222',
+        favoriteSport: Sport.FUTBOL,
+      });
+      expect(me).toMatchObject({
+        email: 'pedro@correo.co',
+        documentId: '1098111222',
+        favoriteSport: Sport.FUTBOL,
+      });
+      expect(prisma.customer.findMany.mock.calls[0][0].where).toEqual({
+        userId: 'u-1',
+        documentId: null,
+      });
+      expect(prisma.customer.update).toHaveBeenCalledTimes(1);
+      expect(prisma.customer.update).toHaveBeenCalledWith({
+        where: { id: 'cus-1' },
+        data: { documentId: '1098111222' },
+      });
+    });
+
+    it('no deja usar el correo o la cédula de otra cuenta', async () => {
+      prisma.user.findUnique.mockImplementation(({ where }) =>
+        where.id === 'u-1' ? player : where.documentId ? { id: 'otra' } : null,
+      );
+      await expect(
+        service.updateProfile('u-1', { documentId: '1098111222' }),
+      ).rejects.toThrow('Esa cédula ya está registrada');
+      expect(prisma.user.update).not.toHaveBeenCalled();
     });
   });
 
-  it('no permite repetir correo, celular ni cédula', async () => {
-    prisma.user.findUnique
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({ id: 'otro' });
-    await expect(service.register(dto)).rejects.toThrow(
-      'Esa cédula ya está registrada',
-    );
-  });
-
-  it('inicia sesión con celular o cédula y rechaza la contraseña incorrecta', async () => {
+  it('inicia sesión con celular (o cédula) y rechaza la contraseña incorrecta', async () => {
     prisma.user.findFirst.mockResolvedValue({
       id: 'u-1',
       role: UserRole.JUGADOR,
@@ -82,13 +198,8 @@ describe('PlayerAuthService', () => {
     });
 
     await expect(
-      service.login({ identifier: '1.098.111.222', password: 'clave1234' }),
+      service.login({ identifier: '312 000 1111', password: 'clave1234' }),
     ).resolves.toMatchObject({ accessToken: 'token' });
-    expect(prisma.user.findFirst.mock.calls[0][0].where).toEqual({
-      role: UserRole.JUGADOR,
-      // 10 dígitos también podrían ser un celular: se busca de las dos formas.
-      OR: [{ phone: '+571098111222' }, { documentId: '1098111222' }],
-    });
 
     await expect(
       service.login({ identifier: '3120001111', password: 'mala' }),

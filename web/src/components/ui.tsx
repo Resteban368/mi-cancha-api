@@ -38,6 +38,7 @@ export function Field({
   label,
   hint,
   optional,
+  className,
   ...props
 }: InputHTMLAttributes<HTMLInputElement> & { label: string; hint?: string; optional?: boolean }) {
   const id = useId();
@@ -46,7 +47,7 @@ export function Field({
       <label htmlFor={id} className="text-sm font-medium">
         {label} {optional && <span className="font-normal text-fg-3">(opcional)</span>}
       </label>
-      <input id={id} className={inputClass} {...props} />
+      <input id={id} className={className ? `${inputClass} ${className}` : inputClass} {...props} />
       {hint && <p className="text-xs text-fg-3">{hint}</p>}
     </div>
   );

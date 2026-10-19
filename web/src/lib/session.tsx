@@ -7,6 +7,8 @@ interface SessionContext {
   token: string | null;
   player: Player | null;
   signIn: (session: PlayerSession) => void;
+  /** Guarda los datos actualizados del jugador (p. ej. desde "Mi perfil"). */
+  setPlayer: (player: Player) => void;
   signOut: () => void;
 }
 
@@ -42,10 +44,24 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     write(null);
     setSession(null);
   }, []);
+  const setPlayer = useCallback((player: Player) => {
+    setSession((current) => {
+      if (!current) return current;
+      const next = { ...current, player };
+      write(next);
+      return next;
+    });
+  }, []);
 
   return (
     <Context.Provider
-      value={{ token: session?.accessToken ?? null, player: session?.player ?? null, signIn, signOut }}
+      value={{
+        token: session?.accessToken ?? null,
+        player: session?.player ?? null,
+        signIn,
+        setPlayer,
+        signOut,
+      }}
     >
       {children}
     </Context.Provider>

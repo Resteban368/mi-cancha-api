@@ -12,6 +12,7 @@ import {
   IsInt,
   IsISO8601,
   IsOptional,
+  IsPhoneNumber,
   IsString,
   IsUUID,
   Matches,
@@ -19,6 +20,7 @@ import {
   MaxLength,
   Min,
   MinLength,
+  ValidateIf,
 } from 'class-validator';
 import {
   CourtPhotoDto,
@@ -27,6 +29,11 @@ import {
   CourtSurfaceRefDto,
 } from '../../courts/dto/court.dto.js';
 import { Sport } from '../../generated/prisma/enums.js';
+import {
+  OTP_CODE,
+  OTP_CODE_MESSAGE,
+  PHONE_MESSAGE,
+} from '../../otp/dto/otp.dto.js';
 import { MAX_GROUP_COURTS } from '../../reservations/dto/reservation.dto.js';
 
 /** Turnos seguidos que un jugador puede apartar y reservar desde la web. */
@@ -39,48 +46,37 @@ export const DATA_POLICY_VERSION = '2026-10-15';
 
 export const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
-export class RegisterPlayerDto {
+/** Prueba de que el celular es del jugador: el código del SMS o el token de /otp/verify. */
+class PhoneProofDto {
+  /** Código de 6 dígitos del SMS. Envía esto o `verificationToken`. @example 123456 */
+  @ValidateIf((d: PhoneProofDto) => !d.verificationToken)
+  @Matches(OTP_CODE, { message: OTP_CODE_MESSAGE })
+  code?: string;
+
+  /** Token de POST /public/auth/otp/verify. Envía esto o `code`. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  verificationToken?: string;
+}
+
+/** Registro: nombre, celular y contraseña. Lo demás se completa en "Mi perfil". */
+export class StartRegistrationDto {
   /** @example Laura Gómez */
   @IsString()
   @MinLength(2)
   @MaxLength(100)
   fullName: string;
 
-  /** @example laura@correo.com */
-  @IsEmail({}, { message: 'email no es un correo válido' })
-  @MaxLength(120)
-  email: string;
-
-  /** Celular; 10 dígitos se guardan con +57. @example 311 555 0001 */
-  @Matches(/^\+?[\d\s()-]{7,20}$/, {
-    message: 'phone debe ser un celular válido (7 a 20 dígitos)',
-  })
+  /** Celular de Colombia; recibe el código por SMS y sirve para ingresar. @example 311 555 0001 */
+  @IsPhoneNumber('CO', { message: PHONE_MESSAGE })
   phone: string;
-
-  /** Cédula; se ignoran puntos, espacios y guiones. @example 1.075.111.222 */
-  @Matches(/^[\dA-Za-z.\s-]{4,20}$/, {
-    message: 'documentId debe tener entre 4 y 20 caracteres (letras o números)',
-  })
-  documentId: string;
 
   /** Mínimo 8 caracteres. */
   @IsString()
   @MinLength(8)
   @MaxLength(72)
   password: string;
-
-  /** Opcional. @example 1995-04-21 */
-  @IsOptional()
-  @Matches(/^\d{4}-\d{2}-\d{2}$/, {
-    message: 'birthDate debe tener formato YYYY-MM-DD',
-  })
-  @IsISO8601({ strict: true })
-  birthDate?: string;
-
-  @ApiProperty({ enum: Sport, required: false })
-  @IsOptional()
-  @IsEnum(Sport)
-  favoriteSport?: Sport;
 
   /** Debe ser true: aceptación de la política de tratamiento de datos. */
   @Equals(true, {
@@ -89,8 +85,77 @@ export class RegisterPlayerDto {
   acceptDataPolicy: boolean;
 }
 
+/** Los mismos datos más la prueba de que el celular es suyo. */
+export class RegisterPlayerDto extends StartRegistrationDto {
+  /** @example 123456 */
+  @ValidateIf((d: RegisterPlayerDto) => !d.verificationToken)
+  @Matches(OTP_CODE, { message: OTP_CODE_MESSAGE })
+  code?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  verificationToken?: string;
+}
+
+export class PasswordResetCodeDto {
+  /** Celular de la cuenta. @example 311 555 0001 */
+  @IsPhoneNumber('CO', { message: PHONE_MESSAGE })
+  phone: string;
+}
+
+export class ResetPasswordDto extends PhoneProofDto {
+  /** Celular de la cuenta. @example 311 555 0001 */
+  @IsPhoneNumber('CO', { message: PHONE_MESSAGE })
+  phone: string;
+
+  /** Contraseña nueva, mínimo 8 caracteres. */
+  @IsString()
+  @MinLength(8)
+  @MaxLength(72)
+  password: string;
+}
+
+/** "Mi perfil": datos que el jugador completa después de registrarse. */
+export class UpdatePlayerProfileDto {
+  /** @example Laura Gómez */
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(100)
+  fullName?: string;
+
+  /** @example laura@correo.com */
+  @IsOptional()
+  @IsEmail({}, { message: 'email no es un correo válido' })
+  @MaxLength(120)
+  email?: string;
+
+  /** Cédula; se ignoran puntos, espacios y guiones. @example 1.075.111.222 */
+  @IsOptional()
+  @Matches(/^[\dA-Za-z.\s-]{4,20}$/, {
+    message: 'documentId debe tener entre 4 y 20 caracteres (letras o números)',
+  })
+  documentId?: string;
+
+  /** null la quita. @example 1995-04-21 */
+  @ApiProperty({ type: String, nullable: true, required: false })
+  @IsOptional()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, {
+    message: 'birthDate debe tener formato YYYY-MM-DD',
+  })
+  @IsISO8601({ strict: true })
+  birthDate?: string | null;
+
+  /** null lo quita. */
+  @ApiProperty({ enum: Sport, nullable: true, required: false })
+  @IsOptional()
+  @IsEnum(Sport)
+  favoriteSport?: Sport | null;
+}
+
 export class LoginPlayerDto {
-  /** Celular o cédula. @example 3115550001 */
+  /** Celular (o la cédula, si ya la registró en su perfil). @example 3115550001 */
   @IsString()
   @MinLength(4)
   @MaxLength(30)
