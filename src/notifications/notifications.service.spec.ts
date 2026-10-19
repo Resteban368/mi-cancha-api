@@ -1,4 +1,7 @@
+import { BadRequestException, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { vi, type Mock } from 'vitest';
+import type { AuditService } from '../audit/audit.service.js';
 import { createPrismaMock, PrismaMock } from '../../test/support/prisma-mock.js';
 import { ReservationSource } from '../generated/prisma/enums.js';
 import type { PrismaService } from '../prisma/prisma.service.js';
@@ -13,7 +16,8 @@ const sub = (id: string) => ({ endpoint: `https://push/${id}`, p256dh: 'p', auth
 describe('NotificationsService', () => {
   let prisma: PrismaMock;
   let service: NotificationsService;
-  const push = { send: vi.fn() };
+  const push: { send: Mock; publicKey: string | null } = { send: vi.fn(), publicKey: 'BKEY' };
+  const audit = { log: vi.fn() };
 
   const reservation = (over: Partial<NewReservationInfo> = {}): NewReservationInfo => ({
     id: 'r-1',
@@ -28,10 +32,13 @@ describe('NotificationsService', () => {
 
   beforeEach(() => {
     prisma = createPrismaMock();
-    push.send.mockReset().mockResolvedValue({ expiredEndpoints: [] });
+    push.publicKey = 'BKEY';
+    audit.log.mockReset().mockResolvedValue(undefined);
+    push.send.mockReset().mockResolvedValue({ delivered: 1, expiredEndpoints: [] });
     service = new NotificationsService(
       prisma as unknown as PrismaService,
       push as unknown as PushService,
+      audit as unknown as AuditService,
       { getOrThrow: () => '-05:00' } as unknown as ConfigService,
     );
   });
@@ -103,5 +110,112 @@ describe('NotificationsService', () => {
     prisma.pushSubscription.findMany.mockResolvedValue([sub('a')]);
     push.send.mockRejectedValue(new Error('servicio push caído'));
     await expect(service.notifyNewReservation(reservation())).resolves.toBeUndefined();
+  });
+
+  describe('aviso del super admin', () => {
+    const ADMIN = 'sa-1';
+    const subs = [
+      { userId: 'u-1', ...sub('a') },
+      { userId: 'u-1', ...sub('b') },
+      { userId: 'u-2', ...sub('c') },
+    ];
+
+    it('a todos: busca a los dueños activos de cualquier negocio, envía y audita', async () => {
+      prisma.business.count.mockResolvedValue(5);
+      prisma.pushSubscription.findMany.mockResolvedValue(subs);
+      push.send.mockResolvedValue({ delivered: 3, expiredEndpoints: [] });
+
+      const result = await service.broadcast(
+        ADMIN,
+        { title: ' Hola ', body: 'Mantenimiento', all: true },
+        '203.0.113.9',
+      );
+
+      expect(prisma.pushSubscription.findMany.mock.calls[0][0].where.user).toMatchObject({
+        role: 'ADMIN_NEGOCIO',
+        bannedAt: null,
+        business: { isNot: null },
+      });
+      expect(push.send.mock.calls[0][1]).toMatchObject({
+        title: 'Hola',
+        body: 'Mantenimiento',
+        url: '/',
+        data: { type: 'ADMIN_BROADCAST' },
+      });
+      expect(result).toEqual({ businesses: 5, reachable: 2, delivered: 3 });
+      expect(audit.log).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'notification.broadcast',
+          actor: { id: ADMIN, role: 'SUPER_ADMIN' },
+          ip: '203.0.113.9',
+          metadata: expect.objectContaining({ scope: 'ALL', businesses: 5, reachable: 2, delivered: 3 }),
+        }),
+      );
+    });
+
+    it('a los elegidos: filtra por esos negocios', async () => {
+      prisma.business.count.mockResolvedValue(2);
+      prisma.pushSubscription.findMany.mockResolvedValue([subs[0]]);
+
+      await service.broadcast(ADMIN, { title: 't', body: 'b', all: false, businessIds: ['b-1', 'b-2'] });
+
+      expect(prisma.pushSubscription.findMany.mock.calls[0][0].where.user.business).toEqual({
+        id: { in: ['b-1', 'b-2'] },
+      });
+      expect(audit.log.mock.calls[0][0].metadata).toMatchObject({
+        scope: 'SELECTED',
+        businessIds: ['b-1', 'b-2'],
+      });
+    });
+
+    it('rechaza si no eligió a nadie ni marcó "todos", o si algún negocio no existe', async () => {
+      await expect(
+        service.broadcast(ADMIN, { title: 't', body: 'b', all: false, businessIds: [] }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+
+      prisma.business.count.mockResolvedValue(1);
+      await expect(
+        service.broadcast(ADMIN, { title: 't', body: 'b', all: false, businessIds: ['b-1', 'nada'] }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(push.send).not.toHaveBeenCalled();
+    });
+
+    it('si el servidor no tiene claves VAPID responde 503 y no envía', async () => {
+      push.publicKey = null;
+      await expect(
+        service.broadcast(ADMIN, { title: 't', body: 'b', all: true }),
+      ).rejects.toBeInstanceOf(ServiceUnavailableException);
+      expect(audit.log).not.toHaveBeenCalled();
+    });
+
+    it('sin nadie con avisos activados no llama al servicio push, pero lo audita', async () => {
+      prisma.business.count.mockResolvedValue(4);
+      prisma.pushSubscription.findMany.mockResolvedValue([]);
+      const result = await service.broadcast(ADMIN, { title: 't', body: 'b', all: true });
+      expect(push.send).not.toHaveBeenCalled();
+      expect(result).toEqual({ businesses: 4, reachable: 0, delivered: 0 });
+      expect(audit.log).toHaveBeenCalled();
+    });
+
+    it('borra las suscripciones vencidas que descubre al enviar', async () => {
+      prisma.business.count.mockResolvedValue(1);
+      prisma.pushSubscription.findMany.mockResolvedValue([subs[0]]);
+      push.send.mockResolvedValue({ delivered: 0, expiredEndpoints: ['https://push/a'] });
+      await service.broadcast(ADMIN, { title: 't', body: 'b', all: true });
+      expect(prisma.pushSubscription.deleteMany).toHaveBeenCalledWith({
+        where: { endpoint: { in: ['https://push/a'] } },
+      });
+    });
+
+    it('lista los negocios con sus navegadores suscritos', async () => {
+      prisma.business.findMany.mockResolvedValue([
+        { id: 'b-1', name: 'El Golazo', owner: { displayName: 'Ana', bannedAt: null, _count: { pushSubscriptions: 2 } } },
+        { id: 'b-2', name: 'La Cancha', owner: { displayName: 'Luis', bannedAt: new Date(), _count: { pushSubscriptions: 0 } } },
+      ]);
+      await expect(service.recipients()).resolves.toEqual([
+        { businessId: 'b-1', name: 'El Golazo', ownerName: 'Ana', devices: 2, banned: false },
+        { businessId: 'b-2', name: 'La Cancha', ownerName: 'Luis', devices: 0, banned: true },
+      ]);
+    });
   });
 });

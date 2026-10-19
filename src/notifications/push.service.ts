@@ -18,6 +18,8 @@ export interface PushTarget {
 }
 
 export interface PushResult {
+  /** Navegadores que aceptaron el aviso. */
+  delivered: number;
   /** Endpoints que el navegador ya no acepta (suscripción vencida o revocada): hay que borrarlos. */
   expiredEndpoints: string[];
 }
@@ -39,6 +41,8 @@ export interface VapidConfig {
   subject: string;
 }
 
+const BATCH_SIZE = 50;
+
 /** Web Push estándar (VAPID): Chrome, Edge, Firefox y Safari 16.4+. */
 export class WebPushService extends PushService {
   private readonly logger = new Logger(WebPushService.name);
@@ -52,8 +56,22 @@ export class WebPushService extends PushService {
   async send(targets: PushTarget[], message: PushMessage): Promise<PushResult> {
     const payload = JSON.stringify(message);
     const expiredEndpoints: string[] = [];
+    let delivered = 0;
+    // En tandas: un aviso masivo no abre cientos de conexiones a la vez.
+    for (let i = 0; i < targets.length; i += BATCH_SIZE) {
+      await this.sendBatch(targets.slice(i, i + BATCH_SIZE), payload, expiredEndpoints, () => delivered++);
+    }
+    return { delivered, expiredEndpoints };
+  }
+
+  private async sendBatch(
+    batch: PushTarget[],
+    payload: string,
+    expiredEndpoints: string[],
+    onDelivered: () => void,
+  ): Promise<void> {
     await Promise.all(
-      targets.map(async (t) => {
+      batch.map(async (t) => {
         try {
           await webpush.sendNotification(
             { endpoint: t.endpoint, keys: { p256dh: t.p256dh, auth: t.auth } },
@@ -68,6 +86,7 @@ export class WebPushService extends PushService {
               urgency: 'high',
             },
           );
+          onDelivered();
         } catch (error) {
           const { statusCode } = error as { statusCode?: number };
           if (statusCode === 404 || statusCode === 410) {
@@ -78,7 +97,6 @@ export class WebPushService extends PushService {
         }
       }),
     );
-    return { expiredEndpoints };
   }
 }
 
@@ -91,7 +109,7 @@ export class DevPushService extends PushService {
     this.logger.warn(
       `Push de prueba a ${targets.length} navegador(es): "${message.title}" — faltan las claves VAPID, no se envió`,
     );
-    return { expiredEndpoints: [] };
+    return { delivered: 0, expiredEndpoints: [] };
   }
 }
 
@@ -104,6 +122,6 @@ export class UnconfiguredPushService extends PushService {
     this.logger.error(
       'Faltan VAPID_PUBLIC_KEY y VAPID_PRIVATE_KEY: no se envían notificaciones push',
     );
-    return { expiredEndpoints: [] };
+    return { delivered: 0, expiredEndpoints: [] };
   }
 }

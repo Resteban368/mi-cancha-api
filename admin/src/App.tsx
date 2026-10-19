@@ -7,6 +7,7 @@ import { ClientDetailPage } from './pages/ClientDetailPage';
 import { ClientsPage } from './pages/ClientsPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { LoginPage } from './pages/LoginPage';
+import { NotificationsPage } from './pages/NotificationsPage';
 import { PlansPage } from './pages/PlansPage';
 import { UsersPage } from './pages/UsersPage';
 
@@ -22,6 +23,7 @@ export function App() {
         <Route path="usuarios" element={<UsersPage />} />
         <Route path="planes" element={<PlansPage />} />
         <Route path="catalogos" element={<CatalogsPage />} />
+        <Route path="avisos" element={<NotificationsPage />} />
         <Route path="auditoria" element={<AuditPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

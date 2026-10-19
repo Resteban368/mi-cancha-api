@@ -78,3 +78,19 @@ export interface OtpStats {
   }[];
   topSources: { source: string; requests: number; phones: number }[];
 }
+
+/** Negocio al que se le puede enviar un aviso. */
+export interface BroadcastRecipient {
+  businessId: string;
+  name: string;
+  ownerName: string;
+  /** Navegadores con los avisos activados; 0 = no recibiría nada. */
+  devices: number;
+  banned: boolean;
+}
+
+export interface BroadcastResult {
+  businesses: number;
+  reachable: number;
+  delivered: number;
+}

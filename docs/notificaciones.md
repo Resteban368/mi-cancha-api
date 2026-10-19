@@ -106,6 +106,32 @@ Service Worker decide cómo mostrarlo):
 
 `url` es la ruta de la app que se abre al tocar el aviso; `tag` evita apilar el mismo aviso dos veces.
 
+## Avisos del super admin a los negocios
+
+En el panel (`/admin` → **Avisos**) el super admin escribe un título y un mensaje y lo envía a **todos
+los negocios** o solo a los que marque. La pantalla muestra cuántos navegadores tiene activados cada
+negocio y cuántos recibirán el aviso (los que no activaron los avisos, o con la cuenta bloqueada, no
+reciben nada).
+
+| Endpoint (rol `SUPER_ADMIN`) | Qué hace |
+|---|---|
+| `GET /api/v1/admin/notifications/recipients` | Negocios con `devices` (navegadores suscritos) y `banned` |
+| `POST /api/v1/admin/notifications/broadcast` | Envía el aviso; responde `{ businesses, reachable, delivered }` |
+
+Cuerpo de `broadcast`:
+
+```json
+{ "title": "Mantenimiento", "body": "Esta noche a las 11 p. m.…", "url": "/", "all": false, "businessIds": ["<uuid>"] }
+```
+
+- `title` hasta 60 caracteres, `body` hasta 240. `url` es opcional, una ruta de la app (por defecto `/`;
+  no se aceptan enlaces a otros sitios).
+- `all: true` envía a todos; con `all: false` hay que mandar al menos un `businessIds` y todos deben existir.
+- El push lleva `data.type = "ADMIN_BROADCAST"` (el de reservas es `NEW_RESERVATION`); el Service Worker de la
+  app no necesita cambios.
+- Si el servidor no tiene claves VAPID responde `503`.
+- Cada envío queda en la **Auditoría** como "Aviso enviado a negocios", con el alcance y cuántos lo recibieron.
+
 ## Puesta en marcha
 
 ### 1. Generar las claves VAPID (una sola vez)

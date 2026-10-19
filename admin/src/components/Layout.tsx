@@ -9,7 +9,7 @@ import {
   StoreIcon,
   UsersIcon,
 } from './icons';
-import { ShieldIcon } from './security-icons';
+import { BellIcon, ShieldIcon } from './security-icons';
 
 const NAV = [
   { to: '/', label: 'Dashboard', icon: DashboardIcon, end: true },
@@ -17,6 +17,7 @@ const NAV = [
   { to: '/usuarios', label: 'Usuarios', icon: UsersIcon },
   { to: '/planes', label: 'Planes', icon: PlanIcon },
   { to: '/catalogos', label: 'Catálogos', icon: ListIcon },
+  { to: '/avisos', label: 'Avisos', icon: BellIcon },
   { to: '/auditoria', label: 'Auditoría', icon: ShieldIcon },
 ];
 

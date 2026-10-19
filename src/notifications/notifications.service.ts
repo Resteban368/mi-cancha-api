@@ -1,7 +1,23 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ReservationSource } from '../generated/prisma/enums.js';
+import { randomUUID } from 'node:crypto';
+import { AuditService } from '../audit/audit.service.js';
+import {
+  AuditCategory,
+  ReservationSource,
+  UserRole,
+} from '../generated/prisma/enums.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import type {
+  BroadcastDto,
+  BroadcastRecipientDto,
+  BroadcastResultDto,
+} from './dto/broadcast.dto.js';
 import type { SubscribeDto } from './dto/subscription.dto.js';
 import { PushService } from './push.service.js';
 
@@ -29,6 +45,7 @@ export class NotificationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly push: PushService,
+    private readonly audit: AuditService,
     config: ConfigService,
   ) {
     this.utcOffset = config.getOrThrow<string>('APP_UTC_OFFSET');
@@ -107,6 +124,103 @@ export class NotificationsService {
         where: { endpoint: { in: expiredEndpoints } },
       });
     }
+  }
+
+  // ---------- Super admin: aviso a los negocios ----------
+
+  /** Todos los negocios con cuántos navegadores tienen suscritos, para elegir a quién avisar. */
+  async recipients(): Promise<BroadcastRecipientDto[]> {
+    const businesses = await this.prisma.business.findMany({
+      select: {
+        id: true,
+        name: true,
+        owner: {
+          select: {
+            displayName: true,
+            bannedAt: true,
+            _count: { select: { pushSubscriptions: true } },
+          },
+        },
+      },
+      orderBy: { name: 'asc' },
+    });
+    return businesses.map((b) => ({
+      businessId: b.id,
+      name: b.name,
+      ownerName: b.owner.displayName,
+      devices: b.owner._count.pushSubscriptions,
+      banned: b.owner.bannedAt !== null,
+    }));
+  }
+
+  /** Aviso del super admin a todos los negocios o a los elegidos. */
+  async broadcast(
+    adminId: string,
+    dto: BroadcastDto,
+    ip?: string | null,
+  ): Promise<BroadcastResultDto> {
+    if (!this.push.publicKey) {
+      throw new ServiceUnavailableException(
+        'Las notificaciones no están configuradas en el servidor (faltan las claves VAPID)',
+      );
+    }
+    const ids = dto.businessIds ?? [];
+    if (!dto.all && ids.length === 0) {
+      throw new BadRequestException('Elige al menos un negocio o envía a todos');
+    }
+
+    const businesses = await this.prisma.business.count({
+      where: dto.all ? {} : { id: { in: ids } },
+    });
+    if (!dto.all && businesses !== ids.length) {
+      throw new BadRequestException('Alguno de los negocios elegidos no existe');
+    }
+
+    const subscriptions = await this.prisma.pushSubscription.findMany({
+      where: {
+        user: {
+          role: UserRole.ADMIN_NEGOCIO,
+          bannedAt: null,
+          business: dto.all ? { isNot: null } : { id: { in: ids } },
+        },
+      },
+      select: { userId: true, endpoint: true, p256dh: true, auth: true },
+    });
+    const reachable = new Set(subscriptions.map((s) => s.userId)).size;
+
+    let delivered = 0;
+    if (subscriptions.length > 0) {
+      const result = await this.push.send(subscriptions, {
+        title: dto.title.trim(),
+        body: dto.body.trim(),
+        url: dto.url ?? '/',
+        tag: `aviso-${randomUUID()}`,
+        data: { type: 'ADMIN_BROADCAST' },
+      });
+      delivered = result.delivered;
+      if (result.expiredEndpoints.length > 0) {
+        await this.prisma.pushSubscription.deleteMany({
+          where: { endpoint: { in: result.expiredEndpoints } },
+        });
+      }
+    }
+
+    await this.audit.log({
+      category: AuditCategory.ADMIN,
+      action: 'notification.broadcast',
+      actor: { id: adminId, role: UserRole.SUPER_ADMIN },
+      entityType: 'Notification',
+      metadata: {
+        title: dto.title.trim(),
+        scope: dto.all ? 'ALL' : 'SELECTED',
+        businessIds: dto.all ? undefined : ids,
+        businesses,
+        reachable,
+        delivered,
+      },
+      ip,
+    });
+    return { businesses, reachable, delivered };
   }
 
   /** "mar 21 oct, 6:30 p. m." en la hora del negocio. */
