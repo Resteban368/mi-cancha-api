@@ -101,6 +101,7 @@ export interface BroadcastHistoryItem {
   title: string;
   body: string;
   url: string | null;
+  imageUrl: string | null;
   scope: 'ALL' | 'SELECTED';
   sentByLabel: string | null;
   targeted: number;
@@ -116,4 +117,10 @@ export interface BroadcastHistoryPage {
   total: number;
   page: number;
   pageSize: number;
+}
+
+/** Imagen subida para un aviso, lista para enviarla con su id. */
+export interface UploadedNotificationImage {
+  id: string;
+  url: string;
 }

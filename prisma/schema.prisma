@@ -114,7 +114,7 @@ model User {
   notifications         Notification[]
   customers             Customer[]
   reservations          Reservation[]
-  cancelledReservations Reservation[] @relation("ReservationCancelledBy")
+  cancelledReservations Reservation[]      @relation("ReservationCancelledBy")
   refunds               Refund[]
   slotHolds             SlotHold[]
 
@@ -143,14 +143,14 @@ model Business {
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
-  courts       Court[]
-  customers    Customer[]
-  reservations Reservation[]
-  payments     Payment[]
-  refunds      Refund[]
-  subscription Subscription?
-  profileImage BusinessProfileImage?
-  slotHolds    SlotHold[]
+  courts            Court[]
+  customers         Customer[]
+  reservations      Reservation[]
+  payments          Payment[]
+  refunds           Refund[]
+  subscription      Subscription?
+  profileImage      BusinessProfileImage?
+  slotHolds         SlotHold[]
   reservationGroups ReservationGroup[]
 }
 
@@ -170,30 +170,30 @@ model BusinessProfileImage {
 /// Cancha que el negocio alquila por turnos. Solo recibe reservas si está activa (isActive) y
 /// completa (tiene las fotos MAIN, SURFACE y LIGHTING). El límite del plan cuenta las activas.
 model Court {
-  id               String   @id @default(uuid())
+  id               String        @id @default(uuid())
   businessId       String
-  business         Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business         Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
   name             String
   sport            Sport
   /// true = cubierta o con techo; false = al aire libre.
-  isCovered        Boolean  @default(false)
+  isCovered        Boolean       @default(false)
   /// Código ISO 4217 de la moneda de los precios (COP, USD…).
-  currency         String   @default("COP")
+  currency         String        @default("COP")
   /// Precio por hora cuando ninguna tarifa (CourtRate) cubre la franja.
-  basePricePerHour Decimal  @db.Decimal(12, 2)
+  basePricePerHour Decimal       @db.Decimal(12, 2)
   /// Duración de cada turno en minutos: 30, 60, 90 o 120.
-  slotDuration     Int      @default(60)
+  slotDuration     Int           @default(60)
   /// Superficie o tipo de grama (catálogo); null si no se indicó.
   surfaceId        String?
   surface          CourtSurface? @relation(fields: [surfaceId], references: [id])
   /// Medidas en metros. Van las dos o ninguna.
-  lengthMeters     Decimal? @db.Decimal(5, 2)
-  widthMeters      Decimal? @db.Decimal(5, 2)
+  lengthMeters     Decimal?      @db.Decimal(5, 2)
+  widthMeters      Decimal?      @db.Decimal(5, 2)
   /// Formato: jugadores por equipo (5 en fútbol 5, 2 en pádel); null si no se indicó.
   playersPerSide   Int?
-  isActive         Boolean  @default(true)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  isActive         Boolean       @default(true)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 
   schedules    CourtSchedule[]
   rates        CourtRate[]
@@ -575,7 +575,10 @@ enum NotificationType {
 
 /// Aviso que el super admin envió a los negocios: el historial del panel.
 model NotificationBroadcast {
-  id          String   @id @default(uuid())
+  id          String             @id @default(uuid())
+  /// Imagen opcional del aviso (se guarda en el almacenamiento de imágenes).
+  imageId     String?
+  image       NotificationImage? @relation(fields: [imageId], references: [id], onDelete: SetNull)
   /// Super admin que lo envió (sin llave foránea: el dato sobrevive si se borra la cuenta).
   sentById    String
   /// Nombre de quien lo envió al momento del envío.
@@ -591,7 +594,7 @@ model NotificationBroadcast {
   reachable   Int
   /// Navegadores que lo aceptaron.
   delivered   Int
-  createdAt   DateTime @default(now())
+  createdAt   DateTime           @default(now())
 
   notifications Notification[]
 
@@ -612,6 +615,8 @@ model Notification {
   data        Json?
   broadcastId String?
   broadcast   NotificationBroadcast? @relation(fields: [broadcastId], references: [id], onDelete: SetNull)
+  imageId     String?
+  image       NotificationImage?     @relation(fields: [imageId], references: [id], onDelete: SetNull)
   /// null = sin leer.
   readAt      DateTime?
   createdAt   DateTime               @default(now())
@@ -619,4 +624,17 @@ model Notification {
   @@index([userId, createdAt(sort: Desc)])
   @@index([userId, readAt])
   @@index([broadcastId])
+  @@index([imageId])
+}
+
+/// Imagen que acompaña a un aviso. El archivo vive en el almacenamiento (Koofr); aquí solo su ruta.
+model NotificationImage {
+  id          String   @id @default(uuid())
+  storagePath String
+  contentType String
+  sizeBytes   Int
+  createdAt   DateTime @default(now())
+
+  broadcasts    NotificationBroadcast[]
+  notifications Notification[]
 }

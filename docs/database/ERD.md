@@ -263,6 +263,7 @@ llegaron por la web y aún no la registran (el negocio siempre la pide)."
   }
   NotificationBroadcast {
     String id PK
+    String imageId FK "opcional · Imagen opcional del aviso (se guarda en el almacenamiento de imágenes)."
     String sentById "Super admin que lo envió (sin llave foránea: el dato sobrevive si se borra la cuenta)."
     String sentByLabel "opcional · Nombre de quien lo envió al momento del envío."
     String title
@@ -283,7 +284,15 @@ llegaron por la web y aún no la registran (el negocio siempre la pide)."
     String url "opcional · Ruta de la app que se abre al tocarla."
     Json data "opcional · Datos para la app (p. ej. reservationId)."
     String broadcastId FK "opcional"
+    String imageId FK "opcional"
     DateTime readAt "opcional · null = sin leer."
+    DateTime createdAt
+  }
+  NotificationImage {
+    String id PK
+    String storagePath
+    String contentType
+    Int sizeBytes
     DateTime createdAt
   }
   User ||--o| Business : "business"
@@ -317,8 +326,10 @@ llegaron por la web y aún no la registran (el negocio siempre la pide)."
   Business ||--o| Subscription : "subscription"
   Plan ||--o{ Subscription : "subscriptions"
   User ||--o{ PushSubscription : "pushSubscriptions"
+  NotificationImage |o--o{ NotificationBroadcast : "broadcasts"
   User ||--o{ Notification : "notifications"
   NotificationBroadcast |o--o{ Notification : "notifications"
+  NotificationImage |o--o{ Notification : "notifications"
 ```
 
 **Leyenda:** PK llave primaria · FK llave foránea · UK única · `||` exactamente uno · `|o` cero o uno · `o{` cero o muchos · `}o--o{` muchos a muchos.
@@ -512,6 +523,7 @@ Navegador del usuario suscrito a notificaciones push web (Web Push / VAPID).
 
 Aviso que el super admin envió a los negocios: el historial del panel.
 
+- **NotificationImage**: Puede pertenecer a un NotificationImage mediante imageId; un NotificationImage puede tener varios NotificationBroadcast. Si se borra el NotificationImage, el NotificationBroadcast se conserva sin NotificationImage.
 - **Notification**: Tiene cero o muchos Notification (campo notifications). Cada Notification apunta a este NotificationBroadcast.
 
 ### Notification
@@ -520,6 +532,14 @@ Notificación de un usuario (su bandeja): existe aunque no tenga el push activad
 
 - **User**: Pertenece siempre a un User mediante userId; un User puede tener varios Notification. Si se borra el User, se borran también sus Notification.
 - **NotificationBroadcast**: Puede pertenecer a un NotificationBroadcast mediante broadcastId; un NotificationBroadcast puede tener varios Notification. Si se borra el NotificationBroadcast, el Notification se conserva sin NotificationBroadcast.
+- **NotificationImage**: Puede pertenecer a un NotificationImage mediante imageId; un NotificationImage puede tener varios Notification. Si se borra el NotificationImage, el Notification se conserva sin NotificationImage.
+
+### NotificationImage
+
+Imagen que acompaña a un aviso. El archivo vive en el almacenamiento (Koofr); aquí solo su ruta.
+
+- **NotificationBroadcast**: Tiene cero o muchos NotificationBroadcast (campo broadcasts). Cada NotificationBroadcast apunta a este NotificationImage.
+- **Notification**: Tiene cero o muchos Notification (campo notifications). Cada Notification apunta a este NotificationImage.
 
 ## Enums
 

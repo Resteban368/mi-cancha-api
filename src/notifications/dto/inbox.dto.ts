@@ -22,6 +22,8 @@ export class NotificationDto {
   body!: string;
   /** Ruta de la app que se abre al tocarla. */
   url!: string | null;
+  /** Imagen del aviso (URL pública), si tiene. */
+  imageUrl!: string | null;
   @ApiProperty({ type: 'object', additionalProperties: true, nullable: true })
   data!: Record<string, unknown> | null;
   /** null = sin leer. */
@@ -48,6 +50,7 @@ export class BroadcastHistoryItemDto {
   title!: string;
   body!: string;
   url!: string | null;
+  imageUrl!: string | null;
   /** ALL o SELECTED. */
   scope!: string;
   sentByLabel!: string | null;

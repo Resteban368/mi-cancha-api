@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AdminNotificationsController } from './admin-notifications.controller.js';
 import { PublicNotificationsController } from './public-notifications.controller.js';
+import { NotificationImagesController } from './notification-images.controller.js';
+import { NotificationImagesService } from './notification-images.service.js';
 import { NotificationsController } from './notifications.controller.js';
 import { NotificationsService } from './notifications.service.js';
 import {
@@ -22,9 +24,11 @@ import {
     NotificationsController,
     AdminNotificationsController,
     PublicNotificationsController,
+    NotificationImagesController,
   ],
   providers: [
     NotificationsService,
+    NotificationImagesService,
     {
       provide: PushService,
       inject: [ConfigService],

@@ -7,6 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
 import { AuditService } from '../audit/audit.service.js';
+import { notificationImageUrl, publicApiUrl } from '../common/public-url.js';
 import { pageArgs, type PageQueryDto } from '../common/dto/page.dto.js';
 import {
   AuditCategory,
@@ -46,22 +47,27 @@ export interface NewReservationInfo {
 /** Tiempo máximo que la reserva espera al envío: nunca debe frenar la respuesta al jugador. */
 const SEND_TIMEOUT_MS = 3_000;
 
-function toNotificationDto(row: {
+function toNotificationDto(
+  origin: string,
+  row: {
   id: string;
   type: NotificationType;
   title: string;
   body: string;
   url: string | null;
+  imageId: string | null;
   data: Prisma.JsonValue;
   readAt: Date | null;
   createdAt: Date;
-}): NotificationDto {
+},
+): NotificationDto {
   return {
     id: row.id,
     type: row.type,
     title: row.title,
     body: row.body,
     url: row.url,
+    imageUrl: row.imageId ? notificationImageUrl(origin, row.imageId) : null,
     data: (row.data as Record<string, unknown> | null) ?? null,
     readAt: row.readAt,
     createdAt: row.createdAt,
@@ -72,6 +78,7 @@ function toNotificationDto(row: {
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
   private readonly utcOffset: string;
+  private readonly origin: string;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -80,6 +87,7 @@ export class NotificationsService {
     config: ConfigService,
   ) {
     this.utcOffset = config.getOrThrow<string>('APP_UTC_OFFSET');
+    this.origin = publicApiUrl(config);
   }
 
   /** Guarda (o mueve a esta cuenta) la suscripción de un navegador. Es idempotente. */
@@ -209,7 +217,7 @@ export class NotificationsService {
       }),
     ]);
     return {
-      items: rows.map(toNotificationDto),
+      items: rows.map((r) => toNotificationDto(this.origin, r)),
       total,
       unread,
       page: query.page,
@@ -274,6 +282,13 @@ export class NotificationsService {
         'Las notificaciones no están configuradas en el servidor (faltan las claves VAPID)',
       );
     }
+    if (dto.imageId) {
+      const image = await this.prisma.notificationImage.findUnique({
+        where: { id: dto.imageId },
+        select: { id: true },
+      });
+      if (!image) throw new BadRequestException('La imagen del aviso no existe');
+    }
     const ids = dto.businessIds ?? [];
     if (!dto.all && ids.length === 0) {
       throw new BadRequestException('Elige al menos un negocio o envía a todos');
@@ -299,6 +314,9 @@ export class NotificationsService {
     const title = dto.title.trim();
     const body = dto.body.trim();
     const url = dto.url ?? '/';
+    const imageUrl = dto.imageId
+      ? notificationImageUrl(this.origin, dto.imageId)
+      : undefined;
     const sender = await this.prisma.user.findUnique({
       where: { id: adminId },
       select: { displayName: true },
@@ -313,6 +331,7 @@ export class NotificationsService {
         title,
         body,
         url,
+        imageId: dto.imageId ?? null,
         scope: dto.all ? 'ALL' : 'SELECTED',
         targeted: businesses,
         reachable,
@@ -328,6 +347,7 @@ export class NotificationsService {
           title,
           body,
           url,
+          imageId: dto.imageId ?? null,
           broadcastId: broadcast.id,
         })),
       });
@@ -339,6 +359,7 @@ export class NotificationsService {
         title,
         body,
         url,
+        image: imageUrl,
         tag: `aviso-${broadcast.id}`,
         data: { type: NotificationType.ADMIN_BROADCAST, broadcastId: broadcast.id },
       });
@@ -363,6 +384,7 @@ export class NotificationsService {
         businesses,
         reachable,
         delivered,
+        withImage: Boolean(dto.imageId),
       },
       ip,
     });
@@ -390,6 +412,7 @@ export class NotificationsService {
         title: r.title,
         body: r.body,
         url: r.url,
+        imageUrl: r.imageId ? notificationImageUrl(this.origin, r.imageId) : null,
         scope: r.scope,
         sentByLabel: r.sentByLabel,
         targeted: r.targeted,

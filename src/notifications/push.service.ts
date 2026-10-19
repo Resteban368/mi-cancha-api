@@ -4,6 +4,8 @@ import webpush from 'web-push';
 export interface PushMessage {
   title: string;
   body: string;
+  /** URL pública de una imagen grande que se muestra en la notificación. */
+  image?: string;
   /** Ruta del panel que se abre al tocar el aviso. */
   url?: string;
   /** Mismo valor = el aviso reemplaza al anterior en vez de apilarse. */

@@ -6,6 +6,9 @@ export const BUSINESS_IMAGE_ROUTE = 'images/business-profile';
 /** Ruta pública (sin el prefijo de la API) donde se sirven las fotos de las canchas. */
 export const COURT_PHOTO_ROUTE = 'images/courts';
 
+/** Ruta pública (sin el prefijo de la API) donde se sirven las imágenes de los avisos. */
+export const NOTIFICATION_IMAGE_ROUTE = 'images/notifications';
+
 /** Origen público de la API: PUBLIC_API_URL, el dominio de producción en Vercel o localhost. */
 export function publicApiUrl(config: ConfigService): string {
   const explicit = config.get<string>('PUBLIC_API_URL');
@@ -21,4 +24,8 @@ export function businessImageUrl(origin: string, imageId: string): string {
 
 export function courtPhotoUrl(origin: string, photoId: string): string {
   return `${origin}/${API_PREFIX}/${COURT_PHOTO_ROUTE}/${photoId}`;
+}
+
+export function notificationImageUrl(origin: string, imageId: string): string {
+  return `${origin}/${API_PREFIX}/${NOTIFICATION_IMAGE_ROUTE}/${imageId}`;
 }

@@ -43,7 +43,10 @@ describe('NotificationsService', () => {
       prisma as unknown as PrismaService,
       push as unknown as PushService,
       audit as unknown as AuditService,
-      { getOrThrow: () => '-05:00' } as unknown as ConfigService,
+      {
+        getOrThrow: () => '-05:00',
+        get: (key: string) => (key === 'PUBLIC_API_URL' ? 'https://api.test' : undefined),
+      } as unknown as ConfigService,
     );
   });
 
@@ -196,6 +199,36 @@ describe('NotificationsService', () => {
           metadata: expect.objectContaining({ scope: 'ALL', businesses: 3, reachable: 2, delivered: 3 }),
         }),
       );
+    });
+
+    it('con imagen: la guarda en el historial y en cada bandeja y la manda en el push', async () => {
+      const imageId = '0b0b0b0b-0b0b-4b0b-8b0b-0b0b0b0b0b0b';
+      prisma.notificationImage.findUnique.mockResolvedValue({ id: imageId });
+      prisma.business.findMany.mockResolvedValue(owners('u-1'));
+      prisma.pushSubscription.findMany.mockResolvedValue([subs[0]]);
+      push.send.mockResolvedValue({ delivered: 1, expiredEndpoints: [] });
+
+      await service.broadcast(ADMIN, { title: 't', body: 'b', all: true, imageId });
+
+      expect(prisma.notificationBroadcast.create.mock.calls[0][0].data.imageId).toBe(imageId);
+      expect(prisma.notification.createMany.mock.calls[0][0].data[0].imageId).toBe(imageId);
+      expect(push.send.mock.calls[0][1].image).toBe(`https://api.test/api/v1/images/notifications/${imageId}`);
+    });
+
+    it('sin imagen no manda campo image', async () => {
+      prisma.business.findMany.mockResolvedValue(owners('u-1'));
+      prisma.pushSubscription.findMany.mockResolvedValue([subs[0]]);
+      await service.broadcast(ADMIN, { title: 't', body: 'b', all: true });
+      expect(push.send.mock.calls[0][1].image).toBeUndefined();
+      expect(prisma.notificationImage.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('rechaza una imagen que no existe', async () => {
+      prisma.notificationImage.findUnique.mockResolvedValue(null);
+      await expect(
+        service.broadcast(ADMIN, { title: 't', body: 'b', all: true, imageId: '0b0b0b0b-0b0b-4b0b-8b0b-0b0b0b0b0b0b' }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.notificationBroadcast.create).not.toHaveBeenCalled();
     });
 
     it('a los elegidos: filtra por esos negocios', async () => {

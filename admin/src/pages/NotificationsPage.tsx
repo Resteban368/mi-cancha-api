@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from 'react';
+import { useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import {
   Badge,
   Button,
@@ -20,12 +20,14 @@ import type {
   BroadcastHistoryPage,
   BroadcastRecipient,
   BroadcastResult,
+  UploadedNotificationImage,
 } from '../lib/security-types';
 import { useToast } from '../lib/toast';
 import { useApi, useDebounced } from '../lib/useApi';
 
 const TITLE_MAX = 60;
 const BODY_MAX = 240;
+const IMAGE_MAX_BYTES = 4 * 1024 * 1024;
 const HISTORY_PAGE_SIZE = 10;
 
 type Scope = 'ALL' | 'SELECTED';
@@ -43,6 +45,9 @@ export function NotificationsPage() {
   const [scope, setScope] = useState<Scope>('ALL');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
+  const [image, setImage] = useState<UploadedNotificationImage | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string>();
   const [last, setLast] = useState<BroadcastResult>();
@@ -62,6 +67,47 @@ export function NotificationsPage() {
   const targetCount = scope === 'ALL' ? all.length : selected.size;
   const reachable = scope === 'ALL' ? reachableAll : reachableSelected;
   const canSend = title.trim() !== '' && body.trim() !== '' && targetCount > 0;
+
+  async function pickImage(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (!/^image\/(jpeg|png)$/.test(file.type)) {
+      setError('La imagen debe ser JPG o PNG');
+      return;
+    }
+    if (file.size > IMAGE_MAX_BYTES) {
+      setError('La imagen no puede superar 4 MB');
+      return;
+    }
+    setUploading(true);
+    setError(undefined);
+    try {
+      const body = new FormData();
+      body.append('image', file);
+      const uploaded = await api<UploadedNotificationImage>('/admin/notifications/images', {
+        method: 'POST',
+        body,
+      });
+      // Reemplazar: la anterior no se usó, se borra del almacenamiento.
+      discardImage(image);
+      setImage(uploaded);
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  /** Borra del almacenamiento una imagen que no se llegó a enviar; si falla no importa. */
+  function discardImage(target: UploadedNotificationImage | null) {
+    if (target) void api(`/admin/notifications/images/${target.id}`, { method: 'DELETE' }).catch(() => {});
+  }
+
+  function removeImage() {
+    discardImage(image);
+    setImage(null);
+  }
 
   function toggle(id: string) {
     setSelected((current) => {
@@ -93,6 +139,7 @@ export function NotificationsPage() {
           title: title.trim(),
           body: body.trim(),
           all: scope === 'ALL',
+          ...(image && { imageId: image.id }),
           ...(scope === 'SELECTED' && { businessIds: [...selected] }),
         },
       });
@@ -100,6 +147,7 @@ export function NotificationsPage() {
       notify(`Aviso enviado a ${formatNumber(result.delivered)} ${result.delivered === 1 ? 'navegador' : 'navegadores'}`);
       setTitle('');
       setBody('');
+      setImage(null);
       recipients.reload();
       setHistoryPage(1);
       history.reload();
@@ -146,6 +194,39 @@ export function NotificationsPage() {
                 />
               )}
             </Field>
+
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium text-fg">Imagen (opcional)</span>
+              <input
+                ref={fileInput}
+                type="file"
+                accept="image/jpeg,image/png"
+                className="sr-only"
+                aria-label="Elegir imagen del aviso"
+                onChange={pickImage}
+              />
+              {image ? (
+                <div className="flex items-center gap-3 rounded-lg border border-border bg-surface-2/50 p-2">
+                  <img src={image.url} alt="Vista previa del aviso" className="h-16 w-28 rounded-md object-cover" />
+                  <div className="flex flex-1 flex-wrap justify-end gap-2">
+                    <Button size="sm" loading={uploading} onClick={() => fileInput.current?.click()}>
+                      Cambiar
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={removeImage}>
+                      Quitar
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button loading={uploading} onClick={() => fileInput.current?.click()} className="self-start">
+                  Subir imagen
+                </Button>
+              )}
+              <p className="text-xs text-fg-3">
+                JPG o PNG de hasta 4 MB. Se muestra grande en la notificación (mejor en formato 2:1) y en la bandeja
+                del negocio.
+              </p>
+            </div>
 
             <fieldset className="flex flex-col gap-2">
               <legend className="mb-1 text-sm font-medium text-fg">Destinatarios</legend>
@@ -308,7 +389,12 @@ export function NotificationsPage() {
                       {b.sentByLabel && <span className="block text-xs text-fg-3">{b.sentByLabel}</span>}
                     </Td>
                     <Td className="max-w-sm">
-                      <span className="block font-medium">{b.title}</span>
+                      <span className="flex items-center gap-2 font-medium">
+                        {b.imageUrl && (
+                          <img src={b.imageUrl} alt="" loading="lazy" className="h-8 w-12 shrink-0 rounded object-cover" />
+                        )}
+                        {b.title}
+                      </span>
                       <span className="block truncate text-xs text-fg-3" title={b.body}>
                         {b.body}
                       </span>

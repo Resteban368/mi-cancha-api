@@ -54,6 +54,8 @@ Reglas de diseño:
 | `src/notifications/public-notifications.controller.ts` | Corte de avisos al cerrar sesión, sin token |
 | `prisma/migrations/20261019170556_push_subscriptions` | Tabla `PushSubscription` |
 | `prisma/migrations/20261019181901_notifications` | Tablas `Notification` y `NotificationBroadcast` |
+| `src/notifications/notification-images.service.ts` / `.controller.ts` | Subida, borrado y servicio público de las imágenes de avisos |
+| `prisma/migrations/*_notification_images` | Tabla `NotificationImage` y `imageId` en las otras dos |
 
 Cambiar de proveedor solo requiere otra clase que extienda `PushService`.
 
@@ -128,18 +130,20 @@ Cada elemento de `items`:
 {
   "id": "…", "type": "NEW_RESERVATION", "title": "Nueva reserva",
   "body": "Pedro Pérez · Cancha 1 · mar 22 oct, 6:30 p. m.",
-  "url": "/negocio/reservas", "data": { "reservationId": "…" },
+  "url": "/negocio/reservas", "imageUrl": null, "data": { "reservationId": "…" },
   "readAt": null, "createdAt": "2026-10-19T18:22:02.432Z"
 }
 ```
 
-`type`: `NEW_RESERVATION` o `ADMIN_BROADCAST`. Solo ve las suyas. El push de una reserva trae
+`type`: `NEW_RESERVATION` o `ADMIN_BROADCAST`. `imageUrl` es la URL pública de la imagen del aviso (o `null`); la app puede mostrarla en la bandeja. Solo ve las suyas. El push de una reserva trae
 `data.notificationId` para marcarla como leída al tocarla.
 
 ### Tablas
 
 - `Notification`: `userId`, `type`, `title`, `body`, `url`, `data` (JSON), `broadcastId`, `readAt`,
   `createdAt`. Índices por `(userId, createdAt)` y `(userId, readAt)`.
+- `NotificationImage`: la imagen de un aviso (solo la ruta en el almacenamiento y su tipo; el archivo vive en Koofr).
+  `Notification` y `NotificationBroadcast` la referencian con `imageId`.
 - `NotificationBroadcast`: un registro por aviso del super admin (quién lo envió, `scope`, `targeted`,
   `reachable`, `delivered`). Es el historial del panel; cada `Notification` de ese aviso apunta a él.
 
@@ -155,13 +159,14 @@ Service Worker decide cómo mostrarlo):
 {
   "title": "Nueva reserva",
   "body": "Pedro Pérez · Cancha 1 · mar 22 oct, 6:30 p. m.",
+  "image": "https://…/api/v1/images/notifications/<id>",
   "url": "/negocio/reservas",
   "tag": "reserva-<id>",
   "data": { "type": "NEW_RESERVATION", "reservationId": "<id>" }
 }
 ```
 
-`url` es la ruta de la app que se abre al tocar el aviso; `tag` evita apilar el mismo aviso dos veces.
+`image` solo viene en los avisos del admin que llevan imagen (las reservas nuevas no). `url` es la ruta de la app que se abre al tocar el aviso; `tag` evita apilar el mismo aviso dos veces.
 
 ## Avisos del super admin a los negocios
 
@@ -174,17 +179,24 @@ reciben nada).
 |---|---|
 | `GET /api/v1/admin/notifications/recipients` | Negocios con `devices` (navegadores suscritos) y `banned` |
 | `POST /api/v1/admin/notifications/broadcast` | Envía el aviso; responde `{ businesses, reachable, delivered }` |
+| `POST /api/v1/admin/notifications/images` | Sube la imagen de un aviso (multipart, campo `image`, JPG o PNG hasta 4 MB); responde `{ id, url }` |
+| `DELETE /api/v1/admin/notifications/images/:id` | Borra una imagen que todavía no se usó en ningún aviso (`204`; `409` si ya se envió) |
 | `GET /api/v1/admin/notifications/broadcasts?page=&pageSize=` | Historial de avisos enviados, con cuántos dueños ya los leyeron (`read`) |
 
 Cuerpo de `broadcast`:
 
 ```json
-{ "title": "Mantenimiento", "body": "Esta noche a las 11 p. m.…", "url": "/", "all": false, "businessIds": ["<uuid>"] }
+{ "title": "Mantenimiento", "body": "Esta noche a las 11 p. m.…", "url": "/", "imageId": "<uuid de la imagen subida>", "all": false, "businessIds": ["<uuid>"] }
 ```
 
 - `title` hasta 60 caracteres, `body` hasta 240. `url` es opcional, una ruta de la app (por defecto `/`;
   no se aceptan enlaces a otros sitios).
 - `all: true` envía a todos; con `all: false` hay que mandar al menos un `businessIds` y todos deben existir.
+- **Imagen (opcional):** primero se sube con `POST /admin/notifications/images` (se guarda en el servicio de
+  imágenes, Koofr, en `<STORAGE_ROOT>/notifications/<id>.<ext>`) y luego se manda su `id` en `imageId`. La URL
+  pública es `…/api/v1/images/notifications/<id>` (sin sesión, con caché de un año: el navegador la descarga al
+  mostrar la notificación). Si el admin la quita antes de enviar, el panel la borra con `DELETE`. Una imagen ya
+  enviada no se puede borrar.
 - El push lleva `data.type = "ADMIN_BROADCAST"` (el de reservas es `NEW_RESERVATION`); el Service Worker de la
   app no necesita cambios.
 - Si el servidor no tiene claves VAPID responde `503`.
@@ -242,6 +254,7 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(msg.title || 'Mi Cancha', {
       body: msg.body,
+      image: msg.image, // opcional; se ignora donde el sistema no la soporta
       tag: msg.tag,
       icon: '/icons/Icon-192.png',
       data: { url: msg.url || '/', ...msg.data },

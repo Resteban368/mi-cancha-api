@@ -35,6 +35,13 @@ export class BroadcastDto {
   })
   url?: string;
 
+  @ApiPropertyOptional({
+    description: 'Id de una imagen ya subida con POST /admin/notifications/images',
+  })
+  @IsOptional()
+  @IsUUID()
+  imageId?: string;
+
   @ApiProperty({ description: 'true = todos los negocios; false = solo los de businessIds' })
   @IsBoolean()
   all!: boolean;
