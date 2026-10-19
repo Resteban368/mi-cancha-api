@@ -6,36 +6,69 @@ import { api, errorMessage } from '../lib/api';
 import { useSession } from '../lib/session';
 import type { PlayerSession } from '../lib/types';
 
+/** Fondo del diseño "Pantalla de Bienvenida": cancha multideporte en líneas tenues y un resplandor central. */
+function CourtBackground() {
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0 -z-0">
+      <svg
+        className="h-full w-full opacity-[0.08]"
+        viewBox="0 0 400 800"
+        preserveAspectRatio="xMidYMid meet"
+        fill="none"
+        stroke="#fff"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <rect x="24" y="40" width="352" height="720" rx="36" strokeWidth="3" />
+        <rect x="40" y="60" width="320" height="680" rx="20" strokeWidth="2" />
+        <line x1="40" y1="400" x2="360" y2="400" strokeWidth="2" />
+        <circle cx="200" cy="400" r="70" strokeWidth="2" />
+        <circle cx="200" cy="400" r="5" fill="#fff" />
+        <rect x="110" y="60" width="180" height="110" strokeWidth="2" />
+        <rect x="145" y="60" width="110" height="48" strokeWidth="2" />
+        <path d="M130 170A70 70 0 0 0 270 170" strokeDasharray="4 4" strokeWidth="2" />
+        <path d="M64 60C64 220 336 220 336 60" strokeWidth="2" />
+        <rect x="110" y="630" width="180" height="110" strokeWidth="2" />
+        <rect x="145" y="692" width="110" height="48" strokeWidth="2" />
+        <path d="M130 630A70 70 0 0 1 270 630" strokeDasharray="4 4" strokeWidth="2" />
+        <path d="M64 740C64 580 336 580 336 740" strokeWidth="2" />
+        <line x1="80" y1="280" x2="320" y2="280" strokeDasharray="6 4" strokeWidth="1.5" />
+        <line x1="80" y1="520" x2="320" y2="520" strokeDasharray="6 4" strokeWidth="1.5" />
+        <line x1="200" y1="280" x2="200" y2="520" strokeWidth="1.5" />
+      </svg>
+      <div className="absolute left-1/2 top-1/2 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#22C1AC]/15 blur-3xl" />
+    </div>
+  );
+}
+
 function AuthLayout({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
   const { slug = '' } = useParams();
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      <Header slug={slug} />
-      <main className="flex flex-1 items-center justify-center px-4 py-8 sm:py-12">
-        <div className="w-full max-w-md">
-          <div className="rounded-2xl border border-slate-700 bg-slate-800/50 backdrop-blur-sm shadow-2xl">
-            <div className="border-t-4 border-accent"></div>
+    <div className="relative isolate flex min-h-screen flex-col overflow-hidden bg-gradient-to-b from-[#0F8B7A] via-[#00685B] to-[#084C43]">
+      <CourtBackground />
+      <div className="relative z-10 flex min-h-screen flex-col">
+        <Header slug={slug} />
+        <main className="flex flex-1 items-center justify-center px-4 py-8 sm:py-12">
+          <div className="w-full max-w-md overflow-hidden rounded-2xl border border-white/15 bg-[#084C43]/70 shadow-2xl backdrop-blur-md">
+            <div className="h-1 bg-gradient-to-r from-[#22C1AC] via-[#D2F824] to-[#22C1AC]" />
             <div className="p-6 sm:p-8">
               <div className="mb-6 flex justify-center">
-                <div className="rounded-2xl bg-slate-700/50 p-3">
-                  <img
-                    src={`${import.meta.env.BASE_URL}brand/icon.png`}
-                    alt="Mi Cancha"
-                    width={48}
-                    height={48}
-                    className="h-12 w-12"
-                  />
-                </div>
+                <img
+                  src={`${import.meta.env.BASE_URL}brand/icon.png`}
+                  alt="Mi Cancha"
+                  width={64}
+                  height={64}
+                  className="h-16 w-16 rounded-[22%] shadow-lg ring-1 ring-white/20"
+                />
               </div>
               <div className="mb-8 text-center">
                 <h1 className="text-2xl font-bold text-white">{title}</h1>
-                <p className="mt-2 text-sm text-slate-400">{subtitle}</p>
+                <p className="mt-2 text-sm text-white/70">{subtitle}</p>
               </div>
               {children}
             </div>
           </div>
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 }
