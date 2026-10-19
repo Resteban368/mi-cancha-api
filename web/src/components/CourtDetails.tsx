@@ -71,13 +71,13 @@ function CourtDetailsDialog({ court, onClose }: { court: PublicCourt; onClose: (
       </div>
 
       {photo && (
-        <figure className="mt-4">
+        <figure className="relative mt-4">
           <img
             src={photo.url}
             alt={`${court.name}: ${PHOTO_LABELS[photo.slot] ?? 'foto'}`}
             className="aspect-[4/3] max-h-[50dvh] w-full rounded-2xl bg-surface-2 object-cover"
           />
-          <figcaption className="mt-1.5 text-center text-xs text-fg-3">
+          <figcaption className="absolute inset-x-0 bottom-2.5 mx-auto w-fit rounded-full border border-white/10 bg-black/60 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-md">
             {PHOTO_LABELS[photo.slot]} · {photoIndex + 1} de {court.photos.length}
           </figcaption>
         </figure>
@@ -91,7 +91,7 @@ function CourtDetailsDialog({ court, onClose }: { court: PublicCourt; onClose: (
               aria-label={`Ver foto: ${PHOTO_LABELS[p.slot]}`}
               aria-pressed={i === photoIndex}
               onClick={() => setPhotoIndex(i)}
-              className={`size-16 shrink-0 overflow-hidden rounded-xl border-2 transition ${
+              className={`aspect-video w-24 shrink-0 overflow-hidden rounded-xl border-2 transition ${
                 i === photoIndex ? 'border-accent' : 'border-transparent opacity-70 hover:opacity-100'
               }`}
             >

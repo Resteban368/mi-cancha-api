@@ -189,3 +189,79 @@ export function PitchBottomNav() {
     </nav>
   );
 }
+
+/** Barra superior de una sede: marca de la sede, "Info sede" y la cuenta del jugador. */
+export function BusinessHeader({
+  slug,
+  name,
+  address,
+  onInfo,
+}: {
+  slug: string;
+  name?: string;
+  address?: string;
+  onInfo?: () => void;
+}) {
+  const { player } = useSession();
+  const { pathname, search } = useLocation();
+  const initial = player?.fullName.trim().charAt(0).toUpperCase() || '?';
+
+  return (
+    <header className="sticky top-0 z-30 border-b border-white/5 bg-bg/95 backdrop-blur-md">
+      <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-3">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <Link
+            to="/"
+            aria-label="Todas las sedes"
+            className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-emerald-600 to-emerald-400 text-slate-950 shadow-md shadow-emerald-500/20"
+          >
+            <PinIcon className="size-5" strokeWidth={2.5} />
+          </Link>
+          <div className="min-w-0">
+            <h1 className="truncate text-base font-bold leading-none tracking-tight">{name ?? 'Mi Cancha'}</h1>
+            {address &&
+              (onInfo ? (
+                <button
+                  type="button"
+                  onClick={onInfo}
+                  className="mt-1 inline-flex max-w-full items-center text-[11px] font-medium text-accent transition hover:brightness-125"
+                >
+                  <span className="truncate">{address} · Info sede</span>
+                  <ChevronRightIcon className="ml-0.5 size-3 shrink-0" />
+                </button>
+              ) : (
+                <p className="mt-1 truncate text-[11px] text-fg-3">{address}</p>
+              ))}
+          </div>
+        </div>
+
+        <nav className="flex shrink-0 items-center gap-1.5">
+          {player ? (
+            <>
+              <Link
+                to={`/${slug}/mis-reservas`}
+                className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-fg-2 transition hover:bg-white/5 hover:text-fg"
+              >
+                Mis reservas
+              </Link>
+              <Link
+                to="/perfil"
+                aria-label="Mi perfil"
+                className="flex size-8 items-center justify-center rounded-full border border-white/10 bg-surface text-xs font-bold text-fg transition hover:border-white/20"
+              >
+                {initial}
+              </Link>
+            </>
+          ) : (
+            <Link
+              to={accountPath('ingresar', `${pathname}${search}`)}
+              className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold tracking-wide text-accent transition active:scale-95"
+            >
+              Ingresar
+            </Link>
+          )}
+        </nav>
+      </div>
+    </header>
+  );
+}

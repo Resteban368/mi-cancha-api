@@ -128,3 +128,32 @@ body {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* Confirmación de reserva: check que se dibuja, ondas y entrada con rebote. */
+@keyframes pitch-pop {
+  0% { transform: scale(0.6) translateY(20px); opacity: 0; }
+  70% { transform: scale(1.04) translateY(-3px); opacity: 1; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+@keyframes pitch-check {
+  from { stroke-dashoffset: 48; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes pitch-ring {
+  0% { transform: scale(0.85); opacity: 0.8; }
+  70% { transform: scale(1.6); opacity: 0; }
+  100% { transform: scale(1.9); opacity: 0; }
+}
+@keyframes pitch-float {
+  0% { transform: translateY(0) rotate(0deg); opacity: 0.8; }
+  100% { transform: translateY(-50px) rotate(45deg); opacity: 0; }
+}
+.pitch-pop { animation: pitch-pop 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.pitch-check { stroke-dasharray: 48; stroke-dashoffset: 48; animation: pitch-check 0.65s cubic-bezier(0.65, 0, 0.45, 1) 0.25s forwards; }
+.pitch-ring { animation: pitch-ring 2.4s cubic-bezier(0.2, 0.8, 0.2, 1) infinite; }
+.pitch-ring-2 { animation-delay: 1.2s; }
+.pitch-particle { position: absolute; border-radius: 9999px; animation: pitch-float 3s ease-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .pitch-pop, .pitch-ring, .pitch-particle { animation: none; }
+  .pitch-check { animation: none; stroke-dashoffset: 0; }
+}

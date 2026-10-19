@@ -134,3 +134,29 @@ export function courtSpecs(court: {
   const format = n === null ? null : court.sport === 'FUTBOL' ? `Fútbol ${n}` : `${n} vs ${n}`;
   return [court.surfaceName, size, format].filter(Boolean).join(' · ');
 }
+
+const clock = new Intl.DateTimeFormat('en-GB', {
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+  timeZone: ZONE,
+});
+const DAY_BY_INDEX = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+
+/** Franja de tarifa (nocturna, fin de semana…) que aplica a un turno, o null si cobra el precio base. */
+export function rateAt<R extends { days: string[]; startTime: string; endTime: string }>(
+  rates: R[],
+  startIso: string,
+): R | null {
+  const day = DAY_BY_INDEX[new Date(`${bogotaDateOf(startIso)}T12:00:00Z`).getUTCDay()];
+  const at = clock.format(new Date(startIso));
+  return (
+    rates.find((r) => {
+      if (!r.days.includes(day)) return false;
+      const from = r.startTime.slice(0, 5);
+      const to = r.endTime.slice(0, 5);
+      // Una franja que termina "antes" de empezar cruza la medianoche.
+      return to > from ? at >= from && at < to : at >= from || at < to;
+    }) ?? null
+  );
+}
