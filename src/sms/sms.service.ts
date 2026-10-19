@@ -12,7 +12,9 @@ export abstract class SmsService {
 
 export interface TwilioSmsConfig {
   accountSid: string;
-  authToken: string;
+  /** API Key (SK…) y su secreto; si no hay, el Auth Token de la cuenta. */
+  apiKey?: { sid: string; secret: string };
+  authToken?: string;
   /** Número de Twilio (E.164) o Messaging Service SID (MG…). */
   from: string;
 }
@@ -27,7 +29,13 @@ export class TwilioSmsService extends SmsService {
     client?: ReturnType<typeof twilio>,
   ) {
     super();
-    this.client = client ?? twilio(config.accountSid, config.authToken);
+    this.client =
+      client ??
+      (config.apiKey
+        ? twilio(config.apiKey.sid, config.apiKey.secret, {
+            accountSid: config.accountSid,
+          })
+        : twilio(config.accountSid, config.authToken));
   }
 
   async send(to: string, body: string): Promise<void> {

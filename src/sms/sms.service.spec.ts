@@ -43,4 +43,13 @@ describe('TwilioSmsService', () => {
       ),
     ).rejects.toBeInstanceOf(ServiceUnavailableException);
   });
+
+  it('acepta API Key en lugar del Auth Token', () => {
+    const service = new TwilioSmsService({
+      accountSid: config.accountSid,
+      apiKey: { sid: `SK${'1'.repeat(32)}`, secret: 'secreto' },
+      from: config.from,
+    });
+    expect(service).toBeInstanceOf(TwilioSmsService);
+  });
 });

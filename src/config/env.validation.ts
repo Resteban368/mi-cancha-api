@@ -74,6 +74,16 @@ export class EnvironmentVariables {
   @Matches(/^AC[0-9a-f]{32}$/)
   TWILIO_ACCOUNT_SID?: string;
 
+  /** API Key (SK…) y su secreto: recomendado en lugar del Auth Token. */
+  @IsOptional()
+  @Matches(/^SK[0-9a-f]{32}$/)
+  TWILIO_API_KEY_SID?: string;
+
+  @IsOptional()
+  @IsString()
+  TWILIO_API_KEY_SECRET?: string;
+
+  /** Auth Token de la cuenta (solo si no se usa API Key). */
   @IsOptional()
   @IsString()
   TWILIO_AUTH_TOKEN?: string;
