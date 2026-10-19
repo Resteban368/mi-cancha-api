@@ -66,6 +66,29 @@
   --grid: #2a2e36;
 }
 
+/*
+ * Tema "Pitch Dark" (diseño de Stitch) del directorio de sedes: siempre oscuro, con esmeralda.
+ * Se activa poniendo la clase en <html> (DirectoryPage), así también cubre el fondo del body.
+ */
+html.theme-pitch {
+  color-scheme: dark;
+  --bg: #0b1120;
+  --surface: #131d31;
+  --surface-2: #162238;
+  --border: rgba(255, 255, 255, 0.1);
+  --fg: #f1f5f9;
+  --fg-2: #cbd5e1;
+  --fg-3: #94a3b8;
+  --accent: #34d399;
+  --accent-fg: #06231a;
+  --accent-soft: rgba(16, 185, 129, 0.14);
+  --danger: #fca5a5;
+  --danger-soft: rgba(239, 68, 68, 0.14);
+  --warn: #fcd34d;
+  --warn-soft: rgba(245, 158, 11, 0.14);
+  --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
 @theme inline {
   --color-bg: var(--bg);
   --color-surface: var(--surface);
@@ -96,4 +119,12 @@ body {
 
 .tabular {
   font-variant-numeric: tabular-nums;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }

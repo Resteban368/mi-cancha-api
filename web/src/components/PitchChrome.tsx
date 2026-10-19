@@ -1,0 +1,191 @@
+import { useLayoutEffect, type ReactNode, type SVGProps } from 'react';
+import { Link, NavLink, useLocation } from 'react-router';
+import { accountPath } from '../lib/next';
+import { useSession } from '../lib/session';
+
+const THEME_CLASS = 'theme-pitch';
+const PITCH_COLOR = '#0b1120';
+
+/** Activa el tema oscuro del directorio mientras la página está montada (incluye el fondo del body). */
+export function usePitchTheme() {
+  useLayoutEffect(() => {
+    const html = document.documentElement;
+    const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    const previousColor = meta?.content;
+    html.classList.add(THEME_CLASS);
+    if (meta) meta.content = PITCH_COLOR;
+    return () => {
+      html.classList.remove(THEME_CLASS);
+      if (meta && previousColor) meta.content = previousColor;
+    };
+  }, []);
+}
+
+const icon = (path: ReactNode) =>
+  function Icon(props: SVGProps<SVGSVGElement>) {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+        {...props}
+      >
+        {path}
+      </svg>
+    );
+  };
+
+export const SearchIcon = icon(
+  <>
+    <circle cx="11" cy="11" r="7" />
+    <path d="m21 21-4.3-4.3" />
+  </>,
+);
+export const CloseIcon = icon(<path d="M6 18 18 6M6 6l12 12" />);
+export const ChevronDownIcon = icon(<path d="m6 9 6 6 6-6" />);
+export const ChevronRightIcon = icon(<path d="m9 5 7 7-7 7" />);
+export const PinIcon = icon(
+  <>
+    <path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z" />
+    <circle cx="12" cy="9.5" r="2.5" />
+  </>,
+);
+const StoreIcon = icon(
+  <>
+    <path d="M4 9 5.5 4h13L20 9" />
+    <path d="M4 9a2.7 2.7 0 0 0 5.3 0 2.7 2.7 0 0 0 5.4 0A2.7 2.7 0 0 0 20 9" />
+    <path d="M5 12v8h14v-8M10 20v-4h4v4" />
+  </>,
+);
+const UserIcon = icon(
+  <>
+    <circle cx="12" cy="8" r="4" />
+    <path d="M4 21a8 8 0 0 1 16 0" />
+  </>,
+);
+const LoginIcon = icon(
+  <>
+    <path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4" />
+    <path d="m10 16 4-4-4-4M14 12H4" />
+  </>,
+);
+const LogoutIcon = icon(
+  <>
+    <path d="M9 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4" />
+    <path d="m16 16 4-4-4-4M20 12H10" />
+  </>,
+);
+
+/** Barra superior del directorio: marca, "Mis sedes" y la cuenta del jugador. */
+export function PitchHeader() {
+  const { player, signOut } = useSession();
+  const { pathname, search } = useLocation();
+  const initial = player?.fullName.trim().charAt(0).toUpperCase() || '?';
+
+  return (
+    <header className="sticky top-0 z-40 border-b border-white/5 bg-bg/90 backdrop-blur-md">
+      <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3">
+        <Link to="/" className="flex items-center gap-2.5">
+          <img
+            src={`${import.meta.env.BASE_URL}brand/icon-128.png`}
+            alt=""
+            width={36}
+            height={36}
+            className="rounded-xl shadow-lg shadow-emerald-500/20 ring-1 ring-white/20"
+          />
+          <span className="flex items-center gap-1 text-lg font-extrabold tracking-tight">
+            Mi Cancha <span className="size-1.5 rounded-full bg-accent" aria-hidden />
+          </span>
+        </Link>
+
+        <nav className="flex items-center gap-2">
+          {player ? (
+            <>
+              <Link
+                to="/mis-sedes"
+                className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold tracking-wide text-accent transition active:scale-95"
+              >
+                Mis sedes
+              </Link>
+              <Link
+                to="/perfil"
+                aria-label="Mi perfil"
+                className="flex size-9 items-center justify-center rounded-xl border border-white/10 bg-surface text-sm font-bold text-fg transition active:scale-95"
+              >
+                {initial}
+              </Link>
+              <button
+                type="button"
+                onClick={signOut}
+                className="hidden rounded-lg px-2.5 py-1.5 text-xs font-medium text-fg-3 transition hover:text-fg sm:block"
+              >
+                Salir
+              </button>
+            </>
+          ) : (
+            <Link
+              to={accountPath('ingresar', `${pathname}${search}`)}
+              className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold tracking-wide text-accent transition active:scale-95"
+            >
+              Ingresar
+            </Link>
+          )}
+        </nav>
+      </div>
+    </header>
+  );
+}
+
+/** Barra inferior para el celular: explorar, mis sedes y cuenta. */
+export function PitchBottomNav() {
+  const { player, signOut } = useSession();
+  const { pathname, search } = useLocation();
+
+  const tab = ({ isActive }: { isActive: boolean }) =>
+    'relative flex flex-col items-center justify-center gap-1 py-2 text-[10px] tracking-tight transition-colors ' +
+    (isActive ? 'font-bold text-accent' : 'font-medium text-fg-3 hover:text-fg-2');
+
+  return (
+    <nav
+      aria-label="Principal"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-bg/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-md sm:hidden"
+    >
+      <div className={`mx-auto grid max-w-md px-2 ${player ? 'grid-cols-4' : 'grid-cols-2'}`}>
+        <NavLink to="/" end className={tab}>
+          {({ isActive }) => (
+            <>
+              <SearchIcon className="size-5" />
+              Explorar
+              {isActive && <span className="absolute bottom-0.5 size-1 rounded-full bg-accent" aria-hidden />}
+            </>
+          )}
+        </NavLink>
+        {player ? (
+          <>
+            <NavLink to="/mis-sedes" className={tab}>
+              <StoreIcon className="size-5" />
+              Mis sedes
+            </NavLink>
+            <NavLink to="/perfil" className={tab}>
+              <UserIcon className="size-5" />
+              Perfil
+            </NavLink>
+            <button type="button" onClick={signOut} className={tab({ isActive: false })}>
+              <LogoutIcon className="size-5" />
+              Salir
+            </button>
+          </>
+        ) : (
+          <NavLink to={accountPath('ingresar', `${pathname}${search}`)} className={tab}>
+            <LoginIcon className="size-5" />
+            Ingresar
+          </NavLink>
+        )}
+      </div>
+    </nav>
+  );
+}
