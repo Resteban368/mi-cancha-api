@@ -100,18 +100,20 @@ export function LoginPage() {
   }
 
   return (
-    <AuthLayout title="Ingresa a tu cuenta" subtitle="Con tu celular o cédula y tu contraseña.">
+    <AuthLayout title="Ingresa a tu cuenta" subtitle="Con tu celular y tu contraseña (o tu cédula si una sede te registró).">
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
         {error && <Alert>{error}</Alert>}
         <Field
-          label="Celular o cédula"
+          label="Celular"
+          type="tel"
           autoComplete="username"
+          inputMode="tel"
           required
           value={form.identifier}
           onChange={(e) => setForm({ ...form, identifier: e.target.value })}
         />
         <PasswordField
-          label="Contraseña"
+          label="Contraseña o cédula"
           hint="Si una sede te registró al reservar, tu contraseña inicial es tu cédula."
           autoComplete="current-password"
           required
