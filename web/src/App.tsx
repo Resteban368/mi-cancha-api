@@ -1,5 +1,5 @@
-import { Navigate, Route, Routes, useParams } from 'react-router';
-import { LoginPage, RegisterPage, ResetPasswordPage } from './pages/AuthPages';
+import { Navigate, Route, Routes, useLocation, useParams } from 'react-router';
+import { LoginPage, RegisterPage, ResetPasswordPage, WelcomePage } from './pages/AuthPages';
 import { ProfilePage } from './pages/ProfilePage';
 import { BusinessPage } from './pages/BusinessPage';
 import { DirectoryPage } from './pages/DirectoryPage';
@@ -8,8 +8,29 @@ import { MyReservationsPage } from './pages/MyReservationsPage';
 import { MySitesPage } from './pages/MySitesPage';
 import { PolicyPage } from './pages/PolicyPage';
 import { accountPath } from './lib/next';
+import { useSession } from './lib/session';
 
 export function App() {
+  return (
+    <OnboardingGate>
+      <AppRoutes />
+    </OnboardingGate>
+  );
+}
+
+/** Una cuenta que creó una sede debe cambiar su clave y aceptar la política antes de usar la web. */
+function OnboardingGate({ children }: { children: React.ReactNode }) {
+  const { player } = useSession();
+  const { pathname, search } = useLocation();
+  const pending = Boolean(player?.mustChangePassword || player?.needsDataConsent);
+  const exempt = pathname === '/bienvenida' || pathname === '/politica-de-datos';
+  if (pending && !exempt) {
+    return <Navigate to={`/bienvenida?next=${encodeURIComponent(`${pathname}${search}`)}`} replace />;
+  }
+  return <>{children}</>;
+}
+
+function AppRoutes() {
   return (
     <Routes>
       <Route index element={<DirectoryPage />} />
@@ -18,6 +39,7 @@ export function App() {
       <Route path="ingresar" element={<LoginPage />} />
       <Route path="registro" element={<RegisterPage />} />
       <Route path="recuperar" element={<ResetPasswordPage />} />
+      <Route path="bienvenida" element={<WelcomePage />} />
       <Route path="perfil" element={<ProfilePage />} />
       <Route path="reservas" element={<MyBookingsPage />} />
       <Route path="mis-sedes" element={<MySitesPage />} />

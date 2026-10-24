@@ -13,6 +13,7 @@ import {
   ReservationStatus,
   UserRole,
 } from '../generated/prisma/enums.js';
+import { toBookingLink } from '../businesses/booking-link.js';
 import {
   profileImagesSelect,
   toBusinessPhotos,
@@ -192,6 +193,12 @@ export class ClientsService {
       description: business.description,
       imageUrl: photos[0]?.url ?? null,
       photos,
+      bookingLink: toBookingLink(this.publicApiUrl, {
+        slug: business.slug,
+        onlineBookingEnabled: business.onlineBookingEnabled,
+        subscription: business.subscription,
+        courts: business.courts.filter((c) => c.isActive),
+      }),
       latitude: business.latitude,
       longitude: business.longitude,
       amenities: business.amenities,

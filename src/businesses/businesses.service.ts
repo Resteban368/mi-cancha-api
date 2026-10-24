@@ -8,6 +8,7 @@ import { CatalogsService } from '../catalogs/catalogs.service.js';
 import { publicApiUrl } from '../common/public-url.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { toBookingLink } from './booking-link.js';
 import { profileImagesSelect, toBusinessPhotos } from './business-photos.js';
 import { BusinessDto, SaveBusinessDto } from './dto/business.dto.js';
 
@@ -16,6 +17,11 @@ const SUBSCRIPTION_PERIOD_DAYS = 30;
 const businessInclude = {
   amenities: { select: { code: true }, orderBy: { sortOrder: 'asc' } },
   profileImages: profileImagesSelect,
+  subscription: { select: { isActive: true } },
+  courts: {
+    where: { isActive: true },
+    select: { photos: { select: { slot: true } } },
+  },
 } satisfies Prisma.BusinessInclude;
 
 type BusinessWithAmenities = Prisma.BusinessGetPayload<{
@@ -121,6 +127,7 @@ export class BusinessesService {
       amenities: business.amenities.map((a) => a.code),
       imageUrl: photos[0]?.url ?? null,
       photos,
+      bookingLink: toBookingLink(this.publicApiUrl, business),
       latitude: business.latitude,
       longitude: business.longitude,
     };

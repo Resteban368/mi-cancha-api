@@ -12,6 +12,12 @@ import {
 import type { PrismaService } from '../prisma/prisma.service.js';
 import { CustomersService } from './customers.service.js';
 
+vi.mock('./customer-account.js', () => ({
+  ensurePlayerAccount: vi.fn(
+    async (_db: unknown, customer: unknown) => customer,
+  ),
+}));
+
 const input = {
   name: 'Laura Gómez',
   phone: '+57 311-555 0001',

@@ -10,6 +10,7 @@ import {
   type Sport,
 } from '../generated/prisma/enums.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { ensurePlayerAccount } from './customer-account.js';
 import {
   type CustomerMetricsRow,
   lastVisitCourtsQuery,
@@ -43,7 +44,7 @@ import {
 const SEARCH_LIMIT = 20;
 
 /** Cliente de un tx de Prisma o del cliente normal. */
-type Db = Pick<Prisma.TransactionClient, 'customer'>;
+type Db = Pick<Prisma.TransactionClient, 'customer' | 'user'>;
 
 @Injectable()
 export class CustomersService {
@@ -193,15 +194,18 @@ export class CustomersService {
     const phone = normalizePhone(dto.phone);
     const documentId = normalizeDocument(dto.documentId);
     await this.assertUnique(businessId, { phone, documentId });
-    const customer = await this.prisma.customer.create({
-      data: {
-        businessId,
-        name: dto.name.trim(),
-        phone,
-        documentId,
-        preferredSport: dto.preferredSport ?? null,
-        notes: cleanNotes(dto.notes),
-      },
+    const customer = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.customer.create({
+        data: {
+          businessId,
+          name: dto.name.trim(),
+          phone,
+          documentId,
+          preferredSport: dto.preferredSport ?? null,
+          notes: cleanNotes(dto.notes),
+        },
+      });
+      return ensurePlayerAccount(tx, created);
     });
     return toCustomerDto(customer);
   }
@@ -579,9 +583,10 @@ export class CustomersService {
     const existing = byPhone ?? byDocument;
     if (existing) return existing;
 
-    return db.customer.create({
+    const created = await db.customer.create({
       data: { businessId, name: data.name.trim(), phone, documentId },
     });
+    return ensurePlayerAccount(db, created);
   }
 }
 

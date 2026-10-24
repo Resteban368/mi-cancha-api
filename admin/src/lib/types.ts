@@ -103,6 +103,14 @@ export interface ClientDetail {
   imageUrl: string | null;
   /** Fotos del negocio (hasta 5); la primera es la portada. */
   photos: { id: string; url: string }[];
+  /** Link de reservas y si ya está activo. */
+  bookingLink: {
+    enabled: boolean;
+    slug: string;
+    url: string;
+    bookingAvailable: boolean;
+    unavailableReason: 'DISABLED' | 'PLAN_INACTIVE' | 'NO_COURTS' | null;
+  };
   latitude: number | null;
   longitude: number | null;
   amenities: { code: string; name: string }[];

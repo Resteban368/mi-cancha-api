@@ -19,6 +19,7 @@ import { WRONG_CODE } from '../otp/otp.controller.js';
 import { OTP_SENT_MESSAGE, OtpService, otpPhone } from '../otp/otp.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
+  ChangePlayerPasswordDto,
   DATA_POLICY_VERSION,
   LoginPlayerDto,
   PasswordResetCodeDto,
@@ -99,6 +100,7 @@ export class PlayerAuthService {
       where: { id: user.id },
       data: {
         passwordHash: await bcrypt.hash(dto.password, BCRYPT_ROUNDS),
+        mustChangePassword: false,
         phoneVerifiedAt: user.phoneVerifiedAt ?? new Date(),
       },
     });
@@ -119,11 +121,62 @@ export class PlayerAuthService {
     });
     const valid =
       user?.passwordHash &&
-      (await bcrypt.compare(dto.password, user.passwordHash));
+      ((await bcrypt.compare(dto.password, user.passwordHash)) ||
+        // Cuenta creada por un negocio: su clave es la cédula, con o sin puntos.
+        (user.mustChangePassword &&
+          (await bcrypt.compare(
+            normalizeDocument(dto.password),
+            user.passwordHash,
+          ))));
     if (!user || !valid) {
       throw new UnauthorizedException('Celular o contraseña incorrectos');
     }
     return this.session(user);
+  }
+
+  /** Cambia la contraseña con la actual; también cierra la obligación de cambiar la cédula. */
+  async changePassword(
+    userId: string,
+    dto: ChangePlayerPasswordDto,
+  ): Promise<PlayerDto> {
+    const player = await this.requirePlayer(userId);
+    if (
+      !player.passwordHash ||
+      !(await bcrypt.compare(dto.currentPassword, player.passwordHash))
+    ) {
+      // 400 y no 401: un 401 cerraría la sesión.
+      throw new BadRequestException('La contraseña actual no es correcta');
+    }
+    if (
+      dto.newPassword === dto.currentPassword ||
+      (player.documentId &&
+        normalizeDocument(dto.newPassword) === player.documentId)
+    ) {
+      throw new BadRequestException(
+        'La nueva contraseña debe ser distinta de la actual y de tu cédula',
+      );
+    }
+    const updated = await this.prisma.user.update({
+      where: { id: player.id },
+      data: {
+        passwordHash: await bcrypt.hash(dto.newPassword, BCRYPT_ROUNDS),
+        mustChangePassword: false,
+      },
+    });
+    return toPlayerDto(updated);
+  }
+
+  /** Registra que aceptó la política de tratamiento de datos (Ley 1581). */
+  async acceptDataPolicy(userId: string): Promise<PlayerDto> {
+    const player = await this.requirePlayer(userId);
+    const updated = await this.prisma.user.update({
+      where: { id: player.id },
+      data: {
+        dataConsentAt: player.dataConsentAt ?? new Date(),
+        dataConsentVersion: DATA_POLICY_VERSION,
+      },
+    });
+    return toPlayerDto(updated);
   }
 
   async me(userId: string): Promise<PlayerDto> {
@@ -261,5 +314,7 @@ export function toPlayerDto(user: User): PlayerDto {
     documentId: user.documentId,
     birthDate: user.birthDate?.toISOString().slice(0, 10) ?? null,
     favoriteSport: user.favoriteSport,
+    mustChangePassword: user.mustChangePassword,
+    needsDataConsent: user.dataConsentAt === null,
   };
 }

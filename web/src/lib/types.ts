@@ -145,6 +145,10 @@ export interface Player {
   documentId: string | null;
   birthDate: string | null;
   favoriteSport: Sport | null;
+  /** La cuenta la creó una sede con la cédula como clave: debe cambiarla al ingresar. */
+  mustChangePassword?: boolean;
+  /** Aún no aceptó la política de tratamiento de datos. */
+  needsDataConsent?: boolean;
 }
 
 export interface PlayerSession {

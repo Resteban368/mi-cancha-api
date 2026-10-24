@@ -46,3 +46,54 @@ ficha de la sede (galería con zoom). Formatos JPG o PNG, máx. 4 MB cada una.
 > slot `MAIN`) y «Segunda foto» (opcional: iluminación, grama, etc., slot `SURFACE` o `LIGHTING`).
 > Quita la validación que exigía las 3 fotos y usa `isComplete` / `missingPhotos` del backend. En la
 > edición de la cancha se pueden seguir agregando hasta 5 fotos.
+
+## Link de reservas del negocio
+
+El link `https://<api>/reservar/<slug>` existe desde que se crea el negocio (el `slug` lo genera la base
+a partir del nombre). Está **activo** cuando se cumplen las tres cosas: reservas encendidas
+(`enabled`), plan activo y **al menos una cancha activa con foto principal**.
+
+`GET /business/profile` (y `PUT`) trae ahora:
+
+```json
+"bookingLink": {
+  "enabled": true,
+  "slug": "el-golazo",
+  "url": "https://…/reservar/el-golazo",
+  "bookingAvailable": false,
+  "unavailableReason": "NO_COURTS"
+}
+```
+
+`unavailableReason`: `NO_COURTS` (falta una cancha completa), `DISABLED` (el dueño apagó las
+reservas), `PLAN_INACTIVE`, o `null` si ya está activo. Mientras no esté activo, la web pública y el
+directorio no aceptan reservas en ese link. El dueño sigue usando `GET/PATCH /business/online-booking`
+para encender/apagar y cambiar el slug. El super admin ve lo mismo en la ficha del cliente
+(`ClientDetail.bookingLink`).
+
+### Prompt para la app Flutter
+
+> En la pantalla Negocio muestra una tarjeta «Link de reservas» con `bookingLink` de
+> `GET /business/profile`. Siempre muestra el link (`url`) con botones Copiar y Compartir. Si
+> `bookingAvailable` es true: chip verde «Activo». Si es false: chip gris «Pendiente» y el motivo:
+> `NO_COURTS` → «Crea al menos una cancha activa con foto principal para activarlo» (botón a Crear
+> cancha), `DISABLED` → «Reservas apagadas» (interruptor que llama `PATCH /business/online-booking`
+> con `{enabled:true}`), `PLAN_INACTIVE` → «Tu plan está inactivo». Refresca el estado al crear o
+> editar una cancha.
+
+## Cuenta de jugador creada por el negocio
+
+Al registrar un cliente **nuevo** (en una reserva con `customer`, o con `POST /customers`) se crea
+también su cuenta de jugador, para que pueda entrar a `/reservar`:
+
+- **Usuario:** su celular o su cédula. **Clave inicial:** su cédula (con o sin puntos).
+- La cuenta nace con `mustChangePassword = true` y sin consentimiento de datos. La web lo lleva a
+  `/reservar/bienvenida` para elegir una clave propia y aceptar la política antes de usar nada.
+- Si el celular o la cédula **ya tienen cuenta**, solo se vincula el cliente a esa cuenta (su clave no
+  cambia). Si el celular y la cédula son de cuentas distintas, la petición responde `409`.
+- Solo aplica a clientes nuevos con cédula; los clientes que ya existían no reciben cuenta.
+- Quien olvide la clave usa «Olvidé mi contraseña» (código por SMS al celular).
+
+`PlayerDto` (login y `GET /player/me`) trae `mustChangePassword` y `needsDataConsent`. Endpoints:
+`PUT /player/password` `{currentPassword, newPassword}` (400 si la actual no coincide o la nueva es la
+cédula) y `POST /player/consent`.

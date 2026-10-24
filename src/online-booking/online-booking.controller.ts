@@ -32,6 +32,7 @@ import {
   DirectoryQueryDto,
   LoginPlayerDto,
   OnlineBookingSettingsDto,
+  ChangePlayerPasswordDto,
   PasswordResetCodeDto,
   PlayerBusinessDto,
   PlayerDto,
@@ -187,6 +188,27 @@ export class PlayerController {
     @Body() dto: UpdatePlayerProfileDto,
   ): Promise<PlayerDto> {
     return this.players.updateProfile(user.sub, dto);
+  }
+
+  @Put('password')
+  @ApiOperation({
+    summary:
+      'Cambiar mi contraseña (pide la actual; si la cuenta la creó un negocio, la actual es la cédula)',
+  })
+  changePassword(
+    @CurrentUser() user: AuthPayload,
+    @Body() dto: ChangePlayerPasswordDto,
+  ): Promise<PlayerDto> {
+    return this.players.changePassword(user.sub, dto);
+  }
+
+  @Post('consent')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Aceptar la política de tratamiento de datos personales',
+  })
+  acceptConsent(@CurrentUser() user: AuthPayload): Promise<PlayerDto> {
+    return this.players.acceptDataPolicy(user.sub);
   }
 
   @Get('businesses')

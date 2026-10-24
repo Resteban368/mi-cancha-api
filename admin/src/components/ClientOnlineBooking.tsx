@@ -15,7 +15,7 @@ interface OnlineBooking {
 const REASONS: Record<string, string> = {
   DISABLED: 'Link desactivado',
   PLAN_INACTIVE: 'Plan inactivo',
-  NO_COURTS: 'Sin canchas reservables',
+  NO_COURTS: 'Falta una cancha completa (activa y con foto principal)',
 };
 
 /** Link público de reservas del negocio: copiar, abrir, activar y cambiar el slug. */

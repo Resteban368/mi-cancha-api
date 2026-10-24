@@ -177,6 +177,22 @@ export class PlayerDto {
   birthDate: string | null;
   @ApiProperty({ enum: Sport, nullable: true })
   favoriteSport: Sport | null;
+  /** La cuenta la creó un negocio con la cédula como clave: debe cambiarla al ingresar. */
+  mustChangePassword: boolean;
+  /** Aún no aceptó la política de tratamiento de datos. */
+  needsDataConsent: boolean;
+}
+
+export class ChangePlayerPasswordDto {
+  /** Contraseña actual (si la cuenta la creó un negocio, es su cédula). */
+  @IsString()
+  @MaxLength(72)
+  currentPassword: string;
+
+  @IsString()
+  @MinLength(8)
+  @MaxLength(72)
+  newPassword: string;
 }
 
 export class PlayerSessionDto {

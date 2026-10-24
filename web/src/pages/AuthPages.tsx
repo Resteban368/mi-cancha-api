@@ -1,11 +1,11 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
 import { Header } from '../components/Header';
 import { Alert, Button, Field, PasswordField } from '../components/ui';
 import { api, errorMessage } from '../lib/api';
 import { accountPath, safeNext } from '../lib/next';
 import { takeBannedNotice, useSession } from '../lib/session';
-import type { PlayerSession } from '../lib/types';
+import type { Player, PlayerSession } from '../lib/types';
 
 /** Fondo del diseño "Pantalla de Bienvenida": cancha multideporte en líneas tenues y un resplandor central. */
 function CourtBackground() {
@@ -100,20 +100,19 @@ export function LoginPage() {
   }
 
   return (
-    <AuthLayout title="Ingresa a tu cuenta" subtitle="Con tu celular y tu contraseña.">
+    <AuthLayout title="Ingresa a tu cuenta" subtitle="Con tu celular o cédula y tu contraseña.">
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
         {error && <Alert>{error}</Alert>}
         <Field
-          label="Celular"
-          type="tel"
+          label="Celular o cédula"
           autoComplete="username"
-          inputMode="tel"
           required
           value={form.identifier}
           onChange={(e) => setForm({ ...form, identifier: e.target.value })}
         />
         <PasswordField
           label="Contraseña"
+          hint="Si una sede te registró al reservar, tu contraseña inicial es tu cédula."
           autoComplete="current-password"
           required
           value={form.password}
@@ -131,6 +130,116 @@ export function LoginPage() {
             Regístrate
           </Link>
         </p>
+      </form>
+    </AuthLayout>
+  );
+}
+
+/**
+ * Primer ingreso de una cuenta que creó una sede al registrar al cliente: su clave inicial es la
+ * cédula, así que debe elegir una propia y aceptar la política de datos antes de usar la web.
+ */
+export function WelcomePage() {
+  const [params] = useSearchParams();
+  const next = safeNext(params.get('next'));
+  const { token, player, setPlayer } = useSession();
+  const navigate = useNavigate();
+  const mustChange = Boolean(player?.mustChangePassword);
+  const needsConsent = Boolean(player?.needsDataConsent);
+  const [form, setForm] = useState({ currentPassword: '', newPassword: '', confirm: '' });
+  const [accepted, setAccepted] = useState(false);
+  const [error, setError] = useState<string>();
+  const [saving, setSaving] = useState(false);
+
+  if (!token || !player) return <Navigate to={accountPath('ingresar', next)} replace />;
+  if (!mustChange && !needsConsent) return <Navigate to={next} replace />;
+
+  async function onSubmit(event: FormEvent) {
+    event.preventDefault();
+    setError(undefined);
+    if (mustChange && form.newPassword !== form.confirm) {
+      setError('Las contraseñas nuevas no coinciden.');
+      return;
+    }
+    setSaving(true);
+    try {
+      let updated: Player = player!;
+      if (mustChange) {
+        updated = await api<Player>('/player/password', {
+          method: 'PUT',
+          token,
+          body: { currentPassword: form.currentPassword, newPassword: form.newPassword },
+        });
+      }
+      if (needsConsent) {
+        updated = await api<Player>('/player/consent', { method: 'POST', token });
+      }
+      setPlayer(updated);
+      navigate(next, { replace: true });
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <AuthLayout
+      title={`¡Hola, ${player.fullName.split(' ')[0]}!`}
+      subtitle="Una sede ya te registró. Antes de seguir, asegura tu cuenta."
+    >
+      <form onSubmit={onSubmit} className="flex flex-col gap-4">
+        {error && <Alert>{error}</Alert>}
+        {mustChange && (
+          <>
+            <PasswordField
+              label="Contraseña actual"
+              hint="Es tu número de cédula."
+              autoComplete="current-password"
+              required
+              value={form.currentPassword}
+              onChange={(e) => setForm({ ...form, currentPassword: e.target.value })}
+            />
+            <PasswordField
+              label="Contraseña nueva"
+              hint="Mínimo 8 caracteres y distinta de tu cédula."
+              autoComplete="new-password"
+              minLength={8}
+              required
+              value={form.newPassword}
+              onChange={(e) => setForm({ ...form, newPassword: e.target.value })}
+            />
+            <PasswordField
+              label="Repite la contraseña nueva"
+              autoComplete="new-password"
+              minLength={8}
+              required
+              value={form.confirm}
+              onChange={(e) => setForm({ ...form, confirm: e.target.value })}
+            />
+          </>
+        )}
+        {needsConsent && (
+          <label className="flex items-start gap-2.5 text-sm text-fg-2">
+            <input
+              type="checkbox"
+              required
+              checked={accepted}
+              onChange={(e) => setAccepted(e.target.checked)}
+              className="mt-0.5 size-4 accent-emerald-500"
+            />
+            <span>
+              Acepto la{' '}
+              <Link to="/politica-de-datos" target="_blank" className="font-semibold text-accent underline">
+                política de tratamiento de datos personales
+              </Link>
+              .
+            </span>
+          </label>
+        )}
+        <Button type="submit" loading={saving} disabled={needsConsent && !accepted}>
+          Guardar y continuar
+        </Button>
       </form>
     </AuthLayout>
   );

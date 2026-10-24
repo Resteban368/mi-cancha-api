@@ -7,6 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { BusinessesService } from '../businesses/businesses.service.js';
 import { CatalogsService } from '../catalogs/catalogs.service.js';
+import { REQUIRED_PHOTOS } from './required-photos.js';
 import { courtPhotoUrl, publicApiUrl } from '../common/public-url.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import { CourtPhotoSlot, Sport } from '../generated/prisma/enums.js';
@@ -20,8 +21,7 @@ import {
   UpdateCourtDto,
 } from './dto/court.dto.js';
 
-/** Fotos sin las que la cancha no puede recibir reservas: solo la principal. */
-export const REQUIRED_PHOTOS: CourtPhotoSlot[] = [CourtPhotoSlot.MAIN];
+export { REQUIRED_PHOTOS };
 const PHOTO_ORDER = Object.values(CourtPhotoSlot);
 const DEFAULT_CURRENCY = 'COP';
 const DEFAULT_SLOT_DURATION = 60;

@@ -61,6 +61,12 @@ const dto = {
   },
 };
 
+vi.mock('../customers/customer-account.js', () => ({
+  ensurePlayerAccount: vi.fn(
+    async (_db: unknown, customer: unknown) => customer,
+  ),
+}));
+
 describe('ReservationsService', () => {
   let service: ReservationsService;
   let prisma: PrismaMock;
@@ -303,11 +309,17 @@ describe('ReservationsService', () => {
     it('exige el mismo deporte y la misma duración de turno', async () => {
       byId['court-2'] = { ...courtB, sport: Sport.PADEL };
       await expect(
-        service.create('owner-1', { ...base, courtIds: ['court-1', 'court-2'] }),
+        service.create('owner-1', {
+          ...base,
+          courtIds: ['court-1', 'court-2'],
+        }),
       ).rejects.toThrow('mismo deporte');
       byId['court-2'] = { ...courtB, slotDuration: 90 };
       await expect(
-        service.create('owner-1', { ...base, courtIds: ['court-1', 'court-2'] }),
+        service.create('owner-1', {
+          ...base,
+          courtIds: ['court-1', 'court-2'],
+        }),
       ).rejects.toThrow(BadRequestException);
       byId['court-2'] = courtB;
     });
@@ -833,7 +845,13 @@ describe('ReservationsService', () => {
         ),
       ).rejects.toThrow('al menos 60 minutos');
       await expect(
-        service.holdWebSlots('biz-1', 'u-1', { ...input, slots: 4 }, rules, now),
+        service.holdWebSlots(
+          'biz-1',
+          'u-1',
+          { ...input, slots: 4 },
+          rules,
+          now,
+        ),
       ).rejects.toThrow('máximo 3 turnos seguidos');
     });
 

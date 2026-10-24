@@ -82,6 +82,9 @@ model User {
   id                 String    @id @default(uuid())
   email              String?   @unique
   passwordHash       String?
+  /// La cuenta la creó un negocio al registrar al cliente y su clave inicial es la cédula: debe
+  /// cambiarla (y aceptar la política de datos) en su primer ingreso.
+  mustChangePassword Boolean   @default(false)
   displayName        String
   phone              String?
   role               UserRole

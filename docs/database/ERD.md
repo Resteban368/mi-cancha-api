@@ -10,6 +10,8 @@ erDiagram
     String id PK
     String email UK "opcional"
     String passwordHash "opcional"
+    Boolean mustChangePassword "La cuenta la creó un negocio al registrar al cliente y su clave inicial es la cédula: debe
+cambiarla (y aceptar la política de datos) en su primer ingreso."
     String displayName
     String phone "opcional"
     UserRole role

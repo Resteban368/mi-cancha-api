@@ -16,7 +16,10 @@ import {
   MinLength,
   ValidateNested,
 } from 'class-validator';
-import { BusinessPhotoDto } from '../../businesses/dto/business.dto.js';
+import {
+  BookingLinkDto,
+  BusinessPhotoDto,
+} from '../../businesses/dto/business.dto.js';
 import { PageQueryDto } from '../../common/dto/page.dto.js';
 import {
   PaymentConcept,
@@ -252,6 +255,8 @@ export class ClientDetailDto {
   imageUrl: string | null;
   /** Fotos del negocio (hasta 5) en orden; la primera es la portada. */
   photos: BusinessPhotoDto[];
+  /** Link de reservas del negocio y si ya está activo. */
+  bookingLink: BookingLinkDto;
   latitude: number | null;
   longitude: number | null;
   amenities: CatalogRefDto[];

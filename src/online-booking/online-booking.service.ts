@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { bookingStateOf } from '../businesses/booking-link.js';
 import {
   profileImagesSelect,
   toBusinessPhotos,
@@ -460,6 +461,8 @@ export const RESERVED_SLUGS = [
   'registro',
   'recuperar',
   'perfil',
+  'reservas',
+  'bienvenida',
   'mis-sedes',
   'politica-de-datos',
 ];
@@ -545,20 +548,8 @@ function toDirectoryBusiness(
   };
 }
 
-function bookingState(business: PublicBusiness): {
-  available: boolean;
-  reason: string | null;
-} {
-  if (!business.onlineBookingEnabled) {
-    return { available: false, reason: 'DISABLED' };
-  }
-  if (!business.subscription?.isActive) {
-    return { available: false, reason: 'PLAN_INACTIVE' };
-  }
-  if (!bookableSports(business).length) {
-    return { available: false, reason: 'NO_COURTS' };
-  }
-  return { available: true, reason: null };
+function bookingState(business: PublicBusiness) {
+  return bookingStateOf(business);
 }
 
 /** Las filas del apartado (una por cancha) comparten franja y vencimiento. */
