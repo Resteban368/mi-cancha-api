@@ -6,7 +6,7 @@ import { ShimmerImage } from '../components/ShimmerImage';
 import { BusinessHeader, ChevronRightIcon, CloseIcon, PinIcon } from '../components/PitchChrome';
 import { Alert, Button, Card, Dialog, inputClass, Skeleton } from '../components/ui';
 import { api, ApiError, errorMessage } from '../lib/api';
-import { accountPath } from '../lib/next';
+import { accountPath, pendingBookingKey } from '../lib/next';
 import {
   courtSpecs,
   bogotaDate,
@@ -62,7 +62,7 @@ interface Pending extends Selection {
   notes: string;
 }
 
-const pendingKey = (slug: string) => `mi-cancha-pending:${slug}`;
+const pendingKey = pendingBookingKey;
 
 export function savePending(slug: string, pending: Pending) {
   try {

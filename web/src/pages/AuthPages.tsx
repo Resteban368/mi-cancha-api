@@ -3,7 +3,7 @@ import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
 import { Header } from '../components/Header';
 import { Alert, Button, Field, PasswordField } from '../components/ui';
 import { api, errorMessage } from '../lib/api';
-import { accountPath, safeNext } from '../lib/next';
+import { accountPath, afterLoginPath, safeNext } from '../lib/next';
 import { takeBannedNotice, useSession } from '../lib/session';
 import type { Player, PlayerSession } from '../lib/types';
 
@@ -91,7 +91,7 @@ export function LoginPage() {
     setError(undefined);
     try {
       signIn(await api<PlayerSession>('/public/auth/login', { method: 'POST', body: form }));
-      navigate(next);
+      navigate(afterLoginPath(next));
     } catch (e) {
       setError(errorMessage(e));
     } finally {
@@ -290,7 +290,7 @@ export function RegisterPage() {
       body: { ...payload(), code },
     });
     signIn(session);
-    navigate(next);
+    navigate(afterLoginPath(next));
   }
 
   if (codeSent) {
@@ -505,7 +505,7 @@ export function ResetPasswordPage() {
         body: { phone, code, password },
       }),
     );
-    navigate(next);
+    navigate(afterLoginPath(next));
   }
 
   if (codeSent) {

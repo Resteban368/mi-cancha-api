@@ -7,7 +7,7 @@ import { MyBookingsPage } from './pages/MyBookingsPage';
 import { MyReservationsPage } from './pages/MyReservationsPage';
 import { MySitesPage } from './pages/MySitesPage';
 import { PolicyPage } from './pages/PolicyPage';
-import { accountPath, safeNext } from './lib/next';
+import { accountPath, afterLoginPath } from './lib/next';
 import { useSession } from './lib/session';
 
 export function App() {
@@ -29,7 +29,7 @@ function OnboardingGate({ children }: { children: React.ReactNode }) {
   if (pending && !exempt) {
     // Desde ingresar/registro/recuperar se vuelve al destino que traían, no a la pantalla de cuenta.
     const back = ACCOUNT_PAGES.includes(pathname)
-      ? safeNext(new URLSearchParams(search).get('next'))
+      ? afterLoginPath(new URLSearchParams(search).get('next') ?? '/')
       : `${pathname}${search}`;
     return <Navigate to={`/bienvenida?next=${encodeURIComponent(back)}`} replace />;
   }
