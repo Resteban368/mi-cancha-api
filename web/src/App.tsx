@@ -3,6 +3,7 @@ import { LoginPage, RegisterPage, ResetPasswordPage } from './pages/AuthPages';
 import { ProfilePage } from './pages/ProfilePage';
 import { BusinessPage } from './pages/BusinessPage';
 import { DirectoryPage } from './pages/DirectoryPage';
+import { MyBookingsPage } from './pages/MyBookingsPage';
 import { MyReservationsPage } from './pages/MyReservationsPage';
 import { MySitesPage } from './pages/MySitesPage';
 import { PolicyPage } from './pages/PolicyPage';
@@ -18,6 +19,7 @@ export function App() {
       <Route path="registro" element={<RegisterPage />} />
       <Route path="recuperar" element={<ResetPasswordPage />} />
       <Route path="perfil" element={<ProfilePage />} />
+      <Route path="reservas" element={<MyBookingsPage />} />
       <Route path="mis-sedes" element={<MySitesPage />} />
       <Route path=":slug" element={<BusinessPage />} />
       <Route path=":slug/mis-reservas" element={<MyReservationsPage />} />

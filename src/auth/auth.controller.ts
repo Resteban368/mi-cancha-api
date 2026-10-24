@@ -5,16 +5,20 @@ import {
   HttpCode,
   HttpStatus,
   Post,
+  Put,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { AuthPayload } from '../common/auth/auth-payload.js';
 import { CurrentUser } from '../common/auth/current-user.decorator.js';
+import { Roles } from '../common/auth/roles.decorator.js';
 import { Public } from '../common/auth/public.decorator.js';
+import { UserRole } from '../generated/prisma/enums.js';
 import { AuthService } from './auth.service.js';
 import {
   AppleSignInDto,
   AuthResponseDto,
   AuthUserDto,
+  ChangePasswordDto,
   GoogleSignInDto,
   LoginDto,
   RegisterBusinessAdminDto,
@@ -54,6 +58,21 @@ export class AuthController {
   @ApiOperation({ summary: 'Iniciar sesión como jugador con Apple' })
   apple(@Body() dto: AppleSignInDto): Promise<AuthResponseDto> {
     return this.authService.signInWithApple(dto);
+  }
+
+  @Put('password')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiBearerAuth()
+  @Roles([UserRole.ADMIN_NEGOCIO, UserRole.SUPER_ADMIN])
+  @ApiOperation({
+    summary:
+      'Cambiar la contraseña del negocio (pide la actual y la nueva; 400 si la actual no coincide)',
+  })
+  changePassword(
+    @CurrentUser() user: AuthPayload,
+    @Body() dto: ChangePasswordDto,
+  ): Promise<void> {
+    return this.authService.changePassword(user.sub, dto);
   }
 
   @Get('me')

@@ -264,7 +264,7 @@ describe('OnlineBookingService', () => {
     longitude: -75.6,
     onlineBookingEnabled: true,
     subscription: { isActive: true },
-    profileImage: { id: 'img-1' },
+    profileImages: [{ id: 'img-1' }],
     amenities: [{ code: 'WIFI', name: 'WiFi' }],
     courts: [
       {
@@ -436,7 +436,9 @@ describe('OnlineBookingService', () => {
 
     it('lista solo sedes reservables con canchas, deportes y precio desde', async () => {
       prisma.business.findMany
-        .mockResolvedValueOnce([{ id: 'biz-1', latitude: 1.6, longitude: -75.6 }])
+        .mockResolvedValueOnce([
+          { id: 'biz-1', latitude: 1.6, longitude: -75.6 },
+        ])
         .mockResolvedValueOnce([sede('biz-1')]);
 
       const page = await service.directory({});
@@ -528,7 +530,7 @@ describe('OnlineBookingService', () => {
           slug: 'el-golazo',
           address: 'Calle 15',
           neighborhood: 'Centro',
-          profileImage: { id: 'img-1' },
+          profileImages: [{ id: 'img-1' }],
         },
       },
     ]);

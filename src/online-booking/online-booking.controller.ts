@@ -191,7 +191,8 @@ export class PlayerController {
 
   @Get('businesses')
   @ApiOperation({
-    summary: 'Mis sedes: los negocios donde ya soy cliente (tengo al menos una reserva)',
+    summary:
+      'Mis sedes: los negocios donde ya soy cliente (tengo al menos una reserva)',
   })
   myBusinesses(@CurrentUser() user: AuthPayload): Promise<PlayerBusinessDto[]> {
     return this.booking.myBusinesses(user.sub);

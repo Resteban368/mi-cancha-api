@@ -9,9 +9,19 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
   Query,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { AuthPayload } from '../common/auth/auth-payload.js';
 import { CurrentUser } from '../common/auth/current-user.decorator.js';
 import { Roles } from '../common/auth/roles.decorator.js';
@@ -25,9 +35,15 @@ import {
   Sport,
   UserRole,
 } from '../generated/prisma/enums.js';
+import { ReorderPhotosDto } from '../businesses/dto/business.dto.js';
+import { BusinessImagesService } from '../businesses/business-images.service.js';
 import { CourtsService } from '../courts/courts.service.js';
 import { CourtDto, UpdateCourtDto } from '../courts/dto/court.dto.js';
 import { CustomersService } from '../customers/customers.service.js';
+import {
+  MAX_IMAGE_BYTES,
+  type UploadedImage,
+} from '../storage/image-upload.js';
 import {
   CreateCustomerDto,
   CustomerDetailDto,
@@ -60,6 +76,7 @@ import {
   DashboardDto,
   PlanDto,
   SystemEnumDto,
+  UpdateClientDto,
   UpdatePlanDto,
   UpdateSubscriptionDto,
   UserPageDto,
@@ -121,6 +138,7 @@ export class AdminController {
     private readonly reservationsService: ReservationsService,
     private readonly customersService: CustomersService,
     private readonly refundsService: RefundsService,
+    private readonly businessImagesService: BusinessImagesService,
   ) {}
 
   @Get('dashboard')
@@ -141,6 +159,101 @@ export class AdminController {
       'Ficha del cliente: negocio, responsable, plan, canchas y actividad',
   })
   findClient(@Param('id', ParseUUIDPipe) id: string): Promise<ClientDetailDto> {
+    return this.clientsService.findOne(id);
+  }
+
+  @Patch('clients/:id')
+  @ApiOperation({
+    summary: 'Actualizar datos generales o ubicación del cliente',
+  })
+  updateClient(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateClientDto,
+  ): Promise<ClientDetailDto> {
+    return this.clientsService.update(id, dto);
+  }
+
+  @Put('clients/:id/image')
+  @ApiOperation({
+    summary: 'Subir o reemplazar el logo/foto de portada del cliente (negocio)',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['image'],
+      properties: { image: { type: 'string', format: 'binary' } },
+    },
+  })
+  @UseInterceptors(
+    FileInterceptor('image', { limits: { fileSize: MAX_IMAGE_BYTES } }),
+  )
+  async uploadClientImage(
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFile() file: UploadedImage | undefined,
+  ): Promise<ClientDetailDto> {
+    await this.clientsService.requireClient(id);
+    await this.businessImagesService.uploadForBusiness(id, file);
+    return this.clientsService.findOne(id);
+  }
+
+  @Post('clients/:id/photos')
+  @ApiOperation({
+    summary: 'Agregar una foto al negocio del cliente (hasta 5)',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['image'],
+      properties: { image: { type: 'string', format: 'binary' } },
+    },
+  })
+  @UseInterceptors(
+    FileInterceptor('image', { limits: { fileSize: MAX_IMAGE_BYTES } }),
+  )
+  async addClientPhoto(
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFile() file: UploadedImage | undefined,
+  ): Promise<ClientDetailDto> {
+    await this.clientsService.requireClient(id);
+    await this.businessImagesService.addForBusiness(id, file);
+    return this.clientsService.findOne(id);
+  }
+
+  @Put('clients/:id/photos/order')
+  @ApiOperation({
+    summary: 'Ordenar las fotos del negocio; la primera es la portada',
+  })
+  async sortClientPhotos(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ReorderPhotosDto,
+  ): Promise<ClientDetailDto> {
+    await this.clientsService.requireClient(id);
+    await this.businessImagesService.reorder(id, dto.ids);
+    return this.clientsService.findOne(id);
+  }
+
+  @Delete('clients/:id/photos/:photoId')
+  @ApiOperation({ summary: 'Quitar una foto del negocio del cliente' })
+  async removeClientPhoto(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('photoId', ParseUUIDPipe) photoId: string,
+  ): Promise<ClientDetailDto> {
+    await this.clientsService.requireClient(id);
+    await this.businessImagesService.removePhoto(id, photoId);
+    return this.clientsService.findOne(id);
+  }
+
+  @Delete('clients/:id/image')
+  @ApiOperation({
+    summary: 'Eliminar el logo/foto de portada del cliente (negocio)',
+  })
+  async removeClientImage(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<ClientDetailDto> {
+    await this.clientsService.requireClient(id);
+    await this.businessImagesService.removeForBusiness(id);
     return this.clientsService.findOne(id);
   }
 

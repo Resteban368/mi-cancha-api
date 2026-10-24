@@ -2,11 +2,13 @@ import { useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router';
 import { StatTile } from '../components/charts/StatTile';
 import { ClientCourts } from '../components/ClientCourts';
+import { ClientCover } from '../components/ClientCover';
 import { ClientCustomers } from '../components/ClientCustomers';
+import { ClientLocationMap } from '../components/ClientLocationMap';
 import { ClientOnlineBooking } from '../components/ClientOnlineBooking';
 import { NewReservationModal } from '../components/NewReservation';
 import { CancelReservationModal, RefundsCard } from '../components/ReservationCancel';
-import { ArrowLeftIcon, ImageIcon, MapPinIcon, PlusIcon } from '../components/icons';
+import { ArrowLeftIcon, MapPinIcon, PlusIcon } from '../components/icons';
 import {
   Badge,
   Button,
@@ -129,7 +131,7 @@ function ClientDetailView({
       <div className="grid gap-6 lg:grid-cols-3">
         <Card title="Negocio" className="lg:col-span-2">
           <div className="grid gap-5 p-5 sm:grid-cols-[200px_1fr]">
-            <Cover url={data.imageUrl} name={data.name} />
+            <ClientCover client={data} onChanged={refresh} />
             <dl className="grid content-start gap-4">
               <Detail label="Dirección">
                 <span className="inline-flex items-start gap-1.5">
@@ -189,6 +191,8 @@ function ClientDetailView({
           </dl>
         </Card>
       </div>
+
+      <ClientLocationMap client={data} onChanged={refresh} />
 
       <SubscriptionCard
         client={data}
@@ -423,26 +427,6 @@ function SubscriptionCard({
         </Detail>
       </dl>
     </Card>
-  );
-}
-
-function Cover({ url, name }: { url: string | null; name: string }) {
-  const [failed, setFailed] = useState(false);
-  if (url && !failed) {
-    return (
-      <img
-        src={url}
-        alt={`Portada de ${name}`}
-        onError={() => setFailed(true)}
-        className="aspect-[4/3] w-full rounded-lg border border-border object-cover"
-      />
-    );
-  }
-  return (
-    <div className="flex aspect-[4/3] w-full flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-border bg-surface-2 text-fg-3">
-      <ImageIcon width={24} height={24} />
-      <span className="text-xs">{failed ? 'No se pudo cargar la foto' : 'Sin foto de portada'}</span>
-    </div>
   );
 }
 

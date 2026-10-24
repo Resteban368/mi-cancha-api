@@ -55,10 +55,10 @@ const LoginIcon = icon(
     <path d="m10 16 4-4-4-4M14 12H4" />
   </>,
 );
-const LogoutIcon = icon(
+const CalendarIcon = icon(
   <>
-    <path d="M9 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4" />
-    <path d="m16 16 4-4-4-4M20 12H10" />
+    <rect x="3" y="4" width="18" height="18" rx="2" />
+    <path d="M16 2v4M8 2v4M3 10h18" />
   </>,
 );
 
@@ -87,6 +87,12 @@ export function PitchHeader() {
         <nav className="flex items-center gap-2">
           {player ? (
             <>
+              <Link
+                to="/reservas"
+                className="hidden whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-semibold tracking-wide text-fg-2 transition hover:text-fg sm:block"
+              >
+                Mis reservas
+              </Link>
               <Link
                 to="/mis-sedes"
                 className="whitespace-nowrap rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold tracking-wide text-accent transition active:scale-95"
@@ -124,7 +130,7 @@ export function PitchHeader() {
 
 /** Barra inferior para el celular: explorar, mis sedes y cuenta. */
 export function PitchBottomNav() {
-  const { player, signOut } = useSession();
+  const { player } = useSession();
   const { pathname, search } = useLocation();
 
   const tab = ({ isActive }: { isActive: boolean }) =>
@@ -148,6 +154,10 @@ export function PitchBottomNav() {
         </NavLink>
         {player ? (
           <>
+            <NavLink to="/reservas" className={tab}>
+              <CalendarIcon className="size-5" />
+              Mis reservas
+            </NavLink>
             <NavLink to="/mis-sedes" className={tab}>
               <StoreIcon className="size-5" />
               Mis sedes
@@ -156,10 +166,6 @@ export function PitchBottomNav() {
               <UserIcon className="size-5" />
               Perfil
             </NavLink>
-            <button type="button" onClick={signOut} className={tab({ isActive: false })}>
-              <LogoutIcon className="size-5" />
-              Salir
-            </button>
           </>
         ) : (
           <NavLink to={accountPath('ingresar', `${pathname}${search}`)} className={tab}>

@@ -109,6 +109,32 @@ export const SunIcon = (p: IconProps) => (
 export const ShieldCheckIcon = (p: IconProps) => (
   <Icon {...p}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><path d="M9 12l2 2 4-4" /></Icon>
 );
+export const CopyIcon = (p: IconProps) => (
+  <Icon {...p}><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></Icon>
+);
+export const ExternalLinkIcon = (p: IconProps) => (
+  <Icon {...p}><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><path d="M15 3h6v6" /><path d="M10 14L21 3" /></Icon>
+);
+export const CrosshairIcon = (p: IconProps) => (
+  <Icon {...p}><circle cx="12" cy="12" r="10" /><path d="M22 12h-4M6 12H2M12 6V2M12 22v-4" /></Icon>
+);
+export const LayersIcon = (p: IconProps) => (
+  <Icon {...p}><polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" /></Icon>
+);
+export const NavigationIcon = (p: IconProps) => (
+  <Icon {...p}><polygon points="3 11 22 2 13 21 11 13 3 11" /></Icon>
+);
+export const TrashIcon = (p: IconProps) => (
+  <Icon {...p}><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6" /></Icon>
+);
+export const CameraIcon = (p: IconProps) => (
+  <Icon {...p}><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" /></Icon>
+);
+export const UploadIcon = (p: IconProps) => (
+  <Icon {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" /></Icon>
+);
+
+
 
 /** Ícono de la app (assets/logo.png). Las esquinas se redondean como ícono de app. */
 export function BrandMark({ size = 32 }: { size?: number }) {

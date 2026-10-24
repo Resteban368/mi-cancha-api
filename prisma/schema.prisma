@@ -39,7 +39,8 @@ enum DayOfWeek {
   SUNDAY
 }
 
-/// Posiciones fijas de las fotos de una cancha. MAIN, SURFACE y LIGHTING son obligatorias.
+/// Posiciones fijas de las fotos de una cancha (hasta 5). Solo MAIN es obligatoria; al crear la cancha
+/// se piden MAIN y una segunda opcional (SURFACE, LIGHTING o una extra).
 enum CourtPhotoSlot {
   MAIN
   SURFACE
@@ -149,26 +150,31 @@ model Business {
   payments          Payment[]
   refunds           Refund[]
   subscription      Subscription?
-  profileImage      BusinessProfileImage?
+  profileImages     BusinessProfileImage[]
   slotHolds         SlotHold[]
   reservationGroups ReservationGroup[]
 }
 
-/// Foto de portada del negocio. Una por negocio; el archivo vive en Koofr.
+/// Fotos del negocio (hasta 5). La de menor position es la portada que sale en el directorio;
+/// el archivo vive en Koofr.
 model BusinessProfileImage {
   id          String   @id @default(uuid())
-  businessId  String   @unique
+  businessId  String
   business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
   /// Ruta del archivo dentro del almacenamiento, p. ej. mi-cancha/business-profile/<negocio>/<id>.jpg
   storagePath String
   contentType String
   sizeBytes   Int
+  /// Orden dentro del negocio, desde 0; la 0 es la portada.
+  position    Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([businessId, position])
 }
 
 /// Cancha que el negocio alquila por turnos. Solo recibe reservas si está activa (isActive) y
-/// completa (tiene las fotos MAIN, SURFACE y LIGHTING). El límite del plan cuenta las activas.
+/// completa (tiene la foto MAIN). El límite del plan cuenta las activas.
 model Court {
   id               String        @id @default(uuid())
   businessId       String

@@ -297,6 +297,8 @@ export class PublicBusinessDto {
   description: string | null;
   amenities: { code: string; name: string }[];
   imageUrl: string | null;
+  /** URLs de las fotos de la sede (hasta 5) en orden; la primera es la portada. */
+  photos: string[];
   latitude: number | null;
   longitude: number | null;
   /** Abre Google Maps en el punto (o la dirección si no hay punto). */

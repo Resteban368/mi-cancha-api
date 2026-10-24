@@ -16,6 +16,7 @@ import {
   MinLength,
   ValidateNested,
 } from 'class-validator';
+import { BusinessPhotoDto } from '../../businesses/dto/business.dto.js';
 import { PageQueryDto } from '../../common/dto/page.dto.js';
 import {
   PaymentConcept,
@@ -130,6 +131,37 @@ export class ClientDto {
   activeCourts: number;
 }
 
+export class UpdateClientDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(120)
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(3)
+  @MaxLength(200)
+  address?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(100)
+  neighborhood?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  description?: string;
+
+  @IsOptional()
+  latitude?: number | null;
+
+  @IsOptional()
+  longitude?: number | null;
+}
+
 export class ClientPageDto {
   @ApiProperty({ type: [ClientDto] })
   items: ClientDto[];
@@ -218,6 +250,10 @@ export class ClientDetailDto {
   description: string | null;
   /** URL pública de la foto de portada; null si no tiene. */
   imageUrl: string | null;
+  /** Fotos del negocio (hasta 5) en orden; la primera es la portada. */
+  photos: BusinessPhotoDto[];
+  latitude: number | null;
+  longitude: number | null;
   amenities: CatalogRefDto[];
   createdAt: Date;
   updatedAt: Date;

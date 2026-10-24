@@ -6,19 +6,24 @@ import {
 import { ConfigService } from '@nestjs/config';
 import bcrypt from 'bcryptjs';
 import { Page, pageArgs, PageQueryDto } from '../common/dto/page.dto.js';
-import { businessImageUrl, publicApiUrl } from '../common/public-url.js';
+import { publicApiUrl } from '../common/public-url.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import {
   PaymentStatus,
   ReservationStatus,
   UserRole,
 } from '../generated/prisma/enums.js';
+import {
+  profileImagesSelect,
+  toBusinessPhotos,
+} from '../businesses/business-photos.js';
 import { REQUIRED_PHOTOS } from '../courts/courts.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
   ClientDetailDto,
   ClientDto,
   CreateClientDto,
+  UpdateClientDto,
   UpdateSubscriptionDto,
 } from './dto/admin.dto.js';
 
@@ -53,7 +58,7 @@ const detailInclude = {
     select: { code: true, name: true },
     orderBy: { sortOrder: 'asc' },
   },
-  profileImage: { select: { id: true } },
+  profileImages: profileImagesSelect,
   subscription: {
     include: {
       plan: {
@@ -178,15 +183,17 @@ export class ClientsService {
     ]);
 
     const { owner, subscription } = business;
+    const photos = toBusinessPhotos(this.publicApiUrl, business.profileImages);
     return {
       id: business.id,
       name: business.name,
       address: business.address,
       neighborhood: business.neighborhood,
       description: business.description,
-      imageUrl: business.profileImage
-        ? businessImageUrl(this.publicApiUrl, business.profileImage.id)
-        : null,
+      imageUrl: photos[0]?.url ?? null,
+      photos,
+      latitude: business.latitude,
+      longitude: business.longitude,
       amenities: business.amenities,
       createdAt: business.createdAt,
       updatedAt: business.updatedAt,
@@ -334,6 +341,37 @@ export class ClientsService {
       include: clientInclude,
     });
     return toClientDto(updated);
+  }
+
+  /** Actualiza datos del negocio, dirección y georreferenciación (lat/lng). */
+  async update(
+    businessId: string,
+    dto: UpdateClientDto,
+  ): Promise<ClientDetailDto> {
+    await this.requireClient(businessId);
+    if (dto.latitude !== undefined || dto.longitude !== undefined) {
+      if ((dto.latitude === null) !== (dto.longitude === null)) {
+        throw new ConflictException(
+          'Debes enviar latitud y longitud juntos, o ambos en null',
+        );
+      }
+    }
+
+    await this.prisma.business.update({
+      where: { id: businessId },
+      data: {
+        ...(dto.name !== undefined && { name: dto.name }),
+        ...(dto.address !== undefined && { address: dto.address }),
+        ...(dto.neighborhood !== undefined && {
+          neighborhood: dto.neighborhood,
+        }),
+        ...(dto.description !== undefined && { description: dto.description }),
+        ...(dto.latitude !== undefined && { latitude: dto.latitude }),
+        ...(dto.longitude !== undefined && { longitude: dto.longitude }),
+      },
+    });
+
+    return this.findOne(businessId);
   }
 }
 

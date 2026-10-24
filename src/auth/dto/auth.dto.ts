@@ -44,6 +44,20 @@ export class LoginDto {
   password: string;
 }
 
+export class ChangePasswordDto {
+  /** Contraseña con la que inicia sesión hoy. */
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(72)
+  currentPassword: string;
+
+  /** Mínimo 8 caracteres; debe ser distinta de la actual. @example NuevaClave2026! */
+  @IsString()
+  @MinLength(8)
+  @MaxLength(72)
+  newPassword: string;
+}
+
 export class GoogleSignInDto {
   /** ID token devuelto por Google Sign-In en la app. */
   @IsString()

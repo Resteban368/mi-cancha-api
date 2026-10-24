@@ -6,6 +6,7 @@ import {
   IsLongitude,
   IsOptional,
   IsString,
+  IsUUID,
   MaxLength,
   MinLength,
 } from 'class-validator';
@@ -56,6 +57,19 @@ export class SaveBusinessDto {
   amenities?: string[];
 }
 
+/** Orden deseado de las fotos: todos los ids del negocio, la primera es la portada. */
+export class ReorderPhotosDto {
+  @IsArray()
+  @ArrayMaxSize(5)
+  @IsUUID('all', { each: true })
+  ids: string[];
+}
+
+export class BusinessPhotoDto {
+  id: string;
+  url: string;
+}
+
 export class BusinessDto {
   id: string;
   name: string;
@@ -66,6 +80,8 @@ export class BusinessDto {
   amenities: string[];
   /** URL pública de la foto de portada; null si no tiene. */
   imageUrl: string | null;
+  /** Fotos del negocio (hasta 5) en orden; la primera es la portada. */
+  photos: BusinessPhotoDto[];
   /** Punto de llegada; ambos null si aún no se fijó. */
   latitude: number | null;
   longitude: number | null;

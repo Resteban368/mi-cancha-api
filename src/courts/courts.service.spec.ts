@@ -120,9 +120,10 @@ describe('CourtsService', () => {
       expect(result.photos).toEqual([
         { slot: 'MAIN', url: 'https://api.test/api/v1/images/courts/p-1' },
       ]);
-      expect(result.missingPhotos).toEqual(['SURFACE', 'LIGHTING']);
-      expect(result.isComplete).toBe(false);
-      expect(result.isBookable).toBe(false);
+      // Con solo la foto principal la cancha ya está completa.
+      expect(result.missingPhotos).toEqual([]);
+      expect(result.isComplete).toBe(true);
+      expect(result.isBookable).toBe(true);
     });
 
     it('rechaza horarios incompletos y tarifas que se cruzan', async () => {

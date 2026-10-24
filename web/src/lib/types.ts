@@ -10,6 +10,8 @@ export interface PublicBusiness {
   description: string | null;
   amenities: { code: string; name: string }[];
   imageUrl: string | null;
+  /** Fotos de la sede (hasta 5); la primera es la portada. */
+  photos: string[];
   latitude: number | null;
   longitude: number | null;
   mapsUrl: string;

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { CourtDetails } from '../components/CourtDetails';
+import { PhotoLightbox } from '../components/PhotoLightbox';
 import { ShimmerImage } from '../components/ShimmerImage';
 import { BusinessHeader, ChevronRightIcon, CloseIcon, PinIcon } from '../components/PitchChrome';
 import { Alert, Button, Card, Dialog, inputClass, Skeleton } from '../components/ui';
@@ -122,6 +123,66 @@ export function BusinessPage() {
   );
 }
 
+/** Fotos de la sede (hasta 5): la grande se amplía con zoom y las miniaturas la cambian. */
+function VenuePhotos({ business: b }: { business: PublicBusiness }) {
+  const photos = b.photos?.length ? b.photos : b.imageUrl ? [b.imageUrl] : [];
+  const [index, setIndex] = useState(0);
+  const [zoom, setZoom] = useState(false);
+  const current = photos[Math.min(index, photos.length - 1)];
+
+  if (!current) {
+    return (
+      <div className="flex aspect-video items-center justify-center rounded-2xl bg-surface-2 text-5xl" aria-hidden="true">
+        🏟️
+      </div>
+    );
+  }
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setZoom(true)}
+        aria-label="Ampliar foto de la sede"
+        className="block w-full cursor-zoom-in rounded-2xl"
+      >
+        <ShimmerImage
+          key={current}
+          src={current}
+          alt={`Sede ${b.name}`}
+          wrapperClassName="aspect-video w-full rounded-2xl border border-border"
+          className="object-cover"
+        />
+      </button>
+      {photos.length > 1 && (
+        <div className="mt-2 flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Fotos de la sede">
+          {photos.map((url, i) => (
+            <button
+              key={url}
+              type="button"
+              aria-label={`Ver foto ${i + 1} de ${photos.length}`}
+              aria-pressed={i === index}
+              onClick={() => setIndex(i)}
+              className={`aspect-video w-20 shrink-0 overflow-hidden rounded-xl border-2 transition ${
+                i === index ? 'border-accent' : 'border-transparent opacity-70 hover:opacity-100'
+              }`}
+            >
+              <ShimmerImage src={url} alt="" wrapperClassName="size-full" className="object-cover" />
+            </button>
+          ))}
+        </div>
+      )}
+      {zoom && (
+        <PhotoLightbox
+          photos={photos.map((url, i) => ({ url, label: `${b.name}: foto ${i + 1}` }))}
+          index={Math.min(index, photos.length - 1)}
+          onIndexChange={setIndex}
+          onClose={() => setZoom(false)}
+        />
+      )}
+    </div>
+  );
+}
+
 /** Hoja con la información de la sede: foto, ubicación, descripción y servicios. */
 function VenueInfoDialog({ business: b, open, onClose }: { business: PublicBusiness; open: boolean; onClose: () => void }) {
   return (
@@ -138,13 +199,7 @@ function VenueInfoDialog({ business: b, open, onClose }: { business: PublicBusin
         </button>
       </div>
       <div className="flex flex-col gap-4">
-        {b.imageUrl ? (
-          <ShimmerImage src={b.imageUrl} alt={`Sede ${b.name}`} wrapperClassName="aspect-video w-full rounded-2xl border border-border" className="object-cover" />
-        ) : (
-          <div className="flex aspect-video items-center justify-center rounded-2xl bg-surface-2 text-5xl" aria-hidden="true">
-            🏟️
-          </div>
-        )}
+        <VenuePhotos business={b} />
         <div>
           <h2 id="venue-info-title" className="text-lg font-bold">
             {b.name}

@@ -5,6 +5,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import {
+  profileImagesSelect,
+  toBusinessPhotos,
+} from '../businesses/business-photos.js';
 import { BusinessesService } from '../businesses/businesses.service.js';
 import { businessImageUrl, publicApiUrl } from '../common/public-url.js';
 import { localDate } from '../courts/court-time.js';
@@ -57,7 +61,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 const businessInclude = {
   subscription: { select: { isActive: true } },
-  profileImage: { select: { id: true } },
+  profileImages: profileImagesSelect,
   amenities: {
     where: { active: true },
     select: { code: true, name: true },
@@ -102,6 +106,7 @@ export class OnlineBookingService {
     const business = await this.findBySlug(slug);
     const { available, reason } = bookingState(business);
     const courts = available ? await this.publicCourts(business.id) : [];
+    const photos = toBusinessPhotos(this.publicApiUrl, business.profileImages);
     const point =
       business.latitude !== null && business.longitude !== null
         ? `${business.latitude},${business.longitude}`
@@ -113,9 +118,8 @@ export class OnlineBookingService {
       neighborhood: business.neighborhood,
       description: business.description,
       amenities: business.amenities,
-      imageUrl: business.profileImage
-        ? businessImageUrl(this.publicApiUrl, business.profileImage.id)
-        : null,
+      imageUrl: photos[0]?.url ?? null,
+      photos: photos.map((p) => p.url),
       latitude: business.latitude,
       longitude: business.longitude,
       mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(point)}`,
@@ -252,7 +256,7 @@ export class OnlineBookingService {
             slug: true,
             address: true,
             neighborhood: true,
-            profileImage: { select: { id: true } },
+            profileImages: { ...profileImagesSelect, take: 1 },
           },
         },
       },
@@ -263,8 +267,8 @@ export class OnlineBookingService {
       name: business.name,
       address: business.address,
       neighborhood: business.neighborhood,
-      imageUrl: business.profileImage
-        ? businessImageUrl(this.publicApiUrl, business.profileImage.id)
+      imageUrl: business.profileImages[0]
+        ? businessImageUrl(this.publicApiUrl, business.profileImages[0].id)
         : null,
       clientSince: createdAt,
     }));
@@ -498,7 +502,9 @@ function distanceKm(
   const dLng = rad(to.longitude - from.lng);
   const a =
     Math.sin(dLat / 2) ** 2 +
-    Math.cos(rad(from.lat)) * Math.cos(rad(to.latitude)) * Math.sin(dLng / 2) ** 2;
+    Math.cos(rad(from.lat)) *
+      Math.cos(rad(to.latitude)) *
+      Math.sin(dLng / 2) ** 2;
   return 2 * 6371 * Math.asin(Math.sqrt(a));
 }
 
@@ -525,8 +531,8 @@ function toDirectoryBusiness(
     slug: business.slug!,
     address: business.address,
     neighborhood: business.neighborhood,
-    imageUrl: business.profileImage
-      ? businessImageUrl(origin, business.profileImage.id)
+    imageUrl: business.profileImages[0]
+      ? businessImageUrl(origin, business.profileImages[0].id)
       : null,
     latitude: business.latitude,
     longitude: business.longitude,

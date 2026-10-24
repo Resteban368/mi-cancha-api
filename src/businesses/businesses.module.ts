@@ -9,6 +9,6 @@ import { ImagesController } from './images.controller.js';
   imports: [CatalogsModule],
   controllers: [BusinessesController, ImagesController],
   providers: [BusinessesService, BusinessImagesService],
-  exports: [BusinessesService],
+  exports: [BusinessesService, BusinessImagesService],
 })
 export class BusinessesModule {}

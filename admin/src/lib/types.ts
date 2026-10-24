@@ -101,6 +101,10 @@ export interface ClientDetail {
   neighborhood: string;
   description: string | null;
   imageUrl: string | null;
+  /** Fotos del negocio (hasta 5); la primera es la portada. */
+  photos: { id: string; url: string }[];
+  latitude: number | null;
+  longitude: number | null;
   amenities: { code: string; name: string }[];
   createdAt: string;
   updatedAt: string;

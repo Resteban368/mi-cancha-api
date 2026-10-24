@@ -2,6 +2,7 @@ import { ConflictException, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import bcrypt from 'bcryptjs';
+import { vi } from 'vitest';
 import {
   createPrismaMock,
   PrismaMock,
@@ -144,7 +145,7 @@ describe('ClientsService', () => {
         updatedAt: now,
         owner: { ...storedClient.owner, verified: true, createdAt: now },
         amenities: [{ code: 'WIFI', name: 'WiFi' }],
-        profileImage: { id: 'img-1' },
+        profileImages: [{ id: 'img-1' }],
         subscription: {
           since: now,
           nextPayment: now,
@@ -216,8 +217,43 @@ describe('ClientsService', () => {
       expect(detail.recentPayments[0].method).toBe('Nequi');
       expect(detail.courts[0]).toMatchObject({
         basePricePerHour: 90_000,
-        isComplete: false,
+        isComplete: true,
       });
+    });
+  });
+
+  describe('update', () => {
+    it('actualiza datos y coordenadas del cliente', async () => {
+      prisma.business.count.mockResolvedValue(1);
+      prisma.business.update.mockResolvedValue({ id: 'biz-1' });
+      vi.spyOn(service, 'findOne').mockResolvedValue({ id: 'biz-1' } as any);
+
+      const result = await service.update('biz-1', {
+        name: 'Nuevo Nombre',
+        address: 'Calle 100 # 15-20',
+        neighborhood: 'Chicó',
+        latitude: 4.6789,
+        longitude: -74.0567,
+      });
+
+      expect(prisma.business.update).toHaveBeenCalledWith({
+        where: { id: 'biz-1' },
+        data: {
+          name: 'Nuevo Nombre',
+          address: 'Calle 100 # 15-20',
+          neighborhood: 'Chicó',
+          latitude: 4.6789,
+          longitude: -74.0567,
+        },
+      });
+      expect(result.id).toBe('biz-1');
+    });
+
+    it('falla si se envía latitud sin longitud', async () => {
+      prisma.business.count.mockResolvedValue(1);
+      await expect(
+        service.update('biz-1', { latitude: 4.6789, longitude: null }),
+      ).rejects.toThrow(ConflictException);
     });
   });
 

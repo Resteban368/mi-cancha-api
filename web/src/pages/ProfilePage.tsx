@@ -1,7 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Navigate, useSearchParams } from 'react-router';
+import { Navigate } from 'react-router';
 import { Header } from '../components/Header';
-import { ReservationHistory, StatsPanel } from '../components/PlayerActivity';
 import { PitchBottomNav } from '../components/PitchChrome';
 import { Alert, Button, Card, Field, inputClass, Skeleton } from '../components/ui';
 import { api, errorMessage } from '../lib/api';
@@ -22,10 +21,6 @@ export function ProfilePage() {
 
   if (!token) return <Navigate to={accountPath('ingresar', '/perfil')} replace />;
 
-  const [params, setParams] = useSearchParams();
-  const tab = params.get('tab') === 'datos' ? 'datos' : 'reservas';
-  const choose = (next: 'reservas' | 'datos') => setParams(next === 'datos' ? { tab: 'datos' } : {}, { replace: true });
-
   return (
     <>
       <Header />
@@ -34,63 +29,30 @@ export function ProfilePage() {
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
             Hola{me.data ? `, ${me.data.fullName.split(' ')[0]}` : ''}
           </h1>
-          <p className="mt-0.5 text-xs text-fg-3">Tu juego y tus datos, para todas las sedes.</p>
+          <p className="mt-0.5 text-xs text-fg-3">Tus datos, para todas las sedes. Tus partidos están en Mis reservas.</p>
         </div>
 
-        <div role="tablist" aria-label="Secciones" className="flex gap-1 rounded-xl bg-surface-2 p-1">
-          {(
-            [
-              ['reservas', 'Mis reservas'],
-              ['datos', 'Mis datos'],
-            ] as const
-          ).map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              role="tab"
-              aria-selected={tab === value}
-              onClick={() => choose(value)}
-              className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition ${
-                tab === value ? 'bg-surface text-fg shadow-sm' : 'text-fg-3 hover:text-fg'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
+        <div className="mx-auto flex w-full max-w-md flex-col gap-4">
+          {me.error && me.status !== 401 && <Alert>{me.error}</Alert>}
+          {me.data ? (
+            <ProfileForm
+              key={me.data.id}
+              player={me.data}
+              token={token}
+              onSaved={(player) => {
+                setPlayer(player);
+                me.reload();
+              }}
+            />
+          ) : (
+            <Skeleton className="h-96 rounded-2xl" />
+          )}
         </div>
-
-        {tab === 'reservas' ? (
-          <>
-            {me.data && (!me.data.email || !me.data.documentId) && (
-              <Alert tone="warn">
-                Completa tu {[!me.data.email && 'correo', !me.data.documentId && 'cédula'].filter(Boolean).join(' y ')}: las
-                sedes los usan para identificarte al llegar.{' '}
-                <button type="button" onClick={() => choose('datos')} className="font-semibold underline">
-                  Ir a Mis datos
-                </button>
-              </Alert>
-            )}
-            <StatsPanel token={token} />
-            <ReservationHistory token={token} />
-          </>
-        ) : (
-          <div className="mx-auto flex w-full max-w-md flex-col gap-4">
-            {me.error && me.status !== 401 && <Alert>{me.error}</Alert>}
-            {me.data ? (
-              <ProfileForm
-                key={me.data.id}
-                player={me.data}
-                token={token}
-                onSaved={(player) => {
-                  setPlayer(player);
-                  me.reload();
-                }}
-              />
-            ) : (
-              <Skeleton className="h-96 rounded-2xl" />
-            )}
-          </div>
-        )}
+        <div className="mx-auto w-full max-w-md">
+          <Button variant="secondary" onClick={signOut} className="w-full">
+            Cerrar sesión
+          </Button>
+        </div>
       </main>
       <PitchBottomNav />
     </>

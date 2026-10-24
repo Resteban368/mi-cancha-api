@@ -20,12 +20,8 @@ import {
   UpdateCourtDto,
 } from './dto/court.dto.js';
 
-/** Fotos sin las que la cancha no puede recibir reservas. */
-export const REQUIRED_PHOTOS: CourtPhotoSlot[] = [
-  CourtPhotoSlot.MAIN,
-  CourtPhotoSlot.SURFACE,
-  CourtPhotoSlot.LIGHTING,
-];
+/** Fotos sin las que la cancha no puede recibir reservas: solo la principal. */
+export const REQUIRED_PHOTOS: CourtPhotoSlot[] = [CourtPhotoSlot.MAIN];
 const PHOTO_ORDER = Object.values(CourtPhotoSlot);
 const DEFAULT_CURRENCY = 'COP';
 const DEFAULT_SLOT_DURATION = 60;
@@ -303,10 +299,7 @@ function assertValidTimes(
 }
 
 /** Las medidas van las dos o ninguna. */
-function assertValidDimensions(
-  length: unknown,
-  width: unknown,
-): void {
+function assertValidDimensions(length: unknown, width: unknown): void {
   if ((length == null) !== (width == null)) {
     throw new BadRequestException([
       'lengthMeters y widthMeters van juntos: envía las dos medidas o ninguna',

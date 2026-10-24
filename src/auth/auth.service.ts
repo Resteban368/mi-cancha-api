@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -15,6 +16,7 @@ import {
   AppleSignInDto,
   AuthResponseDto,
   AuthUserDto,
+  ChangePasswordDto,
   GoogleSignInDto,
   LoginDto,
   RegisterBusinessAdminDto,
@@ -69,6 +71,28 @@ export class AuthService {
       throw new UnauthorizedException('Credenciales inválidas');
     }
     return this.issueSession(user);
+  }
+
+  /** Cambia la contraseña del negocio; exige la actual para confirmar que es su dueño. */
+  async changePassword(userId: string, dto: ChangePasswordDto): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('El usuario ya no existe');
+    if (!user.passwordHash) {
+      throw new BadRequestException('Esta cuenta no tiene contraseña');
+    }
+    // 400 y no 401: un 401 haría que la app cierre la sesión.
+    if (!(await bcrypt.compare(dto.currentPassword, user.passwordHash))) {
+      throw new BadRequestException('La contraseña actual no es correcta');
+    }
+    if (dto.currentPassword === dto.newPassword) {
+      throw new BadRequestException(
+        'La nueva contraseña debe ser distinta de la actual',
+      );
+    }
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash: await bcrypt.hash(dto.newPassword, BCRYPT_ROUNDS) },
+    });
   }
 
   async signInWithGoogle(dto: GoogleSignInDto): Promise<AuthResponseDto> {

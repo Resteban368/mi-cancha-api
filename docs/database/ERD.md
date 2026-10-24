@@ -47,10 +47,11 @@ trigger de la base a partir del nombre al crear el negocio (nunca queda nulo)."
   }
   BusinessProfileImage {
     String id PK
-    String businessId FK, UK
+    String businessId FK
     String storagePath "Ruta del archivo dentro del almacenamiento, p. ej. mi-cancha/business-profile/<negocio>/<id>.jpg"
     String contentType
     Int sizeBytes
+    Int position "Orden dentro del negocio, desde 0; la 0 es la portada."
     DateTime createdAt
     DateTime updatedAt
   }
@@ -296,7 +297,7 @@ llegaron por la web y aún no la registran (el negocio siempre la pide)."
     DateTime createdAt
   }
   User ||--o| Business : "business"
-  Business ||--o| BusinessProfileImage : "profileImage"
+  Business ||--o{ BusinessProfileImage : "profileImages"
   Business ||--o{ Court : "courts"
   CourtSurface |o--o{ Court : "courts"
   Business ||--o{ SlotHold : "slotHolds"
@@ -362,20 +363,21 @@ La sede deportiva de un cliente. Cada administrador de negocio tiene exactamente
 - **Payment**: Tiene cero o muchos Payment (campo payments). Cada Payment apunta a este Business.
 - **Refund**: Tiene cero o muchos Refund (campo refunds). Cada Refund apunta a este Business.
 - **Subscription**: Puede tener un Subscription (campo subscription); la llave foránea está en Subscription.
-- **BusinessProfileImage**: Puede tener un BusinessProfileImage (campo profileImage); la llave foránea está en BusinessProfileImage.
+- **BusinessProfileImage**: Tiene cero o muchos BusinessProfileImage (campo profileImages). Cada BusinessProfileImage apunta a este Business.
 - **SlotHold**: Tiene cero o muchos SlotHold (campo slotHolds). Cada SlotHold apunta a este Business.
 - **ReservationGroup**: Tiene cero o muchos ReservationGroup (campo reservationGroups). Cada ReservationGroup apunta a este Business.
 
 ### BusinessProfileImage
 
-Foto de portada del negocio. Una por negocio; el archivo vive en Koofr.
+Fotos del negocio (hasta 5). La de menor position es la portada que sale en el directorio;
+el archivo vive en Koofr.
 
-- **Business**: Pertenece siempre a un Business mediante businessId; un Business tiene como máximo un BusinessProfileImage. Si se borra el Business, se borra también su BusinessProfileImage.
+- **Business**: Pertenece siempre a un Business mediante businessId; un Business puede tener varios BusinessProfileImage. Si se borra el Business, se borran también sus BusinessProfileImage.
 
 ### Court
 
 Cancha que el negocio alquila por turnos. Solo recibe reservas si está activa (isActive) y
-completa (tiene las fotos MAIN, SURFACE y LIGHTING). El límite del plan cuenta las activas.
+completa (tiene la foto MAIN). El límite del plan cuenta las activas.
 
 - **Business**: Pertenece siempre a un Business mediante businessId; un Business puede tener varios Court. Si se borra el Business, se borran también sus Court.
 - **CourtSurface**: Puede pertenecer a un CourtSurface mediante surfaceId; un CourtSurface puede tener varios Court. Si se borra el CourtSurface, el Court se conserva sin CourtSurface.

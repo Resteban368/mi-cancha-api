@@ -37,7 +37,7 @@ function modelMock(): ModelMock {
   };
 }
 
-/** Doble de PrismaService: los modelos son mocks y $transaction ejecuta el callback con el mismo doble. */
+/** Doble de PrismaService: los modelos son mocks y $transaction ejecuta el callback con el mismo doble (o resuelve la lista de operaciones). */
 export function createPrismaMock() {
   const prisma = {
     user: modelMock(),
@@ -66,7 +66,8 @@ export function createPrismaMock() {
     $transaction: vi.fn(),
   };
   prisma.$transaction.mockImplementation(
-    (callback: (tx: typeof prisma) => unknown) => callback(prisma),
+    (work: ((tx: typeof prisma) => unknown) | Promise<unknown>[]) =>
+      Array.isArray(work) ? Promise.all(work) : work(prisma),
   );
   return prisma;
 }

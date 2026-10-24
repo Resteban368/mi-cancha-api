@@ -21,7 +21,7 @@ function storedBusiness(data: Record<string, unknown>) {
     id: 'biz-1',
     ...data,
     amenities: [{ code: 'WIFI' }],
-    profileImage: null,
+    profileImages: [],
   };
 }
 
@@ -62,10 +62,10 @@ describe('BusinessesService', () => {
     );
   });
 
-  it('arma la URL pública de la foto de portada', async () => {
+  it('arma las URLs públicas de las fotos; la primera es la portada', async () => {
     prisma.business.findUnique.mockResolvedValue({
       ...storedBusiness(dto),
-      profileImage: { id: 'img-1' },
+      profileImages: [{ id: 'img-1' }, { id: 'img-2' }],
     });
 
     const result = await service.findMine('owner-1');
@@ -73,6 +73,16 @@ describe('BusinessesService', () => {
     expect(result.imageUrl).toBe(
       'https://api.test/api/v1/images/business-profile/img-1',
     );
+    expect(result.photos).toEqual([
+      {
+        id: 'img-1',
+        url: 'https://api.test/api/v1/images/business-profile/img-1',
+      },
+      {
+        id: 'img-2',
+        url: 'https://api.test/api/v1/images/business-profile/img-2',
+      },
+    ]);
   });
 
   it('al crear el negocio conecta sus servicios y le asigna el plan gratuito', async () => {

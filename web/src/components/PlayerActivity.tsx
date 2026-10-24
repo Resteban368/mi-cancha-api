@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { api, errorMessage } from '../lib/api';
-import { formatLongDay, formatMoney, formatTime, SPORT_EMOJI, SPORT_LABELS } from '../lib/format';
+import { bogotaDateOf, formatLongDay, formatMoney, formatTime, SPORT_EMOJI, SPORT_LABELS, STATUS_LABELS } from '../lib/format';
 import type { PlayerBusiness, PlayerReservation, PlayerReservationPage, PlayerStats, ReservationFilter, Sport } from '../lib/types';
 import { useApi } from '../lib/useApi';
 import { ChevronDownIcon, ChevronRightIcon } from './PitchChrome';
-import { ReservationCard } from './ReservationCard';
+import { displayStatus, ReservationCard } from './ReservationCard';
 import { Alert, Button, Card, Skeleton } from './ui';
 
 const monthShort = new Intl.DateTimeFormat('es-CO', { month: 'short', timeZone: 'UTC' });
@@ -152,7 +152,44 @@ const FILTERS: { value: ReservationFilter; label: string }[] = [
   { value: 'NO_SHOW', label: 'No asistí' },
 ];
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 20;
+
+type GroupBy = 'date' | 'site' | 'status' | 'none';
+
+const GROUPS: { value: GroupBy; label: string }[] = [
+  { value: 'date', label: 'Fecha' },
+  { value: 'site', label: 'Sede' },
+  { value: 'status', label: 'Estado' },
+  { value: 'none', label: 'Sin agrupar' },
+];
+
+const monthLong = new Intl.DateTimeFormat('es-CO', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+
+/** Sección a la que pertenece una reserva según cómo se agrupe la lista. */
+function groupOf(r: PlayerReservation, by: GroupBy): { key: string; label: string } {
+  if (by === 'site') return { key: r.businessSlug, label: r.businessName };
+  if (by === 'status') {
+    const state = displayStatus(r);
+    return { key: state, label: STATUS_LABELS[state]?.label ?? state };
+  }
+  if (by === 'date') {
+    const month = bogotaDateOf(r.start).slice(0, 7);
+    return { key: month, label: capitalize(monthLong.format(new Date(`${month}-15T12:00:00Z`))) };
+  }
+  return { key: 'all', label: '' };
+}
+
+/** Agrupa conservando el orden de la lista (ya viene por fecha). */
+function groupReservations(items: PlayerReservation[], by: GroupBy) {
+  const groups = new Map<string, { label: string; items: PlayerReservation[] }>();
+  for (const r of items) {
+    const { key, label } = groupOf(r, by);
+    const group = groups.get(key) ?? { label, items: [] };
+    group.items.push(r);
+    groups.set(key, group);
+  }
+  return [...groups.values()];
+}
 
 interface Listing {
   items: PlayerReservation[];
@@ -164,7 +201,8 @@ interface Listing {
 
 /** Todas mis reservas en todas las sedes, con filtros por estado, sede y deporte. */
 export function ReservationHistory({ token }: { token: string }) {
-  const [status, setStatus] = useState<ReservationFilter>('ALL');
+  const [status, setStatus] = useState<ReservationFilter>('UPCOMING');
+  const [groupBy, setGroupBy] = useState<GroupBy>('date');
   const [business, setBusiness] = useState('');
   const [sport, setSport] = useState<Sport | ''>('');
   const [listing, setListing] = useState<Listing>({ items: [], total: 0, page: 0, loading: true, error: null });
@@ -209,12 +247,12 @@ export function ReservationHistory({ token }: { token: string }) {
     CANCELLED: stats.data?.cancelled,
     NO_SHOW: stats.data?.noShow,
   };
-  const hasFilters = status !== 'ALL' || business !== '' || sport !== '';
+  const hasFilters = status !== 'UPCOMING' || business !== '' || sport !== '';
   const { items, total, page, loading, error } = listing;
 
   return (
     <section aria-label="Mis reservas" className="flex flex-col gap-3">
-      <h2 className="text-lg font-bold tracking-tight">Todas mis reservas</h2>
+      <h2 className="text-lg font-bold tracking-tight">Mis reservas</h2>
 
       <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 py-1" role="group" aria-label="Estado">
         {FILTERS.map(({ value, label }) => {
@@ -262,6 +300,25 @@ export function ReservationHistory({ token }: { token: string }) {
         </Select>
       </div>
 
+      <div className="flex items-center gap-2">
+        <span className="shrink-0 text-xs font-medium text-fg-3">Agrupar por</span>
+        <div role="group" aria-label="Agrupar por" className="no-scrollbar flex gap-1 overflow-x-auto rounded-xl bg-surface-2 p-1">
+          {GROUPS.map(({ value, label }) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={groupBy === value}
+              onClick={() => setGroupBy(value)}
+              className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                groupBy === value ? 'bg-surface text-fg shadow-sm' : 'text-fg-3 hover:text-fg'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {error && (
         <Alert>
           {error}{' '}
@@ -286,7 +343,7 @@ export function ReservationHistory({ token }: { token: string }) {
             <Button
               variant="secondary"
               onClick={() => {
-                setStatus('ALL');
+                setStatus('UPCOMING');
                 setBusiness('');
                 setSport('');
               }}
@@ -304,13 +361,27 @@ export function ReservationHistory({ token }: { token: string }) {
           <p className="text-xs font-medium text-fg-3" aria-live="polite">
             Mostrando <b className="font-bold text-fg">{plural(total, 'reserva', 'reservas')}</b>
           </p>
-          <ul className="flex flex-col gap-3">
-            {items.map((r) => (
-              <li key={r.id}>
-                <ReservationCard reservation={r} business={{ name: r.businessName, slug: r.businessSlug }} />
-              </li>
+          <div className="flex flex-col gap-5">
+            {groupReservations(items, groupBy).map((group) => (
+              <section key={group.label} aria-label={group.label || 'Reservas'} className="flex flex-col gap-3">
+                {groupBy !== 'none' && (
+                  <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-fg-3">
+                    {group.label}
+                    <span className="tabular rounded-full bg-surface-2 px-2 py-0.5 text-[10px] font-semibold normal-case tracking-normal">
+                      {group.items.length}
+                    </span>
+                  </h3>
+                )}
+                <ul className="flex flex-col gap-3">
+                  {group.items.map((r) => (
+                    <li key={r.id}>
+                      <ReservationCard reservation={r} business={{ name: r.businessName, slug: r.businessSlug }} />
+                    </li>
+                  ))}
+                </ul>
+              </section>
             ))}
-          </ul>
+          </div>
           {items.length < total && (
             <div className="flex justify-center">
               <Button variant="secondary" loading={loading} onClick={() => void load(page + 1)}>

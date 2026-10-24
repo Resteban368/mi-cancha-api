@@ -5,16 +5,17 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CatalogsService } from '../catalogs/catalogs.service.js';
-import { businessImageUrl, publicApiUrl } from '../common/public-url.js';
+import { publicApiUrl } from '../common/public-url.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { profileImagesSelect, toBusinessPhotos } from './business-photos.js';
 import { BusinessDto, SaveBusinessDto } from './dto/business.dto.js';
 
 const SUBSCRIPTION_PERIOD_DAYS = 30;
 
 const businessInclude = {
   amenities: { select: { code: true }, orderBy: { sortOrder: 'asc' } },
-  profileImage: { select: { id: true } },
+  profileImages: profileImagesSelect,
 } satisfies Prisma.BusinessInclude;
 
 type BusinessWithAmenities = Prisma.BusinessGetPayload<{
@@ -110,7 +111,7 @@ export class BusinessesService {
   }
 
   private toDto(business: BusinessWithAmenities): BusinessDto {
-    const image = business.profileImage;
+    const photos = toBusinessPhotos(this.publicApiUrl, business.profileImages);
     return {
       id: business.id,
       name: business.name,
@@ -118,7 +119,8 @@ export class BusinessesService {
       neighborhood: business.neighborhood,
       description: business.description,
       amenities: business.amenities.map((a) => a.code),
-      imageUrl: image ? businessImageUrl(this.publicApiUrl, image.id) : null,
+      imageUrl: photos[0]?.url ?? null,
+      photos,
       latitude: business.latitude,
       longitude: business.longitude,
     };

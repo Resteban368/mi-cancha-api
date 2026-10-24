@@ -3,6 +3,9 @@ import {
   Controller,
   Delete,
   Get,
+  Param,
+  ParseUUIDPipe,
+  Post,
   Put,
   UploadedFile,
   UseInterceptors,
@@ -25,7 +28,11 @@ import {
 } from '../storage/image-upload.js';
 import { BusinessImagesService } from './business-images.service.js';
 import { BusinessesService } from './businesses.service.js';
-import { BusinessDto, SaveBusinessDto } from './dto/business.dto.js';
+import {
+  BusinessDto,
+  ReorderPhotosDto,
+  SaveBusinessDto,
+} from './dto/business.dto.js';
 
 @ApiTags('business / profile')
 @ApiBearerAuth()
@@ -54,7 +61,7 @@ export class BusinessesController {
 
   @Put('image')
   @ApiOperation({
-    summary: 'Subir o reemplazar la foto de portada (JPG o PNG, máx. 4 MB)',
+    summary: 'Reemplazar la portada, la primera foto (JPG o PNG, máx. 4 MB)',
   })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -73,6 +80,48 @@ export class BusinessesController {
     @UploadedFile() file: UploadedImage | undefined,
   ): Promise<BusinessDto> {
     return this.imagesService.upload(user.sub, file);
+  }
+
+  @Post('photos')
+  @ApiOperation({
+    summary: 'Agregar una foto al negocio (hasta 5; JPG o PNG, máx. 4 MB)',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['image'],
+      properties: { image: { type: 'string', format: 'binary' } },
+    },
+  })
+  @UseInterceptors(
+    FileInterceptor('image', { limits: { fileSize: MAX_IMAGE_BYTES } }),
+  )
+  addPhoto(
+    @CurrentUser() user: AuthPayload,
+    @UploadedFile() file: UploadedImage | undefined,
+  ): Promise<BusinessDto> {
+    return this.imagesService.add(user.sub, file);
+  }
+
+  @Put('photos/order')
+  @ApiOperation({
+    summary: 'Ordenar las fotos; la primera es la portada del directorio',
+  })
+  sortPhotos(
+    @CurrentUser() user: AuthPayload,
+    @Body() dto: ReorderPhotosDto,
+  ): Promise<BusinessDto> {
+    return this.imagesService.sort(user.sub, dto.ids);
+  }
+
+  @Delete('photos/:photoId')
+  @ApiOperation({ summary: 'Quitar una foto del negocio' })
+  removePhoto(
+    @CurrentUser() user: AuthPayload,
+    @Param('photoId', ParseUUIDPipe) photoId: string,
+  ): Promise<BusinessDto> {
+    return this.imagesService.delete(user.sub, photoId);
   }
 
   @Delete('image')

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   UnauthorizedException,
@@ -47,6 +48,58 @@ describe('AuthService', () => {
       ],
     }).compile();
     service = moduleRef.get(AuthService);
+  });
+
+  describe('changePassword', () => {
+    const dto = { currentPassword: 'vieja12345', newPassword: 'nueva12345' };
+
+    it('guarda la nueva contraseña hasheada cuando la actual es correcta', async () => {
+      prisma.user.findUnique.mockResolvedValue({
+        ...baseUser,
+        passwordHash: await bcrypt.hash('vieja12345', 4),
+      });
+
+      await service.changePassword('user-1', dto);
+
+      const { data } = prisma.user.update.mock.calls[0][0];
+      expect(data.passwordHash).not.toBe('nueva12345');
+      await expect(
+        bcrypt.compare('nueva12345', data.passwordHash),
+      ).resolves.toBe(true);
+    });
+
+    it('rechaza (400, no 401) una contraseña actual incorrecta', async () => {
+      prisma.user.findUnique.mockResolvedValue({
+        ...baseUser,
+        passwordHash: await bcrypt.hash('otra-distinta', 4),
+      });
+
+      await expect(service.changePassword('user-1', dto)).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it('rechaza una nueva igual a la actual', async () => {
+      prisma.user.findUnique.mockResolvedValue({
+        ...baseUser,
+        passwordHash: await bcrypt.hash('vieja12345', 4),
+      });
+
+      await expect(
+        service.changePassword('user-1', {
+          currentPassword: 'vieja12345',
+          newPassword: 'vieja12345',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rechaza cuentas sin contraseña', async () => {
+      prisma.user.findUnique.mockResolvedValue(baseUser);
+      await expect(service.changePassword('user-1', dto)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
   });
 
   describe('registerBusinessAdmin', () => {
@@ -214,13 +267,11 @@ describe('AuthService', () => {
 
     it('no vincula Google a una cuenta bloqueada con el mismo email', async () => {
       social.verifyGoogle.mockResolvedValue(identity);
-      prisma.user.findUnique
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({
-          ...baseUser,
-          role: UserRole.JUGADOR,
-          bannedAt: new Date(),
-        });
+      prisma.user.findUnique.mockResolvedValueOnce(null).mockResolvedValueOnce({
+        ...baseUser,
+        role: UserRole.JUGADOR,
+        bannedAt: new Date(),
+      });
 
       await expect(
         service.signInWithGoogle({ idToken: 'token' }),

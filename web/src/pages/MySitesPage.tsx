@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Link, Navigate } from 'react-router';
 import { Header } from '../components/Header';
 import { ChevronRightIcon, PinIcon, PitchBottomNav } from '../components/PitchChrome';
@@ -12,11 +13,11 @@ export function MySitesPage() {
   const { token, signOut } = useSession();
   const sites = useApi<PlayerBusiness[]>(token ? '/player/businesses' : null, token);
 
-  if (!token) return <Navigate to={accountPath('ingresar', '/mis-sedes')} replace />;
-  if (sites.status === 401) {
-    signOut();
-    return <Navigate to={accountPath('ingresar', '/mis-sedes')} replace />;
-  }
+  useEffect(() => {
+    if (sites.status === 401) signOut();
+  }, [sites.status, signOut]);
+
+  if (!token || sites.status === 401) return <Navigate to={accountPath('ingresar', '/mis-sedes')} replace />;
 
   const count = sites.data?.length ?? 0;
 
