@@ -1,5 +1,5 @@
 import type { ReactNode, SVGProps } from 'react';
-import { Link, NavLink, useLocation } from 'react-router';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router';
 import { accountPath } from '../lib/next';
 import { useSession } from '../lib/session';
 
@@ -53,6 +53,12 @@ const LoginIcon = icon(
   <>
     <path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4" />
     <path d="m10 16 4-4-4-4M14 12H4" />
+  </>,
+);
+const ArrowLeftIcon = icon(
+  <>
+    <path d="m12 19-7-7 7-7" />
+    <path d="M19 12H5" />
   </>,
 );
 const CalendarIcon = icon(
@@ -192,7 +198,16 @@ export function BusinessHeader({
 }) {
   const { player } = useSession();
   const { pathname, search } = useLocation();
+  const navigate = useNavigate();
   const initial = player?.fullName.trim().charAt(0).toUpperCase() || '?';
+
+  /** Vuelve a la pantalla anterior; si se abrió el link directo, al listado de sedes. */
+  function goBack(event: { preventDefault: () => void }) {
+    if (window.history.state?.idx > 0) {
+      event.preventDefault();
+      navigate(-1);
+    }
+  }
 
   return (
     <header className="sticky top-0 z-30 border-b border-white/5 bg-bg/95 backdrop-blur-md">
@@ -200,10 +215,11 @@ export function BusinessHeader({
         <div className="flex min-w-0 items-center gap-2.5">
           <Link
             to="/"
-            aria-label="Todas las sedes"
-            className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-emerald-600 to-emerald-400 text-slate-950 shadow-md shadow-emerald-500/20"
+            onClick={goBack}
+            aria-label="Volver"
+            className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-surface text-fg transition hover:bg-surface-2 active:scale-95"
           >
-            <PinIcon className="size-5" strokeWidth={2.5} />
+            <ArrowLeftIcon className="size-5" strokeWidth={2.5} />
           </Link>
           <div className="min-w-0">
             <h1 className="truncate text-base font-bold leading-none tracking-tight">{name ?? 'Mi Cancha'}</h1>
