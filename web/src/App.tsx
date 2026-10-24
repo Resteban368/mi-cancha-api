@@ -7,7 +7,7 @@ import { MyBookingsPage } from './pages/MyBookingsPage';
 import { MyReservationsPage } from './pages/MyReservationsPage';
 import { MySitesPage } from './pages/MySitesPage';
 import { PolicyPage } from './pages/PolicyPage';
-import { accountPath } from './lib/next';
+import { accountPath, safeNext } from './lib/next';
 import { useSession } from './lib/session';
 
 export function App() {
@@ -19,13 +19,19 @@ export function App() {
 }
 
 /** Una cuenta que creó una sede debe cambiar su clave y aceptar la política antes de usar la web. */
+const ACCOUNT_PAGES = ['/ingresar', '/registro', '/recuperar'];
+
 function OnboardingGate({ children }: { children: React.ReactNode }) {
   const { player } = useSession();
   const { pathname, search } = useLocation();
   const pending = Boolean(player?.mustChangePassword || player?.needsDataConsent);
   const exempt = pathname === '/bienvenida' || pathname === '/politica-de-datos';
   if (pending && !exempt) {
-    return <Navigate to={`/bienvenida?next=${encodeURIComponent(`${pathname}${search}`)}`} replace />;
+    // Desde ingresar/registro/recuperar se vuelve al destino que traían, no a la pantalla de cuenta.
+    const back = ACCOUNT_PAGES.includes(pathname)
+      ? safeNext(new URLSearchParams(search).get('next'))
+      : `${pathname}${search}`;
+    return <Navigate to={`/bienvenida?next=${encodeURIComponent(back)}`} replace />;
   }
   return <>{children}</>;
 }
