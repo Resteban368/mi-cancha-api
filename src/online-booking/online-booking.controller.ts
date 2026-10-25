@@ -28,6 +28,7 @@ import {
 } from '../reservations/dto/reservation.dto.js';
 import {
   CurrentHoldDto,
+  DirectoryCityDto,
   DirectoryMapPointDto,
   DirectoryPageDto,
   DirectoryQueryDto,
@@ -76,6 +77,16 @@ export class PublicBookingController {
   })
   directory(@Query() query: DirectoryQueryDto): Promise<DirectoryPageDto> {
     return this.booking.directory(query);
+  }
+
+  @Public()
+  @Get('cities')
+  @ApiOperation({
+    summary:
+      'Ciudades que ya tienen sedes reservables, con cuántas (selector del directorio)',
+  })
+  directoryCities(): Promise<DirectoryCityDto[]> {
+    return this.booking.directoryCities();
   }
 
   // Va antes de businesses/:slug para que «map» no se tome como un slug.

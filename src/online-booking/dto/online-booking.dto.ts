@@ -1,3 +1,4 @@
+import { CityRefDto } from '../../catalogs/dto/location.dto.js';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
@@ -372,6 +373,11 @@ export class DirectoryQueryDto {
   @Matches(/^[A-Z_]{2,40}$/, { message: 'amenity no es un código válido' })
   amenity?: string;
 
+  /** Ciudad elegida (id de GET /public/cities): solo trae las sedes de esa ciudad. */
+  @IsOptional()
+  @IsUUID()
+  cityId?: string;
+
   /** Latitud del usuario (solo si pidió "cerca de mí"). Va junto con lng. */
   @IsOptional()
   @Type(() => Number)
@@ -412,6 +418,15 @@ export class DirectoryQueryDto {
   limit?: number;
 }
 
+/** Ciudad con sedes que reciben reservas, para el selector del directorio. */
+export class DirectoryCityDto {
+  id: string;
+  name: string;
+  department: { id: string; name: string };
+  /** Sedes que reciben reservas en esa ciudad. */
+  businessCount: number;
+}
+
 /** Punto de una sede en el mapa del directorio. */
 export class DirectoryMapPointDto {
   name: string;
@@ -436,6 +451,8 @@ export class DirectoryBusinessDto {
   /** Precio por hora más bajo entre sus canchas reservables; null si no hay. */
   fromPricePerHour: number | null;
   currency: string;
+  /** Ciudad y departamento; null en sedes anteriores que aún no la completan. */
+  city: CityRefDto | null;
   /** Solo si se pidieron lat y lng. */
   distanceKm: number | null;
 }

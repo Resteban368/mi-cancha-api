@@ -540,6 +540,52 @@ describe('OnlineBookingService', () => {
       );
     });
 
+    it('con cityId solo busca sedes de esa ciudad', async () => {
+      prisma.business.findMany
+        .mockResolvedValueOnce([{ id: 'a', latitude: null, longitude: null }])
+        .mockResolvedValueOnce([sede('a', { slug: 'a' })]);
+
+      await service.directory({ cityId: 'city-1' });
+
+      expect(prisma.business.findMany.mock.calls[0][0].where).toMatchObject({
+        cityId: 'city-1',
+        onlineBookingEnabled: true,
+      });
+    });
+
+    it('las ciudades del selector son solo las que tienen sedes reservables, con su conteo', async () => {
+      prisma.business.groupBy.mockResolvedValue([
+        { cityId: 'c-flo', _count: { _all: 3 } },
+        { cityId: 'c-bog', _count: { _all: 1 } },
+      ]);
+      prisma.city.findMany.mockResolvedValue([
+        {
+          id: 'c-flo',
+          name: 'Florencia',
+          department: { id: 'd1', name: 'Caquetá' },
+        },
+        {
+          id: 'c-bog',
+          name: 'Bogotá, D.C.',
+          department: { id: 'd2', name: 'Bogotá, D.C.' },
+        },
+      ]);
+
+      const cities = await service.directoryCities();
+
+      expect(prisma.business.groupBy.mock.calls[0][0].where).toMatchObject({
+        onlineBookingEnabled: true,
+        cityId: { not: null },
+      });
+      expect(prisma.city.findMany.mock.calls[0][0].where).toEqual({
+        id: { in: ['c-flo', 'c-bog'] },
+      });
+      expect(cities.map((c) => [c.name, c.businessCount])).toEqual([
+        ['Bogotá, D.C.', 1],
+        ['Florencia', 3],
+      ]);
+    });
+
     it('el mapa trae solo las sedes reservables con punto', async () => {
       prisma.business.findMany.mockResolvedValue([
         {

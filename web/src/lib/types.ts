@@ -71,12 +71,12 @@ export interface SlotHold {
   expiresAt: string;
 }
 
-/** Punto de una sede en el mapa de ubicación. */
-export interface DirectoryMapPoint {
+/** Ciudad con sedes que reciben reservas (selector del directorio). */
+export interface DirectoryCity {
+  id: string;
   name: string;
-  slug: string;
-  latitude: number;
-  longitude: number;
+  department: { id: string; name: string };
+  businessCount: number;
 }
 
 /** Sede del directorio general (/reservar). */
@@ -94,6 +94,8 @@ export interface DirectoryBusiness {
   fromPricePerHour: number | null;
   currency: string;
   /** Solo si se pidió "cerca de mí". */
+  /** Ciudad y departamento; null en sedes que aún no la completan. */
+  city: { id: string; name: string; department: { id: string; name: string } } | null;
   distanceKm: number | null;
 }
 

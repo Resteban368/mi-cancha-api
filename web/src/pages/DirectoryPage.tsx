@@ -12,14 +12,7 @@ import {
 import { Alert, Button, Card, Skeleton } from '../components/ui';
 import { api, errorMessage } from '../lib/api';
 import { formatMoney, SPORT_EMOJI, SPORT_LABELS } from '../lib/format';
-import {
-  locationPromptSkipped,
-  radiusLabel,
-  readLocation,
-  saveLocation,
-  skipLocationPrompt,
-  type SavedLocation,
-} from '../lib/location';
+import { cityPromptSkipped, readCity, saveCity, skipCityPrompt, type SavedCity } from '../lib/location';
 import { useSession } from '../lib/session';
 import type {
   DirectoryBusiness,
@@ -30,15 +23,10 @@ import type {
 } from '../lib/types';
 import { useApi } from '../lib/useApi';
 
-// Leaflet pesa bastante: el mapa se descarga solo cuando se abre el diálogo.
-const LocationDialog = lazy(() => import('../components/LocationDialog'));
+// El selector de ciudades se descarga solo cuando se abre.
+const CityDialog = lazy(() => import('../components/CityDialog'));
 
 const PAGE_SIZE = 12;
-
-interface Origin {
-  lat: number;
-  lng: number;
-}
 
 interface Listing {
   businesses: DirectoryBusiness[];
@@ -54,10 +42,9 @@ export function DirectoryPage() {
   const [term, setTerm] = useState('');
   const [sport, setSport] = useState<Sport | ''>('');
   const [amenity, setAmenity] = useState('');
-  const [location, setLocation] = useState<SavedLocation | null>(readLocation);
+  const [city, setCity] = useState<SavedCity | null>(readCity);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const origin: Origin | null = location && { lat: location.lat, lng: location.lng };
-  const radiusKm = location?.radiusKm ?? null;
+  const cityId = city?.cityId ?? null;
   const [listing, setListing] = useState<Listing>({
     businesses: [],
     total: 0,
@@ -87,11 +74,7 @@ export function DirectoryPage() {
       if (term) params.set('q', term);
       if (sport) params.set('sport', sport);
       if (amenity) params.set('amenity', amenity);
-      if (origin) {
-        params.set('lat', String(origin.lat));
-        params.set('lng', String(origin.lng));
-        if (radiusKm !== null) params.set('radiusKm', String(radiusKm));
-      }
+      if (cityId) params.set('cityId', cityId);
       try {
         const data = await api<DirectoryResponse>(`/public/businesses?${params}`);
         if (id !== latest.current) return;
@@ -107,33 +90,27 @@ export function DirectoryPage() {
         setListing((s) => ({ ...s, loading: false, error: errorMessage(error) }));
       }
     },
-    [term, sport, amenity, location],
+    [term, sport, amenity, cityId],
   );
 
   useEffect(() => {
     load(1);
   }, [load]);
 
-  // Con sesión iniciada, la primera vez que entra a Explorar se le pregunta desde dónde busca.
+  // Con sesión iniciada, la primera vez que entra a Explorar se le pregunta en qué ciudad busca.
   useEffect(() => {
-    if (token && !readLocation() && !locationPromptSkipped()) setDialogOpen(true);
+    if (token && !readCity() && !cityPromptSkipped()) setDialogOpen(true);
   }, [token]);
 
-  function confirmLocation(next: SavedLocation) {
-    saveLocation(next);
-    setLocation(next);
-    setDialogOpen(false);
-  }
-
-  function clearLocation() {
-    saveLocation(null);
-    setLocation(null);
+  function chooseCity(next: SavedCity) {
+    saveCity(next);
+    setCity(next);
     setDialogOpen(false);
   }
 
   function closeDialog() {
-    // «Ahora no»: sin ubicación guardada no se vuelve a preguntar en esta sesión.
-    if (!location) skipLocationPrompt();
+    // «Ahora no»: sin ciudad guardada no se vuelve a preguntar en esta sesión.
+    if (!city) skipCityPrompt();
     setDialogOpen(false);
   }
 
@@ -213,16 +190,16 @@ export function DirectoryPage() {
             <button
               type="button"
               onClick={() => setDialogOpen(true)}
-              aria-pressed={Boolean(origin)}
+              aria-pressed={Boolean(cityId)}
               className={
                 'col-span-5 flex items-center justify-center gap-1.5 rounded-xl border px-2 py-2.5 text-xs font-semibold transition active:scale-95 sm:col-span-4 ' +
-                (origin
+                (cityId
                   ? 'border-accent bg-accent text-accent-fg'
                   : 'border-accent/30 bg-surface text-accent-text hover:bg-hover')
               }
             >
-              <PinIcon className="size-4" />
-              {origin ? `Cerca de ti · ${radiusLabel(radiusKm)}` : 'Mi ubicación'}
+              <PinIcon className="size-4 shrink-0" />
+              <span className="truncate">{city?.label ?? 'Ciudad'}</span>
             </button>
           </div>
 
@@ -259,7 +236,7 @@ export function DirectoryPage() {
               <b className="font-bold text-fg">
                 {total} {total === 1 ? 'sede' : 'sedes'}
               </b>
-              {origin ? (radiusKm === null ? ' · de la más cercana a la más lejana' : ` · a ${radiusKm} km o menos de tu ubicación`) : ''}
+              {cityId && city ? ` · en ${city.label}` : ''}
             </p>
             <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {businesses.map((business) => (
@@ -281,7 +258,7 @@ export function DirectoryPage() {
       <PitchBottomNav />
       {dialogOpen && (
         <Suspense fallback={null}>
-          <LocationDialog open current={location} onConfirm={confirmLocation} onClear={clearLocation} onClose={closeDialog} />
+          <CityDialog current={city} onSelect={chooseCity} onClose={closeDialog} />
         </Suspense>
       )}
     </>
@@ -312,7 +289,7 @@ function Chip({ pressed, onClick, children }: { pressed: boolean; onClick: () =>
 }
 
 function BusinessCard({ business, member }: { business: DirectoryBusiness; member: boolean }) {
-  const { name, slug, neighborhood, address, imageUrl, sports, courtCount, amenities, fromPricePerHour, currency, distanceKm } =
+  const { name, slug, neighborhood, address, imageUrl, sports, courtCount, amenities, fromPricePerHour, currency, city } =
     business;
   const shownSports = sports.slice(0, 2);
   const extraSports = sports.length - shownSports.length;
@@ -376,15 +353,11 @@ function BusinessCard({ business, member }: { business: DirectoryBusiness; membe
         <div className="min-w-0">
           <div className="flex items-start justify-between gap-2">
             <h2 className="truncate text-base font-bold tracking-tight">{name}</h2>
-            {distanceKm !== null && (
-              <span className="shrink-0 rounded-md border border-accent/20 bg-accent/10 px-2 py-0.5 text-xs font-semibold text-accent-text">
-                {formatDistance(distanceKm)}
-              </span>
-            )}
           </div>
           <p className="mt-0.5 flex items-center gap-1 text-xs text-fg-3">
             <PinIcon className="size-3.5 shrink-0" />
             <span className="truncate">
+              {city ? `${city.name}, ${city.department.name} · ` : ''}
               {neighborhood} · {address}
             </span>
           </p>
@@ -426,7 +399,3 @@ function BusinessCard({ business, member }: { business: DirectoryBusiness; membe
   );
 }
 
-function formatDistance(km: number): string {
-  if (km < 1) return `${Math.round(km * 1000)} m`;
-  return `${km.toFixed(1).replace('.', ',')} km`;
-}

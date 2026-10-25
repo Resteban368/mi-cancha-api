@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { citySelect, toCityRef } from '../catalogs/dto/location.dto.js';
 import { bookingStateOf } from '../businesses/booking-link.js';
 import {
   profileImagesSelect,
@@ -34,6 +35,7 @@ import {
 import {
   CurrentHoldDto,
   DirectoryBusinessDto,
+  DirectoryCityDto,
   DirectoryMapPointDto,
   DirectoryPageDto,
   DirectoryQueryDto,
@@ -62,6 +64,7 @@ export const WEB_RULES: WebBookingRules = {
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 const businessInclude = {
+  city: citySelect,
   subscription: { select: { isActive: true } },
   profileImages: profileImagesSelect,
   amenities: {
@@ -241,6 +244,27 @@ export class OnlineBookingService {
           : [];
       }),
     };
+  }
+
+  /** Ciudades que ya tienen sedes reservables (no todo el catálogo de Colombia), con cuántas. */
+  async directoryCities(): Promise<DirectoryCityDto[]> {
+    const groups = await this.prisma.business.groupBy({
+      by: ['cityId'],
+      where: { ...directoryWhere({}), cityId: { not: null } },
+      _count: { _all: true },
+    });
+    const counts = new Map(groups.map((g) => [g.cityId!, g._count._all]));
+    const cities = await this.prisma.city.findMany({
+      where: { id: { in: [...counts.keys()] } },
+      select: {
+        id: true,
+        name: true,
+        department: { select: { id: true, name: true } },
+      },
+    });
+    return cities
+      .map((c) => ({ ...c, businessCount: counts.get(c.id) ?? 0 }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'es'));
   }
 
   /** Ubicación de todas las sedes que reciben reservas, para el mapa del directorio. */
@@ -517,6 +541,7 @@ function directoryWhere(query: DirectoryQueryDto): Prisma.BusinessWhereInput {
           ],
         }
       : {}),
+    ...(query.cityId ? { cityId: query.cityId } : {}),
     ...(query.amenity
       ? { amenities: { some: { code: query.amenity, active: true } } }
       : {}),
@@ -573,6 +598,7 @@ function toDirectoryBusiness(
     amenities: business.amenities,
     fromPricePerHour: prices.length ? Math.min(...prices) : null,
     currency: courts[0]?.currency ?? 'COP',
+    city: toCityRef(business.city ?? null),
     distanceKm: distance === null ? null : Math.round(distance * 10) / 10,
   };
 }

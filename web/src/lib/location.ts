@@ -1,41 +1,42 @@
-/** Ubicación desde la que el jugador busca sedes; se guarda en el navegador. */
-export interface SavedLocation {
-  lat: number;
-  lng: number;
-  /** Radio de búsqueda en km; null = sin límite (solo ordena por cercanía). */
-  radiusKm: number | null;
+/** Ciudad desde la que el jugador busca sedes; se guarda en el navegador. */
+export interface SavedCity {
+  /** null = «Todas las ciudades». */
+  cityId: string | null;
+  /** Texto para el botón, p. ej. «Florencia» o «Todas las ciudades». */
+  label: string;
 }
 
-const KEY = 'mi-cancha-location';
-const SKIPPED_KEY = 'mi-cancha-location-skipped';
+const KEY = 'mi-cancha-city';
+const SKIPPED_KEY = 'mi-cancha-city-skipped';
 
-export const RADIUS_OPTIONS: (number | null)[] = [5, 10, 25, 50, null];
-export const DEFAULT_RADIUS_KM = 25;
+export const ALL_CITIES: SavedCity = { cityId: null, label: 'Todas las ciudades' };
 
-export function readLocation(): SavedLocation | null {
+export function readCity(): SavedCity | null {
   try {
+    // La ubicación por mapa de una versión anterior ya no se usa.
+    localStorage.removeItem('mi-cancha-location');
     const raw = localStorage.getItem(KEY);
     if (!raw) return null;
-    const value = JSON.parse(raw) as Partial<SavedLocation>;
-    if (typeof value.lat !== 'number' || typeof value.lng !== 'number') return null;
-    return { lat: value.lat, lng: value.lng, radiusKm: typeof value.radiusKm === 'number' ? value.radiusKm : null };
+    const value = JSON.parse(raw) as Partial<SavedCity>;
+    if (typeof value.label !== 'string') return null;
+    return { cityId: typeof value.cityId === 'string' ? value.cityId : null, label: value.label };
   } catch {
     return null;
   }
 }
 
-export function saveLocation(location: SavedLocation | null) {
+export function saveCity(city: SavedCity | null) {
   try {
-    if (location) localStorage.setItem(KEY, JSON.stringify(location));
+    if (city) localStorage.setItem(KEY, JSON.stringify(city));
     else localStorage.removeItem(KEY);
     sessionStorage.removeItem(SKIPPED_KEY);
   } catch {
-    // Sin almacenamiento la ubicación dura lo que la pestaña.
+    // Sin almacenamiento la ciudad dura lo que la pestaña.
   }
 }
 
 /** «Ahora no»: no se vuelve a preguntar durante esta sesión del navegador. */
-export function skipLocationPrompt() {
+export function skipCityPrompt() {
   try {
     sessionStorage.setItem(SKIPPED_KEY, '1');
   } catch {
@@ -43,12 +44,10 @@ export function skipLocationPrompt() {
   }
 }
 
-export function locationPromptSkipped(): boolean {
+export function cityPromptSkipped(): boolean {
   try {
     return sessionStorage.getItem(SKIPPED_KEY) === '1';
   } catch {
     return false;
   }
 }
-
-export const radiusLabel = (km: number | null) => (km === null ? 'Todas' : `${km} km`);
