@@ -3,4 +3,4 @@ Allow: /
 Disallow: /admin
 Disallow: /api/
 
-Sitemap: https://app.micanchaapp.com/sitemap.xml
+Sitemap: https://micanchaapp.com/sitemap.xml
