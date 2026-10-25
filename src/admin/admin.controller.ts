@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  ParseEnumPipe,
   ParseUUIDPipe,
   Patch,
   Post,
@@ -20,6 +21,7 @@ import {
   ApiBody,
   ApiConsumes,
   ApiOperation,
+  ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
 import type { AuthPayload } from '../common/auth/auth-payload.js';
@@ -37,6 +39,7 @@ import {
 } from '../generated/prisma/enums.js';
 import { ReorderPhotosDto } from '../businesses/dto/business.dto.js';
 import { BusinessImagesService } from '../businesses/business-images.service.js';
+import { CourtPhotosService } from '../courts/court-photos.service.js';
 import { CourtsService } from '../courts/courts.service.js';
 import { CourtDto, UpdateCourtDto } from '../courts/dto/court.dto.js';
 import { CustomersService } from '../customers/customers.service.js';
@@ -139,6 +142,7 @@ export class AdminController {
     private readonly customersService: CustomersService,
     private readonly refundsService: RefundsService,
     private readonly businessImagesService: BusinessImagesService,
+    private readonly courtPhotosService: CourtPhotosService,
   ) {}
 
   @Get('dashboard')
@@ -280,6 +284,21 @@ export class AdminController {
   ): Promise<CourtDto> {
     await this.clientsService.requireClient(id);
     return this.courtsService.updateForBusiness(id, courtId, dto);
+  }
+
+  @Delete('clients/:id/courts/:courtId/photos/:slot')
+  @ApiOperation({
+    summary:
+      'Eliminar una foto de una cancha del cliente (sin la principal la cancha deja de recibir reservas)',
+  })
+  @ApiParam({ name: 'slot', enum: CourtPhotoSlot })
+  async removeClientCourtPhoto(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('courtId', ParseUUIDPipe) courtId: string,
+    @Param('slot', new ParseEnumPipe(CourtPhotoSlot)) slot: CourtPhotoSlot,
+  ): Promise<CourtDto> {
+    await this.clientsService.requireClient(id);
+    return this.courtPhotosService.removeForBusiness(id, courtId, slot);
   }
 
   @Get('clients/:id/courts/:courtId/availability')

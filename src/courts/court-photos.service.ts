@@ -79,6 +79,15 @@ export class CourtPhotosService {
     slot: CourtPhotoSlot,
   ): Promise<CourtDto> {
     const businessId = await this.businesses.requireBusinessId(ownerId);
+    return this.removeForBusiness(businessId, courtId, slot);
+  }
+
+  /** Quita la foto de una posición de una cancha del negocio (también la usa el super admin). */
+  async removeForBusiness(
+    businessId: string,
+    courtId: string,
+    slot: CourtPhotoSlot,
+  ): Promise<CourtDto> {
     const court = await this.courts.findOwnedCourt(businessId, courtId);
     const photo = await this.prisma.courtPhoto.findUnique({
       where: { courtId_slot: { courtId: court.id, slot } },
@@ -88,7 +97,9 @@ export class CourtPhotosService {
       await this.prisma.courtPhoto.delete({ where: { id: photo.id } });
       await this.deleteQuietly(photo.storagePath);
     }
-    return this.courts.findOne(ownerId, court.id);
+    return this.courts.toDto(
+      await this.courts.findOwnedCourt(businessId, court.id),
+    );
   }
 
   /** Contenido de una foto para servirla públicamente. */

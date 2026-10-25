@@ -10,6 +10,6 @@ import { CourtsService } from './courts.service.js';
   imports: [BusinessesModule, CatalogsModule],
   controllers: [CourtsController, CourtPhotosController],
   providers: [CourtsService, CourtPhotosService],
-  exports: [CourtsService],
+  exports: [CourtsService, CourtPhotosService],
 })
 export class CourtsModule {}

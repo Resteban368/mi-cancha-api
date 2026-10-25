@@ -13,7 +13,7 @@ import {
 import { useToast } from '../lib/toast';
 import type { Catalogs, Court, CourtRate, CourtSchedule, DayOfWeek, Sport } from '../lib/types';
 import { useApi } from '../lib/useApi';
-import { ImageIcon, PlusIcon } from './icons';
+import { ImageIcon, PlusIcon, TrashIcon } from './icons';
 import {
   Badge,
   Button,
@@ -206,6 +206,10 @@ function CourtEditor({
   onSaved: () => void;
 }) {
   const notify = useToast();
+  // Las fotos se eliminan al instante (no esperan a "Guardar cambios").
+  const [photos, setPhotos] = useState(court.photos);
+  const [removing, setRemoving] = useState<string>();
+  const [photosChanged, setPhotosChanged] = useState(false);
   const [form, setForm] = useState({
     name: court.name,
     sport: court.sport,
@@ -287,16 +291,43 @@ function CourtEditor({
     }
   }
 
+  async function removePhoto(slot: string) {
+    const label = PHOTO_SLOT_LABELS[slot as keyof typeof PHOTO_SLOT_LABELS];
+    const warning =
+      slot === 'MAIN' ? ' Sin la foto principal la cancha deja de recibir reservas.' : '';
+    if (!window.confirm(`¿Eliminar la foto "${label}" de ${court.name}?${warning}`)) return;
+    setRemoving(slot);
+    setError(undefined);
+    try {
+      const updated = await api<Court>(`/admin/clients/${clientId}/courts/${court.id}/photos/${slot}`, {
+        method: 'DELETE',
+      });
+      setPhotos(updated.photos);
+      setPhotosChanged(true);
+      notify(`Foto "${label}" eliminada`);
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setRemoving(undefined);
+    }
+  }
+
+  // Si se eliminó alguna foto, la lista de canchas se actualiza al cerrar.
+  function close() {
+    if (photosChanged) onSaved();
+    else onClose();
+  }
+
   return (
     <Modal
       open
-      onClose={onClose}
+      onClose={close}
       size="lg"
       title={court.name}
       description="Los cambios aplican de inmediato en la app del negocio."
       footer={
         <>
-          <Button onClick={onClose}>Cancelar</Button>
+          <Button onClick={close}>Cancelar</Button>
           <Button type="submit" form="court-editor" variant="primary" loading={saving}>
             Guardar cambios
           </Button>
@@ -310,8 +341,8 @@ function CourtEditor({
           <SectionTitle>Fotos</SectionTitle>
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
             {PHOTO_SLOTS.map((slot) => {
-              const photo = court.photos.find((p) => p.slot === slot);
-              const required = slot === 'MAIN' || slot === 'SURFACE' || slot === 'LIGHTING';
+              const photo = photos.find((p) => p.slot === slot);
+              const required = slot === 'MAIN';
               return (
                 <figure key={slot} className="flex flex-col gap-1">
                   {photo ? (
@@ -335,11 +366,23 @@ function CourtEditor({
                     {PHOTO_SLOT_LABELS[slot]}
                     {required && !photo && <span className="block text-warn">Obligatoria</span>}
                   </figcaption>
+                  {photo && (
+                    <button
+                      type="button"
+                      onClick={() => void removePhoto(slot)}
+                      disabled={removing !== undefined}
+                      aria-label={`Eliminar foto ${PHOTO_SLOT_LABELS[slot]}`}
+                      className="inline-flex items-center justify-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-rose-500 hover:bg-rose-500/10 disabled:opacity-40"
+                    >
+                      <TrashIcon width={13} height={13} />
+                      {removing === slot ? 'Eliminando…' : 'Eliminar'}
+                    </button>
+                  )}
                 </figure>
               );
             })}
           </div>
-          <p className="mt-2 text-xs text-fg-3">Las fotos las sube el negocio desde la app.</p>
+          <p className="mt-2 text-xs text-fg-3">Las fotos las sube el negocio desde la app; aquí solo se pueden eliminar.</p>
         </section>
 
         <section className="grid gap-4 sm:grid-cols-2">
