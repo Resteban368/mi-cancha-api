@@ -8,10 +8,8 @@ import { Button, Dialog } from './ui';
 
 const COLOMBIA_CENTER: L.LatLngTuple = [4.6, -74.1];
 
-const TILES = {
-  light: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-  dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-};
+// Teselas de OpenStreetMap (gratuitas, con atribución). En modo oscuro se invierten con CSS (.map-dark).
+const TILES = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 
 const venueIcon = L.divIcon({
   className: '',
@@ -66,9 +64,10 @@ export default function LocationDialog({
       current ? [current.lat, current.lng] : COLOMBIA_CENTER,
       current ? 12 : 6,
     );
-    L.tileLayer(dark ? TILES.dark : TILES.light, {
+    instance.getContainer().classList.toggle('map-dark', dark);
+    L.tileLayer(TILES, {
       maxZoom: 19,
-      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/attributions">CARTO</a>',
+      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     }).addTo(instance);
     instance.on('click', (e: L.LeafletMouseEvent) => setPoint({ lat: e.latlng.lat, lng: e.latlng.lng }));
     map.current = instance;
