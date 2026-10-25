@@ -11,3 +11,14 @@ coverage
 .vercel
 /public/admin
 /public/reservar
+
+# Landing (landing/ compila en la raíz de public/)
+/landing/node_modules
+/landing/dist-ssr
+/public/index.html
+/public/assets
+/public/brand
+/public/img
+/public/og.png
+/public/robots.txt
+/public/sitemap.xml

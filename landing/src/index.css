@@ -1,0 +1,90 @@
+@import 'tailwindcss';
+
+/*
+ * Tokens de marca Mi Cancha (ver docs/marca-y-temas.md). Claro por defecto y oscuro
+ * siguiendo al sistema. La landing no tiene selector de tema: la marca no lo pide aquí.
+ */
+@theme inline {
+  --font-sans: 'Montserrat', system-ui, sans-serif;
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-fg: var(--fg);
+  --color-fg-2: var(--fg-2);
+  --color-fg-3: var(--fg-3);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-text: var(--accent-text);
+  --color-accent-soft: var(--accent-soft);
+}
+
+:root {
+  color-scheme: light;
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --surface-2: #edf2f1;
+  --border: #d9e3e1;
+  --fg: #0b1f28;
+  --fg-2: #3c5360;
+  --fg-3: #5b717c;
+  --accent: #00c853;
+  --accent-fg: #0b1f28;
+  --accent-text: #007a33;
+  --accent-soft: #e1f8ea;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: #0b1f28;
+    --surface: #102b37;
+    --surface-2: #163845;
+    --border: #1f4352;
+    --fg: #f8fafc;
+    --fg-2: #bfd0d8;
+    --fg-3: #8aa3ae;
+    --accent-text: #00c853;
+    --accent-soft: rgba(0, 200, 83, 0.14);
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/*
+ * Revelado al hacer scroll. Solo con JavaScript (clase .js en <html>): sin él, o para un
+ * buscador que no lo ejecuta, el contenido prerenderizado se ve directo.
+ */
+.js .reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity 0.6s ease,
+    transform 0.6s ease;
+}
+
+.js .reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .js .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
