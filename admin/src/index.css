@@ -1,70 +1,87 @@
 @import 'tailwindcss';
 
-/* Tokens del panel. Los colores de datos (--series-*) son la paleta validada
-   para daltonismo: azul = clientes, naranja = jugadores. */
+/*
+ * Paleta de marca Mi Cancha: verde esmeralda #00C853, negro azulado #0B1F28 y blanco #F8FAFC.
+ * Modo claro en :root y modo oscuro en [data-theme='dark']. theme.ts pone data-theme según la
+ * preferencia guardada o la del sistema; sin JavaScript se sigue la del sistema.
+ * --accent es el color de relleno (botones, marca); --accent-text es el verde legible como texto.
+ * Los colores de datos (--series-*) son la paleta validada para daltonismo.
+ */
 :root {
   color-scheme: light;
-  --bg: #f4f5f2;
+  --bg: #f8fafc;
   --surface: #ffffff;
-  --surface-2: #f0f1ed;
-  --border: #e1e3dc;
-  --fg: #16181d;
-  --fg-2: #4a4f59;
-  --fg-3: #737985;
-  --accent: #1a7a43;
-  --accent-fg: #ffffff;
-  --accent-soft: #e3f2e8;
-  --danger: #c0352f;
-  --danger-soft: #fbe9e8;
+  --surface-2: #edf2f1;
+  --border: #d9e3e1;
+  --hairline: rgba(11, 31, 40, 0.09);
+  --hover: rgba(11, 31, 40, 0.05);
+  --fg: #0b1f28;
+  --fg-2: #3c5360;
+  --fg-3: #5b717c;
+  --accent: #00c853;
+  --accent-fg: #0b1f28;
+  --accent-text: #007a33;
+  --accent-soft: #e1f8ea;
+  --danger: #c62828;
+  --danger-fg: #ffffff;
+  --danger-soft: #fdebeb;
   --warn-soft: #fdf3dc;
   --warn: #8a5a00;
   --series-1: #2a78d6;
   --series-2: #eb6834;
-  --grid: #e7e8e3;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:where(:not([data-theme='light'])) {
-    color-scheme: dark;
-    --bg: #111317;
-    --surface: #1a1d23;
-    --surface-2: #22262d;
-    --border: #2e333c;
-    --fg: #eceef2;
-    --fg-2: #b5bac4;
-    --fg-3: #8a909c;
-    --accent: #43b874;
-    --accent-fg: #0d1a12;
-    --accent-soft: #183224;
-    --danger: #ef6b65;
-    --danger-soft: #3a1d1c;
-    --warn-soft: #3a2f14;
-    --warn: #f0c060;
-    --series-1: #3987e5;
-    --series-2: #d95926;
-    --grid: #2a2e36;
-  }
+  --grid: #e4ebe9;
 }
 
 :root[data-theme='dark'] {
   color-scheme: dark;
-  --bg: #111317;
-  --surface: #1a1d23;
-  --surface-2: #22262d;
-  --border: #2e333c;
-  --fg: #eceef2;
-  --fg-2: #b5bac4;
-  --fg-3: #8a909c;
-  --accent: #43b874;
-  --accent-fg: #0d1a12;
-  --accent-soft: #183224;
-  --danger: #ef6b65;
-  --danger-soft: #3a1d1c;
-  --warn-soft: #3a2f14;
-  --warn: #f0c060;
+  --bg: #0b1f28;
+  --surface: #102b37;
+  --surface-2: #163845;
+  --border: #1f4352;
+  --hairline: rgba(248, 250, 252, 0.09);
+  --hover: rgba(248, 250, 252, 0.06);
+  --fg: #f8fafc;
+  --fg-2: #bfd0d8;
+  --fg-3: #8aa3ae;
+  --accent: #00c853;
+  --accent-fg: #0b1f28;
+  --accent-text: #00c853;
+  --accent-soft: rgba(0, 200, 83, 0.14);
+  --danger: #ff8a80;
+  --danger-fg: #0b1f28;
+  --danger-soft: rgba(255, 82, 82, 0.14);
+  --warn-soft: rgba(255, 193, 7, 0.14);
+  --warn: #ffd54f;
   --series-1: #3987e5;
   --series-2: #d95926;
-  --grid: #2a2e36;
+  --grid: #1a3c49;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    color-scheme: dark;
+    --bg: #0b1f28;
+    --surface: #102b37;
+    --surface-2: #163845;
+    --border: #1f4352;
+    --hairline: rgba(248, 250, 252, 0.09);
+    --hover: rgba(248, 250, 252, 0.06);
+    --fg: #f8fafc;
+    --fg-2: #bfd0d8;
+    --fg-3: #8aa3ae;
+    --accent: #00c853;
+    --accent-fg: #0b1f28;
+    --accent-text: #00c853;
+    --accent-soft: rgba(0, 200, 83, 0.14);
+    --danger: #ff8a80;
+  --danger-fg: #0b1f28;
+    --danger-soft: rgba(255, 82, 82, 0.14);
+    --warn-soft: rgba(255, 193, 7, 0.14);
+    --warn: #ffd54f;
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --grid: #1a3c49;
+  }
 }
 
 @theme inline {
@@ -72,13 +89,17 @@
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
   --color-border: var(--border);
+  --color-hairline: var(--hairline);
+  --color-hover: var(--hover);
   --color-fg: var(--fg);
   --color-fg-2: var(--fg-2);
   --color-fg-3: var(--fg-3);
   --color-accent: var(--accent);
   --color-accent-fg: var(--accent-fg);
+  --color-accent-text: var(--accent-text);
   --color-accent-soft: var(--accent-soft);
   --color-danger: var(--danger);
+  --color-danger-fg: var(--danger-fg);
   --color-danger-soft: var(--danger-soft);
   --color-warn: var(--warn);
   --color-warn-soft: var(--warn-soft);
@@ -86,6 +107,7 @@
   --color-series-2: var(--series-2);
   --color-grid: var(--grid);
   --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Montserrat', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 
 body {
@@ -97,4 +119,31 @@ body {
 
 .tabular {
   font-variant-numeric: tabular-nums;
+}
+
+/* Montserrat (tipografía de marca) en títulos y en el nombre de la marca. */
+h1,
+h2,
+h3,
+.font-display {
+  font-family: var(--font-display);
+}
+
+/* Logo con dos versiones: la de texto claro se muestra solo en modo oscuro. */
+.brand-on-dark {
+  display: none;
+}
+:root[data-theme='dark'] .brand-on-light {
+  display: none;
+}
+:root[data-theme='dark'] .brand-on-dark {
+  display: inline-block;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .brand-on-light {
+    display: none;
+  }
+  :root:not([data-theme]) .brand-on-dark {
+    display: inline-block;
+  }
 }

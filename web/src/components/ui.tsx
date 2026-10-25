@@ -164,7 +164,7 @@ export function Alert({ tone = 'danger', children }: { tone?: 'danger' | 'warn' 
         'rounded-xl border px-4 py-3 text-sm',
         tone === 'danger' && 'border-danger/30 bg-danger-soft text-danger',
         tone === 'warn' && 'border-warn/30 bg-warn-soft text-warn',
-        tone === 'success' && 'border-accent/30 bg-accent-soft text-accent',
+        tone === 'success' && 'border-accent/30 bg-accent-soft text-accent-text',
       )}
     >
       {children}

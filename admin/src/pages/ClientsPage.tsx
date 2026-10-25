@@ -133,7 +133,7 @@ export function ClientsPage() {
                   {clients.data.items.map((client) => (
                     <tr key={client.id}>
                       <Td>
-                        <Link to={client.id} className="font-medium hover:text-accent hover:underline">
+                        <Link to={client.id} className="font-medium hover:text-accent-text hover:underline">
                           {client.name}
                         </Link>
                         <p className="text-xs text-fg-3">
@@ -183,7 +183,7 @@ export function ClientsPage() {
                         <Link
                           to={client.id}
                           aria-label={`Ver ficha de ${client.name}`}
-                          className="inline-flex items-center gap-1 whitespace-nowrap rounded-lg px-2 py-1 text-sm font-medium text-accent hover:bg-accent-soft"
+                          className="inline-flex items-center gap-1 whitespace-nowrap rounded-lg px-2 py-1 text-sm font-medium text-accent-text hover:bg-accent-soft"
                         >
                           Ver ficha <ChevronRightIcon width={16} height={16} />
                         </Link>

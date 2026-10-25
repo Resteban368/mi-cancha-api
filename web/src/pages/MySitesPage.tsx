@@ -47,7 +47,7 @@ export function MySitesPage() {
             <p className="text-sm text-fg-3">Reserva en una sede y quedará aquí para volver cuando quieras.</p>
             <Link
               to="/"
-              className="mt-3 inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-accent px-4 text-sm font-bold text-accent-fg shadow-md shadow-emerald-500/20 transition hover:brightness-110"
+              className="mt-3 inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-accent px-4 text-sm font-bold text-accent-fg shadow-md shadow-accent/20 transition hover:brightness-110"
             >
               Ver sedes
               <ChevronRightIcon className="size-4" strokeWidth={2.5} />
@@ -78,7 +78,7 @@ export function MySitesPage() {
 
 function SiteCard({ site }: { site: PlayerBusiness }) {
   return (
-    <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-surface shadow-lg">
+    <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-hairline bg-surface shadow-lg">
       <Link
         to={`/${site.slug}`}
         className="group block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
@@ -97,7 +97,7 @@ function SiteCard({ site }: { site: PlayerBusiness }) {
             </div>
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-surface via-black/10 to-transparent" />
-          <span className="absolute left-3 top-3 rounded-full bg-emerald-500/90 px-2.5 py-1 text-[11px] font-bold text-white shadow-sm backdrop-blur-md">
+          <span className="absolute left-3 top-3 rounded-full bg-accent px-2.5 py-1 text-[11px] font-bold text-accent-fg shadow-sm backdrop-blur-md">
             Ya eres cliente
           </span>
         </div>
@@ -115,13 +115,13 @@ function SiteCard({ site }: { site: PlayerBusiness }) {
       <div className="mt-auto flex gap-2 p-4 pt-3">
         <Link
           to={`/${site.slug}/mis-reservas`}
-          className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl border border-white/10 bg-surface-2 px-3 text-xs font-semibold transition hover:border-slate-500 active:scale-95"
+          className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl border border-hairline bg-surface-2 px-3 text-xs font-semibold transition hover:border-fg-3 active:scale-95"
         >
           Mis reservas
         </Link>
         <Link
           to={`/${site.slug}`}
-          className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-accent px-3 text-xs font-bold text-accent-fg shadow-md shadow-emerald-500/20 transition hover:brightness-110 active:scale-95"
+          className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-accent px-3 text-xs font-bold text-accent-fg shadow-md shadow-accent/20 transition hover:brightness-110 active:scale-95"
         >
           Reservar
           <ChevronRightIcon className="size-3.5" strokeWidth={2.5} />

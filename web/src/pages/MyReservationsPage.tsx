@@ -44,7 +44,7 @@ export function MyReservationsPage() {
           </div>
           <Link
             to={`/${slug}`}
-            className="shrink-0 rounded-xl bg-accent px-4 py-2.5 text-xs font-bold text-accent-fg shadow-md shadow-emerald-500/20 transition hover:brightness-110 active:scale-95"
+            className="shrink-0 rounded-xl bg-accent px-4 py-2.5 text-xs font-bold text-accent-fg shadow-md shadow-accent/20 transition hover:brightness-110 active:scale-95"
           >
             Nueva reserva
           </Link>

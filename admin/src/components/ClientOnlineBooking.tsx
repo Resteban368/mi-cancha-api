@@ -103,7 +103,7 @@ export function ClientOnlineBooking({ clientId }: { clientId: string }) {
           </form>
         ) : (
           <div className="flex flex-wrap items-center gap-2">
-            <a href={data.url} target="_blank" rel="noreferrer" className="break-all font-medium text-accent hover:underline">
+            <a href={data.url} target="_blank" rel="noreferrer" className="break-all font-medium text-accent-text hover:underline">
               {data.url}
             </a>
             <Badge tone={data.bookingAvailable ? 'success' : 'warn'}>

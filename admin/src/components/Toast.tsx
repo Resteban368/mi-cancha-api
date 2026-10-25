@@ -27,7 +27,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             key={toast.id}
             className="flex max-w-sm items-center gap-2 rounded-lg border border-border bg-surface px-4 py-3 text-sm text-fg shadow-lg"
           >
-            <span className={toast.tone === 'success' ? 'text-accent' : 'text-danger'}>
+            <span className={toast.tone === 'success' ? 'text-accent-text' : 'text-danger'}>
               {toast.tone === 'success' ? <CheckIcon /> : <AlertIcon />}
             </span>
             {toast.message}

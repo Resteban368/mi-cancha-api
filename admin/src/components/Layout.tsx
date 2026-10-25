@@ -1,3 +1,4 @@
+import { ThemeToggle } from './ThemeToggle';
 import { NavLink, Outlet } from 'react-router';
 import { useAuth } from '../lib/auth-context';
 import {
@@ -24,7 +25,7 @@ const NAV = [
 const linkClass = ({ isActive }: { isActive: boolean }) =>
   [
     'flex shrink-0 items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition',
-    isActive ? 'bg-accent-soft text-accent' : 'text-fg-2 hover:bg-surface-2 hover:text-fg',
+    isActive ? 'bg-accent-soft text-accent-text' : 'text-fg-2 hover:bg-surface-2 hover:text-fg',
   ].join(' ');
 
 export function Layout() {
@@ -36,10 +37,13 @@ export function Layout() {
           <div className="flex items-center gap-2.5">
             <BrandMark />
             <div className="leading-tight">
-              <p className="font-semibold text-fg">Mi Cancha</p>
+              <p className="font-display text-base font-extrabold tracking-tight text-fg">
+                <span className="text-accent">Mi</span> Cancha
+              </p>
               <p className="text-xs text-fg-3">Administración</p>
             </div>
           </div>
+          <ThemeToggle cycle className="ml-auto lg:hidden" />
           <button
             type="button"
             onClick={logout}
@@ -63,6 +67,7 @@ export function Layout() {
         <div className="hidden border-t border-border p-4 lg:block">
           <p className="truncate text-sm font-medium text-fg">{user?.displayName}</p>
           <p className="text-xs text-fg-3">Super admin</p>
+          <ThemeToggle className="mt-3" />
           <button
             type="button"
             onClick={logout}

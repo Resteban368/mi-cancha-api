@@ -134,7 +134,7 @@ export function ClientCover({ client, onChanged }: ClientPhotosProps) {
                 onClick={() => fileInputRef.current?.click()}
                 disabled={busy}
                 aria-label="Agregar foto"
-                className="flex size-12 items-center justify-center rounded-lg border-2 border-dashed border-border text-lg text-fg-3 hover:border-accent hover:text-accent"
+                className="flex size-12 items-center justify-center rounded-lg border-2 border-dashed border-border text-lg text-fg-3 hover:border-accent hover:text-accent-text"
               >
                 +
               </button>
@@ -171,7 +171,7 @@ export function ClientCover({ client, onChanged }: ClientPhotosProps) {
               type="button"
               disabled={busy}
               onClick={() => current && remove(current.id)}
-              className="ml-auto inline-flex items-center gap-1 rounded-lg px-2 py-1 font-medium text-rose-500 hover:bg-rose-500/10 disabled:opacity-40"
+              className="ml-auto inline-flex items-center gap-1 rounded-lg px-2 py-1 font-medium text-danger hover:bg-danger-soft disabled:opacity-40"
             >
               <TrashIcon width={13} height={13} />
               Eliminar

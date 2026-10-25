@@ -84,7 +84,7 @@ export function PlansPage() {
                 {plan.benefits.length === 0 && <li className="text-fg-3">Sin beneficios descritos</li>}
                 {plan.benefits.map((b, i) => (
                   <li key={i} className="flex gap-2">
-                    <span className="mt-0.5 text-accent">
+                    <span className="mt-0.5 text-accent-text">
                       <CheckIcon />
                     </span>
                     <span>

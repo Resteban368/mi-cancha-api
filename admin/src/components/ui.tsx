@@ -20,7 +20,7 @@ const buttonStyles: Record<ButtonVariant, string> = {
   primary: 'bg-accent text-accent-fg hover:brightness-110',
   secondary: 'bg-surface border border-border text-fg hover:bg-surface-2',
   ghost: 'text-fg-2 hover:bg-surface-2 hover:text-fg',
-  danger: 'bg-danger text-white hover:brightness-110',
+  danger: 'bg-danger text-danger-fg hover:brightness-110',
 };
 
 export function Button({
@@ -198,7 +198,7 @@ type BadgeTone = 'neutral' | 'success' | 'danger' | 'warn';
 
 const badgeStyles: Record<BadgeTone, string> = {
   neutral: 'bg-surface-2 text-fg-2',
-  success: 'bg-accent-soft text-accent',
+  success: 'bg-accent-soft text-accent-text',
   danger: 'bg-danger-soft text-danger',
   warn: 'bg-warn-soft text-warn',
 };

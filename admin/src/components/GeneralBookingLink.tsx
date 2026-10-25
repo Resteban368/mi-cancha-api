@@ -31,7 +31,7 @@ export function GeneralBookingLink() {
         <Skeleton className="h-9 w-full" />
       ) : url ? (
         <div className="flex flex-wrap items-center gap-2">
-          <a href={url} target="_blank" rel="noreferrer" className="break-all font-medium text-accent hover:underline">
+          <a href={url} target="_blank" rel="noreferrer" className="break-all font-medium text-accent-text hover:underline">
             {url}
           </a>
           <div className="ml-auto">

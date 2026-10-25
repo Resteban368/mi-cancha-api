@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Navigate } from 'react-router';
 import { Header } from '../components/Header';
 import { PitchBottomNav } from '../components/PitchChrome';
+import { ThemeToggle } from '../components/ThemeToggle';
 import { Alert, Button, Card, Field, inputClass, PasswordField, Skeleton } from '../components/ui';
 import { api, errorMessage } from '../lib/api';
 import { accountPath } from '../lib/next';
@@ -48,6 +49,13 @@ export function ProfilePage() {
             <Skeleton className="h-96 rounded-2xl" />
           )}
           {me.data && <PasswordForm token={token} />}
+          <Card className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-bold tracking-tight">Apariencia</h2>
+              <p className="mt-0.5 text-xs text-fg-3">Claro, oscuro o el del dispositivo.</p>
+            </div>
+            <ThemeToggle />
+          </Card>
         </div>
         <div className="mx-auto w-full max-w-md">
           <Button variant="secondary" onClick={signOut} className="w-full">
@@ -127,7 +135,7 @@ function ProfileForm({
           <span className="text-sm font-medium">Celular</span>
           <p className="flex min-h-11 items-center justify-between rounded-xl border border-border bg-surface-2 px-3 text-sm">
             {player.phone}
-            <span className="text-xs font-semibold text-accent">Verificado</span>
+            <span className="text-xs font-semibold text-accent-text">Verificado</span>
           </p>
         </div>
         <Field label="Correo electrónico" type="email" autoComplete="email" value={form.email} onChange={set('email')} />

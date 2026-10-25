@@ -136,7 +136,7 @@ export const UploadIcon = (p: IconProps) => (
 
 
 
-/** Ícono de la app (assets/logo.png). Las esquinas se redondean como ícono de app. */
+/** Icono de la app (esquinas redondeadas del propio archivo). */
 export function BrandMark({ size = 32 }: { size?: number }) {
   return (
     <img
@@ -144,22 +144,32 @@ export function BrandMark({ size = 32 }: { size?: number }) {
       alt=""
       width={size}
       height={size}
-      className="shrink-0 rounded-[22%]"
+      className="shrink-0"
       draggable={false}
     />
   );
 }
 
-/** Logo completo con nombre y lema (assets/prev_logo.png); trae fondo claro propio. */
+/** Logo completo con lema; hay una versión para fondo claro y otra para fondo oscuro. */
 export function BrandLogo({ className }: { className?: string }) {
+  const base = import.meta.env.BASE_URL;
   return (
-    <img
-      src={`${import.meta.env.BASE_URL}brand/logo-full.png`}
-      alt="Mi Cancha · Encuentra, reserva, juega"
-      width={320}
-      height={271}
-      className={className}
-      draggable={false}
-    />
+    <>
+      <img
+        src={`${base}brand/logo-light.png`}
+        alt="Mi Cancha · Tus reservas, al instante"
+        width={320}
+        className={`brand-on-light ${className ?? ''}`}
+        draggable={false}
+      />
+      <img
+        src={`${base}brand/logo-dark.png`}
+        alt=""
+        aria-hidden="true"
+        width={320}
+        className={`brand-on-dark ${className ?? ''}`}
+        draggable={false}
+      />
+    </>
   );
 }

@@ -175,7 +175,7 @@ function WeekStrip({ schedules }: { schedules: CourtSchedule[] }) {
             title={label}
             aria-label={label}
             className={`flex size-6 items-center justify-center rounded text-[11px] font-semibold ${
-              open ? 'bg-accent-soft text-accent' : 'bg-surface-2 text-fg-3 line-through'
+              open ? 'bg-accent-soft text-accent-text' : 'bg-surface-2 text-fg-3 line-through'
             }`}
           >
             {DAY_SHORT[day]}
@@ -372,7 +372,7 @@ function CourtEditor({
                       onClick={() => void removePhoto(slot)}
                       disabled={removing !== undefined}
                       aria-label={`Eliminar foto ${PHOTO_SLOT_LABELS[slot]}`}
-                      className="inline-flex items-center justify-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-rose-500 hover:bg-rose-500/10 disabled:opacity-40"
+                      className="inline-flex items-center justify-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-danger hover:bg-danger-soft disabled:opacity-40"
                     >
                       <TrashIcon width={13} height={13} />
                       {removing === slot ? 'Eliminando…' : 'Eliminar'}

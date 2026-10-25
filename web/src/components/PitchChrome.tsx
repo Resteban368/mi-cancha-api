@@ -1,6 +1,8 @@
 import type { ReactNode, SVGProps } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router';
 import { accountPath } from '../lib/next';
+import { BrandMark, Wordmark } from './Brand';
+import { ThemeToggle } from './ThemeToggle';
 import { useSession } from '../lib/session';
 
 const icon = (path: ReactNode) =>
@@ -75,22 +77,15 @@ export function PitchHeader() {
   const initial = player?.fullName.trim().charAt(0).toUpperCase() || '?';
 
   return (
-    <header className="sticky top-0 z-40 border-b border-white/5 bg-bg/90 backdrop-blur-md">
+    <header className="sticky top-0 z-40 border-b border-hairline bg-bg/90 backdrop-blur-md">
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3">
         <Link to="/" className="flex items-center gap-2.5">
-          <img
-            src={`${import.meta.env.BASE_URL}brand/icon-128.png`}
-            alt=""
-            width={36}
-            height={36}
-            className="rounded-xl shadow-lg shadow-emerald-500/20 ring-1 ring-white/20"
-          />
-          <span className="flex items-center gap-1 whitespace-nowrap text-lg font-extrabold tracking-tight">
-            Mi Cancha <span className="size-1.5 rounded-full bg-accent" aria-hidden />
-          </span>
+          <BrandMark className="rounded-xl shadow-md shadow-accent/20" />
+          <Wordmark className="text-lg" />
         </Link>
 
         <nav className="flex items-center gap-2">
+          <ThemeToggle cycle />
           {player ? (
             <>
               <Link
@@ -101,14 +96,14 @@ export function PitchHeader() {
               </Link>
               <Link
                 to="/mis-sedes"
-                className="whitespace-nowrap rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold tracking-wide text-accent transition active:scale-95"
+                className="whitespace-nowrap rounded-lg border border-accent/20 bg-accent/10 px-3 py-1.5 text-xs font-semibold tracking-wide text-accent-text transition active:scale-95"
               >
                 Mis sedes
               </Link>
               <Link
                 to="/perfil"
                 aria-label="Mi perfil"
-                className="flex size-9 items-center justify-center rounded-xl border border-white/10 bg-surface text-sm font-bold text-fg transition active:scale-95"
+                className="flex size-9 items-center justify-center rounded-xl border border-hairline bg-surface text-sm font-bold text-fg transition active:scale-95"
               >
                 {initial}
               </Link>
@@ -123,7 +118,7 @@ export function PitchHeader() {
           ) : (
             <Link
               to={accountPath('ingresar', `${pathname}${search}`)}
-              className="whitespace-nowrap rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold tracking-wide text-accent transition active:scale-95"
+              className="whitespace-nowrap rounded-lg border border-accent/20 bg-accent/10 px-3 py-1.5 text-xs font-semibold tracking-wide text-accent-text transition active:scale-95"
             >
               Ingresar
             </Link>
@@ -141,12 +136,12 @@ export function PitchBottomNav() {
 
   const tab = ({ isActive }: { isActive: boolean }) =>
     'relative flex flex-col items-center justify-center gap-1 py-2 text-[10px] tracking-tight transition-colors ' +
-    (isActive ? 'font-bold text-accent' : 'font-medium text-fg-3 hover:text-fg-2');
+    (isActive ? 'font-bold text-accent-text' : 'font-medium text-fg-3 hover:text-fg-2');
 
   return (
     <nav
       aria-label="Principal"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-bg/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-md sm:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-hairline bg-bg/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-md sm:hidden"
     >
       <div className={`mx-auto grid max-w-md px-2 ${player ? 'grid-cols-4' : 'grid-cols-2'}`}>
         <NavLink to="/" end className={tab}>
@@ -210,14 +205,14 @@ export function BusinessHeader({
   }
 
   return (
-    <header className="sticky top-0 z-30 border-b border-white/5 bg-bg/95 backdrop-blur-md">
+    <header className="sticky top-0 z-30 border-b border-hairline bg-bg/95 backdrop-blur-md">
       <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-3">
         <div className="flex min-w-0 items-center gap-2.5">
           <Link
             to="/"
             onClick={goBack}
             aria-label="Volver"
-            className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-surface text-fg transition hover:bg-surface-2 active:scale-95"
+            className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-hairline bg-surface text-fg transition hover:bg-surface-2 active:scale-95"
           >
             <ArrowLeftIcon className="size-5" strokeWidth={2.5} />
           </Link>
@@ -228,7 +223,7 @@ export function BusinessHeader({
                 <button
                   type="button"
                   onClick={onInfo}
-                  className="mt-1 inline-flex max-w-full items-center text-[11px] font-medium text-accent transition hover:brightness-125"
+                  className="mt-1 inline-flex max-w-full items-center text-[11px] font-medium text-accent-text transition hover:brightness-125"
                 >
                   <span className="truncate">{address} · Info sede</span>
                   <ChevronRightIcon className="ml-0.5 size-3 shrink-0" />
@@ -240,18 +235,19 @@ export function BusinessHeader({
         </div>
 
         <nav className="flex shrink-0 items-center gap-1.5">
+          <ThemeToggle cycle />
           {player ? (
             <>
               <Link
                 to={`/${slug}/mis-reservas`}
-                className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-fg-2 transition hover:bg-white/5 hover:text-fg"
+                className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-fg-2 transition hover:bg-hover hover:text-fg"
               >
                 Mis reservas
               </Link>
               <Link
                 to="/perfil"
                 aria-label="Mi perfil"
-                className="flex size-8 items-center justify-center rounded-full border border-white/10 bg-surface text-xs font-bold text-fg transition hover:border-white/20"
+                className="flex size-8 items-center justify-center rounded-full border border-hairline bg-surface text-xs font-bold text-fg transition hover:border-border"
               >
                 {initial}
               </Link>
@@ -259,7 +255,7 @@ export function BusinessHeader({
           ) : (
             <Link
               to={accountPath('ingresar', `${pathname}${search}`)}
-              className="whitespace-nowrap rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold tracking-wide text-accent transition active:scale-95"
+              className="whitespace-nowrap rounded-lg border border-accent/20 bg-accent/10 px-3 py-1.5 text-xs font-semibold tracking-wide text-accent-text transition active:scale-95"
             >
               Ingresar
             </Link>

@@ -90,13 +90,13 @@ function CourtDetailsDialog({ court, onClose }: { court: PublicCourt; onClose: (
               className="object-cover transition-transform duration-500 group-hover:scale-[1.02]"
             />
             <span
-              className="absolute right-2.5 top-2.5 flex size-8 items-center justify-center rounded-full border border-white/10 bg-black/60 text-white backdrop-blur-md"
+              className="absolute right-2.5 top-2.5 flex size-8 items-center justify-center rounded-full border border-hairline bg-black/60 text-white backdrop-blur-md"
               aria-hidden="true"
             >
               <SearchIcon className="size-4" />
             </span>
           </button>
-          <figcaption className="pointer-events-none absolute inset-x-0 bottom-2.5 mx-auto w-fit rounded-full border border-white/10 bg-black/60 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-md">
+          <figcaption className="pointer-events-none absolute inset-x-0 bottom-2.5 mx-auto w-fit rounded-full border border-hairline bg-black/60 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-md">
             {PHOTO_LABELS[photo.slot]} · {photoIndex + 1} de {court.photos.length}
           </figcaption>
         </figure>

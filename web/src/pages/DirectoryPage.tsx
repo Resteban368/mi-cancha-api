@@ -204,7 +204,7 @@ export function DirectoryPage() {
                 'col-span-5 flex items-center justify-center gap-1.5 rounded-xl border px-2 py-2.5 text-xs font-semibold transition active:scale-95 disabled:opacity-60 sm:col-span-3 ' +
                 (origin
                   ? 'border-accent bg-accent text-accent-fg'
-                  : 'border-emerald-500/30 bg-surface text-accent hover:bg-white/5')
+                  : 'border-accent/30 bg-surface text-accent-text hover:bg-hover')
               }
             >
               {locating ? (
@@ -276,7 +276,7 @@ export function DirectoryPage() {
 
 /** Campo de texto o lista con el estilo del diseño. */
 const controlClass =
-  'w-full rounded-2xl border border-white/10 bg-surface-2 text-sm text-fg placeholder:text-fg-3 shadow-inner ' +
+  'w-full rounded-2xl border border-hairline bg-surface-2 text-sm text-fg placeholder:text-fg-3 shadow-inner ' +
   'focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent';
 
 function Chip({ pressed, onClick, children }: { pressed: boolean; onClick: () => void; children: ReactNode }) {
@@ -288,8 +288,8 @@ function Chip({ pressed, onClick, children }: { pressed: boolean; onClick: () =>
       className={
         'flex shrink-0 items-center gap-1.5 rounded-full border px-4 py-2 text-xs font-semibold transition active:scale-95 ' +
         (pressed
-          ? 'border-transparent bg-accent text-accent-fg shadow-lg shadow-emerald-500/25'
-          : 'border-white/10 bg-surface text-fg-2 hover:border-slate-500')
+          ? 'border-transparent bg-accent text-accent-fg shadow-lg shadow-accent/25'
+          : 'border-hairline bg-surface text-fg-2 hover:border-fg-3')
       }
     >
       {children}
@@ -309,7 +309,7 @@ function BusinessCard({ business, member }: { business: DirectoryBusiness; membe
   return (
     <Link
       to={`/${slug}`}
-      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-surface shadow-lg transition active:scale-[0.99] hover:border-accent/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-hairline bg-surface shadow-lg transition active:scale-[0.99] hover:border-accent/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
     >
       <div className="relative h-44 w-full overflow-hidden bg-surface-2">
         {imageUrl ? (
@@ -328,7 +328,7 @@ function BusinessCard({ business, member }: { business: DirectoryBusiness; membe
 
         <div className="absolute left-3 top-3 flex items-center gap-1.5">
           {member ? (
-            <span className="rounded-full bg-emerald-500/90 px-2.5 py-1 text-[11px] font-bold text-white shadow-sm backdrop-blur-md">
+            <span className="rounded-full bg-accent px-2.5 py-1 text-[11px] font-bold text-accent-fg shadow-sm backdrop-blur-md">
               Ya eres cliente
             </span>
           ) : (
@@ -344,13 +344,13 @@ function BusinessCard({ business, member }: { business: DirectoryBusiness; membe
             {shownSports.map((code) => (
               <span
                 key={code}
-                className="flex items-center gap-1 rounded-full border border-white/10 bg-black/60 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-md"
+                className="flex items-center gap-1 rounded-full border border-hairline bg-black/60 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-md"
               >
                 <span aria-hidden>{SPORT_EMOJI[code]}</span> {SPORT_LABELS[code]}
               </span>
             ))}
             {extraSports > 0 && (
-              <span className="rounded-full border border-white/10 bg-black/60 px-2 py-1 text-xs font-semibold text-white backdrop-blur-md">
+              <span className="rounded-full border border-hairline bg-black/60 px-2 py-1 text-xs font-semibold text-white backdrop-blur-md">
                 +{extraSports}
               </span>
             )}
@@ -363,7 +363,7 @@ function BusinessCard({ business, member }: { business: DirectoryBusiness; membe
           <div className="flex items-start justify-between gap-2">
             <h2 className="truncate text-base font-bold tracking-tight">{name}</h2>
             {distanceKm !== null && (
-              <span className="shrink-0 rounded-md border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-accent">
+              <span className="shrink-0 rounded-md border border-accent/20 bg-accent/10 px-2 py-0.5 text-xs font-semibold text-accent-text">
                 {formatDistance(distanceKm)}
               </span>
             )}
@@ -381,7 +381,7 @@ function BusinessCard({ business, member }: { business: DirectoryBusiness; membe
             {shownAmenities.map((a) => (
               <span
                 key={a.code}
-                className="rounded-md border border-white/5 bg-white/5 px-2 py-0.5 text-[11px] font-medium text-fg-2"
+                className="rounded-md border border-hairline bg-hover px-2 py-0.5 text-[11px] font-medium text-fg-2"
               >
                 {a.name}
               </span>
@@ -390,19 +390,19 @@ function BusinessCard({ business, member }: { business: DirectoryBusiness; membe
           </div>
         )}
 
-        <div className="mt-auto flex items-center justify-between gap-3 border-t border-white/5 pt-3">
+        <div className="mt-auto flex items-center justify-between gap-3 border-t border-hairline pt-3">
           <div className="min-w-0">
             <p className="text-[11px] text-fg-3">{courts}</p>
             {fromPricePerHour !== null ? (
               <p className="text-sm font-extrabold">
-                Desde <span className="tabular text-accent">{formatMoney(fromPricePerHour, currency)}</span>{' '}
+                Desde <span className="tabular text-accent-text">{formatMoney(fromPricePerHour, currency)}</span>{' '}
                 <span className="text-xs font-normal text-fg-3">/ h</span>
               </p>
             ) : (
               <p className="text-sm font-semibold text-fg-2">Consulta precios</p>
             )}
           </div>
-          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-accent px-3.5 py-2.5 text-xs font-bold tracking-wide text-accent-fg shadow-md shadow-emerald-500/20 transition group-hover:brightness-110">
+          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-accent px-3.5 py-2.5 text-xs font-bold tracking-wide text-accent-fg shadow-md shadow-accent/20 transition group-hover:brightness-110">
             Ver turnos
             <ChevronRightIcon className="size-3.5" strokeWidth={2.5} />
           </span>

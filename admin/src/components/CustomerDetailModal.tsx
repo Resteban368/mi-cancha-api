@@ -82,7 +82,7 @@ export function CustomerDetailModal({
               <div className="flex flex-wrap items-center gap-4">
                 <span className="inline-flex items-center gap-1.5 text-fg">
                   <PhoneIcon className="text-fg-3" />
-                  <a href={`tel:${data.phone}`} className="font-medium text-accent hover:underline">
+                  <a href={`tel:${data.phone}`} className="font-medium text-accent-text hover:underline">
                     {data.phone}
                   </a>
                 </span>
@@ -125,7 +125,7 @@ export function CustomerDetailModal({
                 onClick={() => setTab('reservations')}
                 className={`inline-flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium transition ${
                   tab === 'reservations'
-                    ? 'border-accent text-accent'
+                    ? 'border-accent text-accent-text'
                     : 'border-transparent text-fg-3 hover:border-border hover:text-fg'
                 }`}
               >
@@ -137,7 +137,7 @@ export function CustomerDetailModal({
                 onClick={() => setTab('payments')}
                 className={`inline-flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium transition ${
                   tab === 'payments'
-                    ? 'border-accent text-accent'
+                    ? 'border-accent text-accent-text'
                     : 'border-transparent text-fg-3 hover:border-border hover:text-fg'
                 }`}
               >

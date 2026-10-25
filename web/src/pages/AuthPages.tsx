@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
 import { Header } from '../components/Header';
 import { Alert, Button, Field, PasswordField } from '../components/ui';
 import { api, errorMessage } from '../lib/api';
+import { BrandMark } from '../components/Brand';
 import { accountPath, afterLoginPath, safeNext } from '../lib/next';
 import { takeBannedNotice, useSession } from '../lib/session';
 import type { Player, PlayerSession } from '../lib/types';
@@ -36,7 +37,7 @@ function CourtBackground() {
         <line x1="80" y1="520" x2="320" y2="520" strokeDasharray="6 4" strokeWidth="1.5" />
         <line x1="200" y1="280" x2="200" y2="520" strokeWidth="1.5" />
       </svg>
-      <div className="absolute left-1/2 top-1/2 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-500/10 blur-3xl" />
+      <div className="absolute left-1/2 top-1/2 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent/10 blur-3xl" />
     </div>
   );
 }
@@ -48,21 +49,15 @@ function AuthLayout({ title, subtitle, children }: { title: string; subtitle: st
       <div className="relative z-10 flex min-h-screen flex-col">
         <Header />
         <main className="flex flex-1 items-center justify-center px-4 py-8 sm:py-12">
-          <div className="w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-surface/90 shadow-2xl backdrop-blur-md">
-            <div className="h-1 bg-gradient-to-r from-emerald-600 via-emerald-300 to-emerald-600" />
+          <div className="w-full max-w-md overflow-hidden rounded-2xl border border-hairline bg-surface/90 shadow-2xl backdrop-blur-md">
+            <div className="h-1 bg-accent" />
             <div className="p-6 sm:p-8">
               <div className="mb-6 flex justify-center">
-                <img
-                  src={`${import.meta.env.BASE_URL}brand/icon.png`}
-                  alt="Mi Cancha"
-                  width={64}
-                  height={64}
-                  className="h-16 w-16 rounded-[22%] shadow-lg ring-1 ring-white/20"
-                />
+                <BrandMark size={64} className="rounded-[22%] shadow-lg shadow-accent/20" />
               </div>
               <div className="mb-8 text-center">
-                <h1 className="text-2xl font-bold text-white">{title}</h1>
-                <p className="mt-2 text-sm text-white/70">{subtitle}</p>
+                <h1 className="text-2xl font-bold text-fg">{title}</h1>
+                <p className="mt-2 text-sm text-fg-2">{subtitle}</p>
               </div>
               {children}
             </div>
@@ -123,12 +118,12 @@ export function LoginPage() {
         <Button type="submit" loading={saving}>
           Ingresar
         </Button>
-        <Link to={accountPath('recuperar', next)} className="-mt-1 text-center text-sm font-semibold text-accent">
+        <Link to={accountPath('recuperar', next)} className="-mt-1 text-center text-sm font-semibold text-accent-text">
           ¿Olvidaste tu contraseña?
         </Link>
         <p className="text-center text-sm text-fg-2">
           ¿No tienes cuenta?{' '}
-          <Link to={accountPath('registro', next)} className="font-semibold text-accent">
+          <Link to={accountPath('registro', next)} className="font-semibold text-accent-text">
             Regístrate
           </Link>
         </p>
@@ -228,11 +223,11 @@ export function WelcomePage() {
               required
               checked={accepted}
               onChange={(e) => setAccepted(e.target.checked)}
-              className="mt-0.5 size-4 accent-emerald-500"
+              className="mt-0.5 size-4 accent-accent"
             />
             <span>
               Acepto la{' '}
-              <Link to="/politica-de-datos" target="_blank" className="font-semibold text-accent underline">
+              <Link to="/politica-de-datos" target="_blank" className="font-semibold text-accent-text underline">
                 política de tratamiento de datos personales
               </Link>
               .
@@ -344,7 +339,7 @@ export function RegisterPage() {
           />
           <span>
             Autorizo el tratamiento de mis datos personales según la{' '}
-            <Link to="/politica-de-datos" target="_blank" className="font-semibold text-accent underline">
+            <Link to="/politica-de-datos" target="_blank" className="font-semibold text-accent-text underline">
               política de tratamiento de datos
             </Link>
             .
@@ -355,7 +350,7 @@ export function RegisterPage() {
         </Button>
         <p className="text-center text-sm text-fg-2">
           ¿Ya tienes cuenta?{' '}
-          <Link to={accountPath('ingresar', next)} className="font-semibold text-accent">
+          <Link to={accountPath('ingresar', next)} className="font-semibold text-accent-text">
             Ingresa
           </Link>
         </p>
@@ -451,7 +446,7 @@ function CodeStep({
         {submitLabel}
       </Button>
       <div className="flex items-center justify-between gap-3 text-sm">
-        <button type="button" onClick={onChangePhone} className="font-semibold text-accent">
+        <button type="button" onClick={onChangePhone} className="font-semibold text-accent-text">
           Cambiar celular
         </button>
         {resent ? (
@@ -459,7 +454,7 @@ function CodeStep({
         ) : wait > 0 ? (
           <span className="text-fg-3">Reenviar en {wait} s</span>
         ) : (
-          <button type="button" onClick={resend} className="font-semibold text-accent">
+          <button type="button" onClick={resend} className="font-semibold text-accent-text">
             Reenviar código (1 vez)
           </button>
         )}
@@ -553,7 +548,7 @@ export function ResetPasswordPage() {
         </Button>
         <p className="text-center text-sm text-fg-2">
           ¿La recordaste?{' '}
-          <Link to={accountPath('ingresar', next)} className="font-semibold text-accent">
+          <Link to={accountPath('ingresar', next)} className="font-semibold text-accent-text">
             Ingresa
           </Link>
         </p>

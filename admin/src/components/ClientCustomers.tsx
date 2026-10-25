@@ -317,14 +317,14 @@ function CustomerRow({
     <tr>
       <Td>
         <div className="flex items-center gap-3">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent-soft text-xs font-semibold text-accent">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent-soft text-xs font-semibold text-accent-text">
             {initials}
           </span>
           <div>
             <button
               type="button"
               onClick={onDetail}
-              className="whitespace-nowrap text-left font-medium hover:text-accent hover:underline"
+              className="whitespace-nowrap text-left font-medium hover:text-accent-text hover:underline"
             >
               {c.name}
             </button>
@@ -339,7 +339,7 @@ function CustomerRow({
           href={`https://wa.me/${whatsapp}`}
           target="_blank"
           rel="noreferrer"
-          className="text-fg-2 hover:text-accent hover:underline"
+          className="text-fg-2 hover:text-accent-text hover:underline"
           title="Abrir WhatsApp"
         >
           {formatPhone(c.phone)}

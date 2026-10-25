@@ -90,7 +90,7 @@ export function ClientLocationMap({ client, onChanged }: ClientLocationMapProps)
           {/* Header Info Panel */}
           <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent-text">
                 <MapPinIcon width={22} height={22} />
               </div>
               <div className="flex flex-col">
@@ -130,8 +130,8 @@ export function ClientLocationMap({ client, onChanged }: ClientLocationMapProps)
                 >
                   {copied ? (
                     <>
-                      <CheckIcon className="text-emerald-500" />
-                      <span className="text-xs font-medium text-emerald-500">Copiado</span>
+                      <CheckIcon className="text-accent-text" />
+                      <span className="text-xs font-medium text-accent-text">Copiado</span>
                     </>
                   ) : (
                     <>
@@ -470,7 +470,7 @@ function EditLocationModal({ open, client, onClose, onSaved }: EditLocationModal
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
         {error && (
-          <div className="flex items-center gap-2 rounded-lg bg-rose-500/10 p-3 text-xs text-rose-500">
+          <div className="flex items-center gap-2 rounded-lg bg-danger-soft p-3 text-xs text-danger">
             <AlertIcon />
             <span>{error}</span>
           </div>
@@ -592,7 +592,7 @@ function EditLocationModal({ open, client, onClose, onSaved }: EditLocationModal
                   setLngInput('');
                   setSmartInput('');
                 }}
-                className="rounded-md border border-rose-500/20 bg-rose-500/10 px-2 py-1 text-[11px] text-rose-500 hover:bg-rose-500/20 transition-colors"
+                className="rounded-md border border-danger/20 bg-danger-soft px-2 py-1 text-[11px] text-danger hover:bg-danger/20 transition-colors"
               >
                 Borrar coordenadas
               </button>

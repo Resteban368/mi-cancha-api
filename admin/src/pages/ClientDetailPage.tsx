@@ -171,7 +171,7 @@ function ClientDetailView({
             <Detail label="Nombre">{owner.fullName}</Detail>
             <Detail label="Email">
               {owner.email ? (
-                <a href={`mailto:${owner.email}`} className="break-all text-accent hover:underline">
+                <a href={`mailto:${owner.email}`} className="break-all text-accent-text hover:underline">
                   {owner.email}
                 </a>
               ) : (
@@ -180,7 +180,7 @@ function ClientDetailView({
             </Detail>
             <Detail label="Teléfono">
               {owner.phone ? (
-                <a href={`tel:${owner.phone}`} className="text-accent hover:underline">
+                <a href={`tel:${owner.phone}`} className="text-accent-text hover:underline">
                   {owner.phone}
                 </a>
               ) : (

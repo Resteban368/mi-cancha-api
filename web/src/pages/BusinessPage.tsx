@@ -103,7 +103,7 @@ export function BusinessPage() {
         {business.error ? (
           <>
             <Alert>{business.error}</Alert>
-            <Link to="/" className="text-sm font-medium text-accent hover:underline">
+            <Link to="/" className="text-sm font-medium text-accent-text hover:underline">
               ← Todas las sedes
             </Link>
           </>
@@ -211,9 +211,9 @@ function VenueInfoDialog({ business: b, open, onClose }: { business: PublicBusin
             href={b.mapsUrl}
             target="_blank"
             rel="noreferrer"
-            className="mt-2.5 inline-flex items-center gap-2 rounded-xl border border-border bg-surface-2 px-3 py-1.5 text-xs font-medium text-accent transition hover:brightness-125"
+            className="mt-2.5 inline-flex items-center gap-2 rounded-xl border border-border bg-surface-2 px-3 py-1.5 text-xs font-medium text-accent-text transition hover:brightness-125"
           >
-            <PinIcon className="size-3.5 text-rose-400" />
+            <PinIcon className="size-3.5 text-danger" />
             Ver ubicación en Google Maps
           </a>
         </div>
@@ -543,8 +543,8 @@ function Booking({ business }: { business: PublicBusiness }) {
               }}
               className={`inline-flex min-w-fit flex-1 shrink-0 items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-xs transition active:scale-[0.98] ${
                 sport === s
-                  ? 'border-transparent bg-accent font-bold text-accent-fg shadow-md shadow-emerald-500/20'
-                  : 'border-border bg-surface-2 font-medium text-fg-2 hover:border-slate-500'
+                  ? 'border-transparent bg-accent font-bold text-accent-fg shadow-md shadow-accent/20'
+                  : 'border-border bg-surface-2 font-medium text-fg-2 hover:border-fg-3'
               }`}
             >
               <span className="text-base leading-none" aria-hidden="true">
@@ -572,7 +572,7 @@ function Booking({ business }: { business: PublicBusiness }) {
                 className={`flex min-w-14 shrink-0 flex-col items-center rounded-xl border px-1.5 py-2 transition ${
                   active
                     ? 'border-transparent bg-accent text-accent-fg shadow-sm'
-                    : 'border-border bg-surface-2 text-fg-2 hover:border-slate-500 hover:text-fg'
+                    : 'border-border bg-surface-2 text-fg-2 hover:border-fg-3 hover:text-fg'
                 }`}
               >
                 <span className={`text-[10px] leading-none ${active ? 'font-semibold uppercase' : 'text-fg-3'}`}>
@@ -596,14 +596,14 @@ function Booking({ business }: { business: PublicBusiness }) {
               className={`flex-1 rounded-xl border px-2 py-2 text-xs transition active:scale-[0.98] ${
                 period === p.id
                   ? 'border-transparent bg-accent font-bold text-accent-fg'
-                  : 'border-border bg-surface-2 font-medium text-fg-2 hover:border-slate-500'
+                  : 'border-border bg-surface-2 font-medium text-fg-2 hover:border-fg-3'
               }`}
             >
               {p.label}
             </button>
           ))}
         </div>
-        <p className="mt-3 flex items-center gap-1.5 border-t border-white/5 pt-2.5 text-[11px] font-medium text-fg-3">
+        <p className="mt-3 flex items-center gap-1.5 border-t border-hairline pt-2.5 text-[11px] font-medium text-fg-3">
           <span className="size-2 animate-pulse rounded-full bg-accent" aria-hidden="true" />
           Los turnos se actualizan en vivo.
         </p>
@@ -641,7 +641,7 @@ function Booking({ business }: { business: PublicBusiness }) {
       )}
 
       {selection && court && chosen.length > 0 && runs.every((r) => r.count > 0) && (
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-bg/95 shadow-2xl backdrop-blur-md">
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-hairline bg-bg/95 shadow-2xl backdrop-blur-md">
           <div
             className="mx-auto flex max-w-3xl flex-col gap-3 px-4 pt-3"
             style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
@@ -685,7 +685,7 @@ function Booking({ business }: { business: PublicBusiness }) {
               {runs.map((r) => (
                 <span
                   key={r.id}
-                  className="inline-flex min-h-9 items-center gap-1 rounded-full border border-emerald-500/20 bg-accent-soft pl-3 pr-1 text-xs font-semibold text-accent"
+                  className="inline-flex min-h-9 items-center gap-1 rounded-full border border-accent/20 bg-accent-soft pl-3 pr-1 text-xs font-semibold text-accent-text"
                 >
                   {r.court?.court.name}
                   {runs.length > 1 ? (
@@ -708,7 +708,7 @@ function Booking({ business }: { business: PublicBusiness }) {
                   type="button"
                   onClick={() => addCourt(c.court.id)}
                   disabled={holding}
-                  className="inline-flex min-h-9 items-center gap-1 rounded-full border border-dashed border-accent px-3 text-xs font-semibold text-accent hover:bg-accent-soft disabled:opacity-60"
+                  className="inline-flex min-h-9 items-center gap-1 rounded-full border border-dashed border-accent px-3 text-xs font-semibold text-accent-text hover:bg-accent-soft disabled:opacity-60"
                 >
                   + {c.court.name}
                 </button>
@@ -728,14 +728,14 @@ function Booking({ business }: { business: PublicBusiness }) {
             />
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-xl font-extrabold tabular text-accent">{formatMoney(total, court.court.currency)}</p>
+                <p className="text-xl font-extrabold tabular text-accent-text">{formatMoney(total, court.court.currency)}</p>
                 <p className="text-[11px] text-fg-3">Pagas en efectivo en la sede</p>
               </div>
               <Button
                 onClick={reserve}
                 loading={saving}
                 disabled={Boolean(token) && holding}
-                className="min-w-44 !rounded-xl px-5 text-xs font-bold tracking-wide shadow-lg shadow-emerald-500/25"
+                className="min-w-44 !rounded-xl px-5 text-xs font-bold tracking-wide shadow-lg shadow-accent/25"
               >
                 {token ? 'Confirmar reserva' : 'Ingresa para reservar'}
                 <ChevronRightIcon className="size-4" strokeWidth={2.5} />
@@ -759,7 +759,7 @@ function HoldStatus({ token, holding, remaining }: { token: string | null; holdi
   if (remaining === null) return null;
   const urgent = remaining <= 30;
   return (
-    <p className={`mt-0.5 text-xs font-semibold ${urgent ? 'text-danger' : 'text-accent'}`} aria-live={urgent ? 'polite' : 'off'}>
+    <p className={`mt-0.5 text-xs font-semibold ${urgent ? 'text-danger' : 'text-accent-text'}`} aria-live={urgent ? 'polite' : 'off'}>
       Apartado para ti · <span className="tabular">{formatCountdown(remaining)}</span> para confirmar
     </p>
   );
@@ -826,7 +826,7 @@ function CourtCard({
               <button
                 type="button"
                 onClick={onDetails}
-                className="mt-0.5 inline-flex items-center text-xs font-semibold text-accent transition hover:brightness-125"
+                className="mt-0.5 inline-flex items-center text-xs font-semibold text-accent-text transition hover:brightness-125"
               >
                 Ver fotos y detalles
                 <ChevronRightIcon className="ml-1 size-3.5" />
@@ -834,7 +834,7 @@ function CourtCard({
             )}
           </div>
         </div>
-        <span className="shrink-0 whitespace-nowrap rounded-full border border-emerald-500/20 bg-accent-soft px-2.5 py-0.5 text-[11px] font-semibold text-accent">
+        <span className="shrink-0 whitespace-nowrap rounded-full border border-accent/20 bg-accent-soft px-2.5 py-0.5 text-[11px] font-semibold text-accent-text">
           {availableCount} libre{availableCount === 1 ? '' : 's'}
         </span>
       </div>
@@ -855,14 +855,14 @@ function CourtCard({
                 onClick={() => onChoose(court.id, slot.start)}
                 className={`flex min-h-14 flex-col justify-between rounded-xl border p-2.5 text-left transition ${
                   selected
-                    ? 'border-accent bg-accent/10 shadow-sm shadow-emerald-500/10 ring-1 ring-accent'
+                    ? 'border-accent bg-accent/10 shadow-sm shadow-accent/10 ring-1 ring-accent'
                     : free
                       ? 'border-border bg-surface-2 hover:border-accent/50'
                       : 'cursor-not-allowed border-dashed border-warn/60 bg-warn-soft text-fg-2'
                 }`}
               >
                 <span className="flex w-full items-center justify-between gap-1">
-                  <span className={`whitespace-nowrap text-sm font-semibold tabular ${selected ? 'text-accent' : ''}`}>
+                  <span className={`whitespace-nowrap text-sm font-semibold tabular ${selected ? 'text-accent-text' : ''}`}>
                     {formatTime(slot.start)}
                   </span>
                   {selected ? (
@@ -870,13 +870,13 @@ function CourtCard({
                   ) : (
                     rate &&
                     free && (
-                      <span className="min-w-0 truncate rounded bg-amber-400/10 px-1 text-[9px] font-medium text-amber-400" title={rate.name}>
+                      <span className="min-w-0 truncate rounded bg-warn-soft px-1 text-[9px] font-medium text-warn" title={rate.name}>
                         {rate.name}
                       </span>
                     )
                   )}
                 </span>
-                <span className={`mt-1 text-[11px] tabular ${selected ? 'font-semibold text-accent' : 'text-fg-3'}`}>
+                <span className={`mt-1 text-[11px] tabular ${selected ? 'font-semibold text-accent-text' : 'text-fg-3'}`}>
                   {inProcess ? 'En proceso' : formatMoney(slot.price, court.currency)}
                 </span>
               </button>
@@ -884,7 +884,7 @@ function CourtCard({
           })}
         </div>
       )}
-      <p className="mt-3.5 border-t border-white/5 pt-3 text-[11px] leading-relaxed text-fg-3">
+      <p className="mt-3.5 border-t border-hairline pt-3 text-[11px] leading-relaxed text-fg-3">
         El valor de cada turno ya incluye la tarifa que le corresponde. Pagas en efectivo en la sede.
       </p>
     </Card>
@@ -923,14 +923,14 @@ function BookedDialog({
     <Dialog open onClose={onClose} labelledBy="booked-title">
       <div className="pitch-pop">
         <div className="relative flex flex-col items-center text-center">
-          <span className="pitch-particle left-12 top-0 size-1.5 bg-emerald-400" style={{ animationDelay: '0.1s' }} aria-hidden="true" />
-          <span className="pitch-particle right-12 top-4 size-2 bg-emerald-300" style={{ animationDelay: '0.5s' }} aria-hidden="true" />
-          <span className="pitch-particle left-8 top-10 size-1 bg-yellow-400" style={{ animationDelay: '0.9s' }} aria-hidden="true" />
+          <span className="pitch-particle left-12 top-0 size-1.5 bg-accent" style={{ animationDelay: '0.1s' }} aria-hidden="true" />
+          <span className="pitch-particle right-12 top-4 size-2 bg-accent" style={{ animationDelay: '0.5s' }} aria-hidden="true" />
+          <span className="pitch-particle left-8 top-10 size-1 bg-warn" style={{ animationDelay: '0.9s' }} aria-hidden="true" />
 
           <div className="relative my-3 flex items-center justify-center" aria-hidden="true">
-            <span className="pitch-ring absolute size-20 rounded-full bg-emerald-500/20" />
-            <span className="pitch-ring pitch-ring-2 absolute size-20 rounded-full bg-emerald-500/25" />
-            <span className="relative flex size-16 items-center justify-center rounded-full bg-gradient-to-tr from-emerald-600 to-emerald-400 p-0.5 shadow-lg shadow-emerald-500/30">
+            <span className="pitch-ring absolute size-20 rounded-full bg-accent/20" />
+            <span className="pitch-ring pitch-ring-2 absolute size-20 rounded-full bg-accent/25" />
+            <span className="relative flex size-16 items-center justify-center rounded-full bg-accent p-0.5 shadow-lg shadow-accent/30">
               <span className="flex size-full items-center justify-center rounded-full bg-surface">
                 <svg viewBox="0 0 48 48" className="size-9" fill="none" stroke="#34d399" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round">
                   <path className="pitch-check" d="M14 24.5 21.5 32 34 16" />
@@ -942,14 +942,14 @@ function BookedDialog({
           <h2 id="booked-title" className="mt-1 text-2xl font-bold tracking-tight">
             ¡Reserva confirmada!
           </h2>
-          <p className="mt-3 flex items-center justify-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-accent">
+          <p className="mt-3 flex items-center justify-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-accent-text">
             <span className="size-2 animate-pulse rounded-full bg-accent" aria-hidden="true" />
             {business.name}
           </p>
           <p className="mt-1 text-sm text-fg-2">{when}</p>
 
           <div className="mt-3 inline-flex max-w-full items-center gap-2.5 rounded-xl border border-border bg-surface-2 px-3 py-1.5">
-            <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-emerald-600 to-teal-400 text-[11px] font-bold text-slate-950">
+            <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-accent text-[11px] font-bold text-accent-fg">
               {initials}
             </span>
             <span className="truncate text-sm font-medium">{r.customerName}</span>
@@ -966,7 +966,7 @@ function BookedDialog({
                 {hours.toLocaleString('es-CO')} {hours === 1 ? 'hora' : 'horas'} de juego
               </p>
             </div>
-            <span className="text-2xl font-extrabold tabular tracking-tight text-accent">{formatMoney(total, r.currency)}</span>
+            <span className="text-2xl font-extrabold tabular tracking-tight text-accent-text">{formatMoney(total, r.currency)}</span>
           </div>
           <div className="flex items-center justify-between border-b border-border py-2.5 text-sm">
             <span className="text-fg-3">Pagado online</span>
@@ -975,7 +975,7 @@ function BookedDialog({
           <div className="flex items-center justify-between border-b border-border py-2.5 text-sm">
             <div>
               <span className="font-medium text-fg-2">Saldo a pagar</span>
-              <span className="block text-[11px] text-amber-400">En efectivo en la sede</span>
+              <span className="block text-[11px] text-warn">En efectivo en la sede</span>
             </div>
             <span className="text-base font-bold tabular">{formatMoney(balance, r.currency)}</span>
           </div>
@@ -995,7 +995,7 @@ function BookedDialog({
           </dl>
           <div className="flex items-center justify-between pt-3 text-sm">
             <span className="text-fg-3">Estado</span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-accent-soft px-2.5 py-1 text-xs font-semibold text-accent">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent-soft px-2.5 py-1 text-xs font-semibold text-accent-text">
               <span className="size-1.5 rounded-full bg-accent" aria-hidden="true" />
               Confirmada
             </span>
@@ -1006,9 +1006,9 @@ function BookedDialog({
           href={share}
           target="_blank"
           rel="noreferrer"
-          className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-500/30 bg-surface-2 px-3 py-2.5 text-xs font-semibold transition hover:border-emerald-500/60 active:scale-[0.98]"
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-accent/30 bg-surface-2 px-3 py-2.5 text-xs font-semibold transition hover:border-accent/60 active:scale-[0.98]"
         >
-          <svg viewBox="0 0 24 24" className="size-4 text-accent" fill="currentColor" aria-hidden="true">
+          <svg viewBox="0 0 24 24" className="size-4 text-accent-text" fill="currentColor" aria-hidden="true">
             <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.9 9.9 0 0 0 4.74 1.21c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2m0 1.67c2.2 0 4.26.86 5.82 2.42a8.2 8.2 0 0 1 2.41 5.83c0 4.54-3.7 8.23-8.24 8.23-1.48 0-2.93-.39-4.19-1.15l-.3-.17-3.12.82.83-3.04-.2-.32a8.2 8.2 0 0 1-1.26-4.38c.01-4.54 3.7-8.24 8.25-8.24M9.53 6.99c-.17 0-.44.06-.68.32-.23.26-.89.88-.89 2.14s.92 2.48 1.05 2.65c.13.17 1.76 2.8 4.33 3.81 2.13.83 2.57.67 3.03.63.46-.04 1.48-.61 1.69-1.2.21-.59.21-1.09.15-1.19-.07-.11-.24-.17-.5-.3s-1.52-.75-1.75-.84c-.24-.08-.41-.12-.58.13-.17.26-.65.84-.8 1.01-.14.17-.29.19-.55.06-.26-.13-1.08-.4-2.06-1.27-.76-.68-1.27-1.52-1.42-1.77-.14-.26-.01-.4.12-.53.11-.11.25-.29.38-.44s.18-.25.26-.42c.09-.17.04-.32-.02-.44-.06-.13-.58-1.4-.79-1.91-.21-.5-.42-.43-.58-.44z" />
           </svg>
           Compartir por WhatsApp

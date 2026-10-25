@@ -15,7 +15,7 @@ export function RecentAudit() {
       title="Auditoría reciente"
       description="Lo último que pasó en la plataforma"
       actions={
-        <Link to="/auditoria" className="text-sm font-medium text-accent hover:underline">
+        <Link to="/auditoria" className="text-sm font-medium text-accent-text hover:underline">
           Ver toda la auditoría
         </Link>
       }

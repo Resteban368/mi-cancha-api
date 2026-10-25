@@ -45,10 +45,10 @@ export function StatsPanel({ token }: { token: string }) {
       {s.next && (
         <Link
           to={`/${s.next.businessSlug}`}
-          className="flex items-center justify-between gap-3 rounded-2xl border border-emerald-500/20 bg-accent-soft p-4 transition hover:border-emerald-500/40"
+          className="flex items-center justify-between gap-3 rounded-2xl border border-accent/20 bg-accent-soft p-4 transition hover:border-accent/40"
         >
           <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-accent">Próximo partido</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-accent-text">Próximo partido</p>
             <p className="truncate font-bold tracking-tight">
               {formatLongDay(s.next.start)} · {formatTime(s.next.start)}
             </p>
@@ -56,7 +56,7 @@ export function StatsPanel({ token }: { token: string }) {
               {s.next.businessName} · {s.next.courtName}
             </p>
           </div>
-          <ChevronRightIcon className="size-4 shrink-0 text-accent" strokeWidth={2.5} />
+          <ChevronRightIcon className="size-4 shrink-0 text-accent-text" strokeWidth={2.5} />
         </Link>
       )}
 
@@ -113,13 +113,13 @@ function Stat({ label, value, icon, highlight = false }: { label: string; value:
   return (
     <div
       className={`rounded-2xl border p-3.5 shadow-sm ${
-        highlight ? 'border-emerald-500/30 bg-accent-soft' : 'border-border bg-surface'
+        highlight ? 'border-accent/30 bg-accent-soft' : 'border-border bg-surface'
       }`}
     >
       <span className="text-lg" aria-hidden="true">
         {icon}
       </span>
-      <p className={`tabular mt-1 text-3xl font-extrabold leading-none tracking-tight ${highlight ? 'text-accent' : ''}`}>
+      <p className={`tabular mt-1 text-3xl font-extrabold leading-none tracking-tight ${highlight ? 'text-accent-text' : ''}`}>
         {value.toLocaleString('es-CO')}
       </p>
       <p className="mt-1.5 text-[11px] font-medium text-fg-3">{label}</p>
@@ -136,7 +136,7 @@ function Fact({ label, value, hint, to }: { label: string; value: string; hint?:
     </>
   );
   return to ? (
-    <Link to={to} className="block rounded-xl transition hover:bg-white/5">
+    <Link to={to} className="block rounded-xl transition hover:bg-hover">
       {body}
     </Link>
   ) : (
@@ -266,8 +266,8 @@ export function ReservationHistory({ token }: { token: string }) {
               onClick={() => setStatus(value)}
               className={`flex shrink-0 items-center gap-1.5 rounded-full border px-4 py-2 text-xs font-semibold transition active:scale-95 ${
                 active
-                  ? 'border-transparent bg-accent text-accent-fg shadow-lg shadow-emerald-500/25'
-                  : 'border-white/10 bg-surface text-fg-2 hover:border-slate-500'
+                  ? 'border-transparent bg-accent text-accent-fg shadow-lg shadow-accent/25'
+                  : 'border-hairline bg-surface text-fg-2 hover:border-fg-3'
               }`}
             >
               {label}
@@ -351,7 +351,7 @@ export function ReservationHistory({ token }: { token: string }) {
               Limpiar filtros
             </Button>
           ) : (
-            <Link to="/" className="text-sm font-semibold text-accent hover:underline">
+            <Link to="/" className="text-sm font-semibold text-accent-text hover:underline">
               Ver sedes para reservar →
             </Link>
           )}
@@ -413,7 +413,7 @@ function Select({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full appearance-none rounded-xl border border-white/10 bg-surface-2 py-2.5 pl-3.5 pr-9 text-xs font-medium text-fg focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+        className="w-full appearance-none rounded-xl border border-hairline bg-surface-2 py-2.5 pl-3.5 pr-9 text-xs font-medium text-fg focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
       >
         {children}
       </select>

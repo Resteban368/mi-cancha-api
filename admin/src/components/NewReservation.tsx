@@ -328,9 +328,9 @@ export function NewReservationModal({
                     }}
                     className={`group flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium transition ${
                       isActive
-                        ? 'bg-accent-soft text-accent ring-1 ring-accent'
+                        ? 'bg-accent-soft text-accent-text ring-1 ring-accent'
                         : isDone
-                          ? 'text-accent hover:bg-surface-2'
+                          ? 'text-accent-text hover:bg-surface-2'
                           : 'text-fg-3 hover:text-fg'
                     }`}
                   >
@@ -339,7 +339,7 @@ export function NewReservationModal({
                         isActive
                           ? 'bg-accent text-accent-fg'
                           : isDone
-                            ? 'bg-accent-soft text-accent'
+                            ? 'bg-accent-soft text-accent-text'
                             : 'bg-surface-2 text-fg-3'
                       }`}
                     >
@@ -392,7 +392,7 @@ export function NewReservationModal({
                         }}
                         className={`group relative flex items-center gap-2.5 rounded-xl border px-4 py-2.5 text-sm font-medium transition ${
                           isSelected
-                            ? 'border-accent bg-accent-soft text-accent shadow-sm ring-1 ring-accent'
+                            ? 'border-accent bg-accent-soft text-accent-text shadow-sm ring-1 ring-accent'
                             : 'border-border bg-surface text-fg hover:border-accent/60 hover:bg-surface-2'
                         }`}
                       >
@@ -404,7 +404,7 @@ export function NewReservationModal({
                           </p>
                         </div>
                         {isSelected && (
-                          <span className="ml-1 text-accent">
+                          <span className="ml-1 text-accent-text">
                             <CheckCircleIcon className="size-4" />
                           </span>
                         )}
@@ -577,7 +577,7 @@ export function NewReservationModal({
                                           isSelectedSlot
                                             ? 'text-accent-fg/90 font-medium'
                                             : isFree
-                                              ? 'text-accent font-semibold'
+                                              ? 'text-accent-text font-semibold'
                                               : 'text-fg-3'
                                         }`}
                                       >
@@ -606,7 +606,7 @@ export function NewReservationModal({
               <div className="rounded-2xl border border-accent/30 bg-accent-soft/30 p-4">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider text-accent">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-accent-text">
                       Duración de la Reserva
                     </label>
                     <div className="mt-1.5 flex flex-wrap gap-2">
@@ -876,7 +876,7 @@ export function NewReservationModal({
               {/* Tarjeta de Resumen / Ticket */}
               <div className="flex flex-col rounded-2xl border border-border bg-surface p-5 shadow-sm">
                 <h4 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-fg-3 mb-4">
-                  <TagIcon className="size-4 text-accent" />
+                  <TagIcon className="size-4 text-accent-text" />
                   Resumen de la Reserva
                 </h4>
 
@@ -896,7 +896,7 @@ export function NewReservationModal({
                   {chosen.length > 0 && (
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-fg-3">Horario</span>
-                      <span className="text-xs font-bold text-accent">
+                      <span className="text-xs font-bold text-accent-text">
                         {formatTime(chosen[0].start)} a {formatTime(chosen.at(-1)!.end)} ({chosen.length} turno{chosen.length > 1 ? 's' : ''})
                       </span>
                     </div>
@@ -931,7 +931,7 @@ export function NewReservationModal({
                               onClick={() => handleQuickDiscount(val)}
                               className={`rounded-lg px-2.5 py-1 text-xs font-medium transition ${
                                 Number(discount) === val
-                                  ? 'bg-accent-soft text-accent ring-1 ring-accent'
+                                  ? 'bg-accent-soft text-accent-text ring-1 ring-accent'
                                   : 'bg-surface-2 text-fg-3 hover:text-fg'
                               }`}
                             >
@@ -949,14 +949,14 @@ export function NewReservationModal({
                       <dd className="tabular font-medium">{formatMoney(subtotal, currency)}</dd>
                     </div>
                     {Number(discount) > 0 && (
-                      <div className="flex items-center justify-between text-accent font-medium">
+                      <div className="flex items-center justify-between text-accent-text font-medium">
                         <dt>Descuento aplicado</dt>
                         <dd className="tabular">− {formatMoney(Number(discount), currency)}</dd>
                       </div>
                     )}
                     <div className="flex items-center justify-between border-t border-border pt-2 text-base font-bold text-fg">
                       <dt>Total a Cobrar</dt>
-                      <dd className="tabular text-lg text-accent font-extrabold">
+                      <dd className="tabular text-lg text-accent-text font-extrabold">
                         {formatMoney(total, currency)}
                       </dd>
                     </div>
@@ -969,7 +969,7 @@ export function NewReservationModal({
                 <div className="mb-4 flex items-center justify-between">
                   <div>
                     <h4 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-fg-3">
-                      <CreditCardIcon className="size-4 text-accent" />
+                      <CreditCardIcon className="size-4 text-accent-text" />
                       Registro de Pago
                     </h4>
                     <p className="text-xs text-fg-3 mt-0.5">

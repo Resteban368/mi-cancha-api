@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { ThemeToggle } from '../components/ThemeToggle';
 import { BrandLogo, LockIcon } from '../components/icons';
 import { Button, ErrorBanner, Field, Input } from '../components/ui';
 import { errorMessage } from '../lib/api';
@@ -24,12 +25,12 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-dvh items-center justify-center px-4 py-10">
+    <div className="relative flex min-h-dvh items-center justify-center px-4 py-10">
+      <ThemeToggle className="absolute right-4 top-4" />
       <div className="w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center text-center">
           <h1 className="sr-only">Mi Cancha · Panel de administración</h1>
-          {/* El logo trae su propio fondo claro: se muestra como tarjeta en ambos modos. */}
-          <BrandLogo className="h-auto w-full max-w-[280px] rounded-2xl border border-border shadow-sm" />
+          <BrandLogo className="h-auto w-full max-w-[240px]" />
           <p className="mt-4 text-sm font-medium text-fg-2">Panel de administración</p>
         </div>
         <form
