@@ -11,7 +11,7 @@ export function CtaLink({
   variant?: 'primary' | 'ghost';
 }) {
   const base =
-    'inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-bold transition-transform hover:-translate-y-0.5';
+    'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full px-6 py-3 text-sm font-bold transition-transform hover:-translate-y-0.5';
   const style =
     variant === 'primary'
       ? 'bg-accent text-accent-fg shadow-[0_8px_30px_-8px_rgba(0,200,83,0.55)]'

@@ -18,21 +18,21 @@ export function Header() {
     <header className="sticky top-0 z-40 border-b border-border bg-bg/80 backdrop-blur-md">
       <nav className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
         <a href="#" aria-label="Mi Cancha, inicio">
-          <img src="/brand/logo-light.png" alt="Mi Cancha" width={69} height={36} className="h-9 w-auto dark:hidden" />
+          <img src="/brand/logo-h-light.png" alt="Mi Cancha" width={220} height={40} className="h-10 w-auto dark:hidden" />
           <img
-            src="/brand/logo-dark.png"
+            src="/brand/logo-h-dark.png"
             alt=""
             aria-hidden="true"
-            width={69}
-            height={36}
-            className="hidden h-9 w-auto dark:block"
+            width={220}
+            height={40}
+            className="hidden h-10 w-auto dark:block"
           />
         </a>
 
-        <ul className="hidden items-center gap-6 text-sm font-semibold text-fg-2 lg:flex">
+        <ul className="hidden items-center gap-6 text-sm font-semibold text-fg-2 xl:flex">
           {LINKS.map((l) => (
             <li key={l.href}>
-              <a href={l.href} className="hover:text-fg">
+              <a href={l.href} className="whitespace-nowrap hover:text-fg">
                 {l.label}
               </a>
             </li>
@@ -45,7 +45,7 @@ export function Header() {
           </div>
           <button
             type="button"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border lg:hidden"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border xl:hidden"
             aria-label={open ? 'Cerrar menú' : 'Abrir menú'}
             aria-expanded={open}
             onClick={() => setOpen((v) => !v)}
@@ -58,7 +58,7 @@ export function Header() {
       </nav>
 
       {open && (
-        <div className="border-t border-border bg-surface px-4 py-4 lg:hidden">
+        <div className="border-t border-border bg-surface px-4 py-4 xl:hidden">
           <ul className="flex flex-col gap-3 text-sm font-semibold">
             {LINKS.map((l) => (
               <li key={l.href}>

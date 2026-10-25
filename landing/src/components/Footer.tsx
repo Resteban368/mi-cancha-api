@@ -21,8 +21,14 @@ export function Footer() {
 
       <footer className="border-t border-border px-4 py-10 sm:px-6">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-6 text-sm text-fg-3 sm:flex-row">
-          <img src="/brand/logo-light.png" alt="Mi Cancha" className="h-8 w-auto dark:hidden" />
-          <img src="/brand/logo-dark.png" alt="Mi Cancha" className="hidden h-8 w-auto dark:block" />
+          <img src="/brand/logo-h-light.png" alt="Mi Cancha" width={198} height={36} className="h-9 w-auto dark:hidden" />
+          <img
+            src="/brand/logo-h-dark.png"
+            alt="Mi Cancha"
+            width={198}
+            height={36}
+            className="hidden h-9 w-auto dark:block"
+          />
           <ul className="flex gap-6 font-semibold">
             <li>
               <a href="#como" className="hover:text-fg">
