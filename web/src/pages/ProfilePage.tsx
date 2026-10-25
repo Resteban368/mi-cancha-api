@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Navigate } from 'react-router';
 import { Header } from '../components/Header';
 import { PitchBottomNav } from '../components/PitchChrome';
-import { Alert, Button, Card, Field, inputClass, Skeleton } from '../components/ui';
+import { Alert, Button, Card, Field, inputClass, PasswordField, Skeleton } from '../components/ui';
 import { api, errorMessage } from '../lib/api';
 import { accountPath } from '../lib/next';
 import { SPORT_LABELS } from '../lib/format';
@@ -47,6 +47,7 @@ export function ProfilePage() {
           ) : (
             <Skeleton className="h-96 rounded-2xl" />
           )}
+          {me.data && <PasswordForm token={token} />}
         </div>
         <div className="mx-auto w-full max-w-md">
           <Button variant="secondary" onClick={signOut} className="w-full">
@@ -153,6 +154,82 @@ function ProfileForm({
         </div>
         <Button type="submit" loading={saving}>
           Guardar
+        </Button>
+      </form>
+    </Card>
+  );
+}
+
+/** Cambiar la contraseña: pide la actual para confirmar que es el dueño de la cuenta. */
+function PasswordForm({ token }: { token: string }) {
+  const [form, setForm] = useState({ currentPassword: '', newPassword: '', confirm: '' });
+  const [error, setError] = useState<string>();
+  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const set = (key: keyof typeof form) => (e: { target: { value: string } }) => {
+    setSaved(false);
+    setForm((f) => ({ ...f, [key]: e.target.value }));
+  };
+
+  async function onSubmit(event: FormEvent) {
+    event.preventDefault();
+    setError(undefined);
+    setSaved(false);
+    if (form.newPassword !== form.confirm) {
+      setError('Las contraseñas nuevas no coinciden.');
+      return;
+    }
+    setSaving(true);
+    try {
+      await api<Player>('/player/password', {
+        method: 'PUT',
+        token,
+        body: { currentPassword: form.currentPassword, newPassword: form.newPassword },
+      });
+      setForm({ currentPassword: '', newPassword: '', confirm: '' });
+      setSaved(true);
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card>
+      <form onSubmit={onSubmit} className="flex flex-col gap-4">
+        <div>
+          <h2 className="text-lg font-bold tracking-tight">Cambiar contraseña</h2>
+          <p className="mt-0.5 text-xs text-fg-3">Para tu seguridad, confirma tu contraseña actual.</p>
+        </div>
+        {error && <Alert>{error}</Alert>}
+        {saved && <Alert tone="success">Contraseña actualizada.</Alert>}
+        <PasswordField
+          label="Contraseña actual"
+          autoComplete="current-password"
+          required
+          value={form.currentPassword}
+          onChange={set('currentPassword')}
+        />
+        <PasswordField
+          label="Contraseña nueva"
+          hint="Mínimo 8 caracteres."
+          autoComplete="new-password"
+          minLength={8}
+          required
+          value={form.newPassword}
+          onChange={set('newPassword')}
+        />
+        <PasswordField
+          label="Repite la contraseña nueva"
+          autoComplete="new-password"
+          minLength={8}
+          required
+          value={form.confirm}
+          onChange={set('confirm')}
+        />
+        <Button type="submit" loading={saving}>
+          Cambiar contraseña
         </Button>
       </form>
     </Card>
