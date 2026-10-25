@@ -97,3 +97,24 @@ también su cuenta de jugador, para que pueda entrar a `/reservar`:
 `PlayerDto` (login y `GET /player/me`) trae `mustChangePassword` y `needsDataConsent`. Endpoints:
 `PUT /player/password` `{currentPassword, newPassword}` (400 si la actual no coincide o la nueva es la
 cédula) y `POST /player/consent`.
+
+## Ciudad y departamento del negocio (Colombia)
+
+Catálogo oficial DIVIPOLA del DANE cargado por migración: 33 departamentos (con Bogotá D.C.) y 1.104
+municipios (sin áreas no municipalizadas). El negocio guarda su **ciudad** y de ella sale el departamento.
+
+- `GET /catalogs/departments` → `[{ id, code, name }]`
+- `GET /catalogs/departments/:id/cities` → `[{ id, code, name }]`
+- `PUT /business/profile` acepta `cityId`: **obligatorio al crear** el negocio (400 si falta); al
+  actualizar, si se omite se conserva la ciudad actual (los negocios anteriores pueden no tenerla).
+- `POST /admin/clients` exige `cityId`; `PATCH /admin/clients/:id` lo puede cambiar.
+- `BusinessDto`, `Client` y `ClientDetail` traen `city: { id, name, department: { id, name } } | null`.
+
+### Prompt para la app Flutter
+
+> En el formulario de crear/editar negocio agrega dos selectores dependientes: «Departamento»
+> (`GET /catalogs/departments`) y «Ciudad» (`GET /catalogs/departments/:id/cities`, se carga al elegir
+> el departamento y se limpia si cambia). Ambos obligatorios al crear. Envía `cityId` (el id de la
+> ciudad) en `PUT /business/profile`. Si el negocio ya existe y `city` viene null, pide completarla.
+> Muestra «Ciudad, Departamento» en la ficha del negocio. Usa búsqueda dentro de la lista (hay hasta
+> ~125 municipios por departamento). Cachea los catálogos: no cambian.

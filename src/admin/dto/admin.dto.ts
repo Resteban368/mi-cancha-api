@@ -16,6 +16,7 @@ import {
   MinLength,
   ValidateNested,
 } from 'class-validator';
+import { CityRefDto } from '../../catalogs/dto/location.dto.js';
 import {
   BookingLinkDto,
   BusinessPhotoDto,
@@ -102,6 +103,10 @@ export class CreateClientDto {
   @MaxLength(100)
   neighborhood: string;
 
+  /** Ciudad del negocio (GET /catalogs/departments/:id/cities); de ella sale el departamento. */
+  @IsUUID()
+  cityId: string;
+
   @IsUUID()
   planId: string;
 }
@@ -121,6 +126,8 @@ export class ClientDto {
   name: string;
   address: string;
   neighborhood: string;
+  /** Ciudad y departamento; null en negocios anteriores que aún no la completan. */
+  city: CityRefDto | null;
   createdAt: Date;
   owner: {
     id: string;
@@ -135,6 +142,11 @@ export class ClientDto {
 }
 
 export class UpdateClientDto {
+  /** Ciudad del negocio (GET /catalogs/departments/:id/cities). */
+  @IsOptional()
+  @IsUUID()
+  cityId?: string;
+
   @IsOptional()
   @IsString()
   @MinLength(2)
@@ -255,6 +267,8 @@ export class ClientDetailDto {
   imageUrl: string | null;
   /** Fotos del negocio (hasta 5) en orden; la primera es la portada. */
   photos: BusinessPhotoDto[];
+  /** Ciudad y departamento; null si aún no la completan. */
+  city: CityRefDto | null;
   /** Link de reservas del negocio y si ya está activo. */
   bookingLink: BookingLinkDto;
   latitude: number | null;

@@ -85,20 +85,47 @@ describe('BusinessesService', () => {
     ]);
   });
 
+  it('al crear el negocio exige ciudad; al actualizar la conserva si no se envía', async () => {
+    prisma.business.findUnique.mockResolvedValue(null);
+    await expect(service.save('owner-1', dto)).rejects.toThrow(
+      BadRequestException,
+    );
+    expect(prisma.business.create).not.toHaveBeenCalled();
+
+    prisma.business.findUnique.mockResolvedValue({ id: 'biz-1' });
+    prisma.business.update.mockImplementation(({ data }) =>
+      storedBusiness(data),
+    );
+    await service.save('owner-1', dto);
+    expect(prisma.business.update.mock.calls[0][0].data).not.toHaveProperty(
+      'cityId',
+    );
+  });
+
+  it('rechaza una ciudad que no existe en el catálogo', async () => {
+    prisma.city.count.mockResolvedValue(0);
+    await expect(
+      service.save('owner-1', { ...dto, cityId: 'no-existe' }),
+    ).rejects.toThrow(BadRequestException);
+  });
+
   it('al crear el negocio conecta sus servicios y le asigna el plan gratuito', async () => {
     prisma.business.findUnique.mockResolvedValue(null);
     prisma.business.create.mockImplementation(({ data }) =>
       storedBusiness(data),
     );
     prisma.plan.findFirst.mockResolvedValue({ id: 'plan-free' });
+    prisma.city.count.mockResolvedValue(1);
 
     const result = await service.save('owner-1', {
       ...dto,
+      cityId: 'city-1',
       amenities: ['WIFI'],
     });
 
     expect(prisma.business.create.mock.calls[0][0].data).toMatchObject({
       ...dto,
+      cityId: 'city-1',
       ownerId: 'owner-1',
       description: null,
       amenities: { connect: [{ id: 'id-WIFI' }] },

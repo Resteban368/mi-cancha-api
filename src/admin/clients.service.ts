@@ -13,6 +13,11 @@ import {
   ReservationStatus,
   UserRole,
 } from '../generated/prisma/enums.js';
+import {
+  citySelect,
+  requireCity,
+  toCityRef,
+} from '../catalogs/dto/location.dto.js';
 import { toBookingLink } from '../businesses/booking-link.js';
 import {
   profileImagesSelect,
@@ -33,6 +38,7 @@ const SUBSCRIPTION_PERIOD_DAYS = 30;
 const RECENT_ITEMS = 10;
 
 const clientInclude = {
+  city: citySelect,
   owner: { select: { id: true, displayName: true, email: true, phone: true } },
   subscription: {
     include: { plan: { select: { id: true, name: true, monthlyPrice: true } } },
@@ -45,6 +51,7 @@ type ClientRecord = Prisma.BusinessGetPayload<{
 }>;
 
 const detailInclude = {
+  city: citySelect,
   owner: {
     select: {
       id: true,
@@ -193,6 +200,7 @@ export class ClientsService {
       description: business.description,
       imageUrl: photos[0]?.url ?? null,
       photos,
+      city: toCityRef(business.city),
       bookingLink: toBookingLink(this.publicApiUrl, {
         slug: business.slug,
         onlineBookingEnabled: business.onlineBookingEnabled,
@@ -274,6 +282,7 @@ export class ClientsService {
     ]);
     if (existing) throw new ConflictException('El email ya está registrado');
     if (!plan) throw new NotFoundException('El plan no existe');
+    await requireCity(this.prisma, dto.cityId);
 
     const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
     const business = await this.prisma.business.create({
@@ -281,6 +290,7 @@ export class ClientsService {
         name: dto.businessName,
         address: dto.address,
         neighborhood: dto.neighborhood,
+        city: { connect: { id: dto.cityId } },
         owner: {
           create: {
             email,
@@ -356,6 +366,7 @@ export class ClientsService {
     dto: UpdateClientDto,
   ): Promise<ClientDetailDto> {
     await this.requireClient(businessId);
+    if (dto.cityId) await requireCity(this.prisma, dto.cityId);
     if (dto.latitude !== undefined || dto.longitude !== undefined) {
       if ((dto.latitude === null) !== (dto.longitude === null)) {
         throw new ConflictException(
@@ -372,6 +383,7 @@ export class ClientsService {
         ...(dto.neighborhood !== undefined && {
           neighborhood: dto.neighborhood,
         }),
+        ...(dto.cityId !== undefined && { cityId: dto.cityId }),
         ...(dto.description !== undefined && { description: dto.description }),
         ...(dto.latitude !== undefined && { latitude: dto.latitude }),
         ...(dto.longitude !== undefined && { longitude: dto.longitude }),
@@ -392,6 +404,7 @@ function toClientDto(b: ClientRecord): ClientDto {
     name: b.name,
     address: b.address,
     neighborhood: b.neighborhood,
+    city: toCityRef(b.city),
     createdAt: b.createdAt,
     owner: {
       id: b.owner.id,

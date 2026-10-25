@@ -10,6 +10,7 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
+import { CityRefDto } from '../../catalogs/dto/location.dto.js';
 
 export class SaveBusinessDto {
   /** @example Complejo Deportivo El Golazo */
@@ -47,6 +48,14 @@ export class SaveBusinessDto {
   @IsOptional()
   @IsLongitude()
   longitude?: number;
+
+  /**
+   * Ciudad del negocio (id de `GET /catalogs/departments/:id/cities`); de ella sale el departamento.
+   * Obligatoria al crear el negocio; al actualizar, si se omite se conserva la actual.
+   */
+  @IsOptional()
+  @IsUUID()
+  cityId?: string;
 
   /** Códigos del catálogo de servicios (GET /catalogs). @example ["PARQUEADERO","WIFI"] */
   @IsOptional()
@@ -94,6 +103,8 @@ export class BusinessDto {
   imageUrl: string | null;
   /** Fotos del negocio (hasta 5) en orden; la primera es la portada. */
   photos: BusinessPhotoDto[];
+  /** Ciudad y departamento; null en negocios anteriores que aún no la completan. */
+  city: CityRefDto | null;
   /** Link de reservas y si ya está activo. */
   bookingLink: BookingLinkDto;
   /** Punto de llegada; ambos null si aún no se fijó. */

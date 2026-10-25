@@ -11,6 +11,7 @@ import type {
 } from '../generated/prisma/client.js';
 import type { Sport } from '../generated/prisma/enums.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { CityDto, DepartmentDto } from './dto/location.dto.js';
 import {
   AdminAmenityDto,
   AdminCourtSurfaceDto,
@@ -32,6 +33,28 @@ const catalogOrder = [{ sortOrder: 'asc' as const }, { name: 'asc' as const }];
 @Injectable()
 export class CatalogsService {
   constructor(private readonly prisma: PrismaService) {}
+
+  /** Departamentos de Colombia (DANE) en orden alfabético. */
+  async departments(): Promise<DepartmentDto[]> {
+    return this.prisma.department.findMany({
+      select: { id: true, code: true, name: true },
+      orderBy: { name: 'asc' },
+    });
+  }
+
+  /** Ciudades (municipios) de un departamento en orden alfabético. */
+  async cities(departmentId: string): Promise<CityDto[]> {
+    const department = await this.prisma.department.findUnique({
+      where: { id: departmentId },
+      select: { id: true },
+    });
+    if (!department) throw new NotFoundException('El departamento no existe');
+    return this.prisma.city.findMany({
+      where: { departmentId },
+      select: { id: true, code: true, name: true },
+      orderBy: { name: 'asc' },
+    });
+  }
 
   /** Catálogos activos, para la app. */
   async findActive(): Promise<CatalogsDto> {

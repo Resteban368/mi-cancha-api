@@ -143,6 +143,10 @@ model Business {
   slug                 String?   @unique
   /// Si el link público acepta reservas de jugadores.
   onlineBookingEnabled Boolean   @default(true)
+  /// Ciudad (municipio de Colombia); de ella sale el departamento. Obligatoria al crear el negocio
+  /// (los anteriores a este campo quedan en null hasta que la completen).
+  cityId               String?
+  city                 City?     @relation(fields: [cityId], references: [id], onDelete: SetNull)
   amenities            Amenity[]
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
@@ -156,6 +160,30 @@ model Business {
   profileImages     BusinessProfileImage[]
   slotHolds         SlotHold[]
   reservationGroups ReservationGroup[]
+
+  @@index([cityId])
+}
+
+/// Departamento de Colombia (DIVIPOLA del DANE; 32 más Bogotá D.C.). Catálogo fijo cargado por migración.
+model Department {
+  id     String @id @default(uuid())
+  /// Código DANE de 2 dígitos, p. ej. 05 (Antioquia).
+  code   String @unique
+  name   String
+  cities City[]
+}
+
+/// Municipio de Colombia (DIVIPOLA del DANE). Catálogo fijo cargado por migración.
+model City {
+  id           String     @id @default(uuid())
+  /// Código DANE de 5 dígitos, p. ej. 05001 (Medellín).
+  code         String     @unique
+  name         String
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id])
+  businesses   Business[]
+
+  @@index([departmentId, name])
 }
 
 /// Fotos del negocio (hasta 5). La de menor position es la portada que sale en el directorio;

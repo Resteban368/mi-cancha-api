@@ -1,4 +1,8 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import bcrypt from 'bcryptjs';
@@ -18,6 +22,7 @@ const dto = {
   businessName: 'Canchas del Norte',
   address: 'Calle 1',
   neighborhood: 'La Floresta',
+  cityId: 'city-1',
   planId: 'plan-1',
 };
 
@@ -26,6 +31,11 @@ const storedClient = {
   name: dto.businessName,
   address: dto.address,
   neighborhood: dto.neighborhood,
+  city: {
+    id: 'city-1',
+    name: 'Medellín',
+    department: { id: 'dep-1', name: 'Antioquia' },
+  },
   createdAt: new Date(),
   owner: {
     id: 'u1',
@@ -67,6 +77,7 @@ describe('ClientsService', () => {
       monthlyPrice: 89_000,
     });
     prisma.business.create.mockResolvedValue(storedClient);
+    prisma.city.count.mockResolvedValue(1);
 
     const result = await service.create(dto);
 
@@ -82,7 +93,21 @@ describe('ClientsService', () => {
       planId: 'plan-1',
       autoBilling: true,
     });
+    expect(data.city).toEqual({ connect: { id: 'city-1' } });
+    expect(result.city).toEqual({
+      id: 'city-1',
+      name: 'Medellín',
+      department: { id: 'dep-1', name: 'Antioquia' },
+    });
     expect(result.plan?.name).toBe('Básico');
+  });
+
+  it('rechaza una ciudad que no está en el catálogo de Colombia', async () => {
+    prisma.user.findUnique.mockResolvedValue(null);
+    prisma.plan.findUnique.mockResolvedValue({ id: 'plan-1' });
+    prisma.city.count.mockResolvedValue(0);
+    await expect(service.create(dto)).rejects.toThrow(BadRequestException);
+    expect(prisma.business.create).not.toHaveBeenCalled();
   });
 
   it('rechaza un email ya registrado', async () => {

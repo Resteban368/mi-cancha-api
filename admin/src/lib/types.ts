@@ -30,11 +30,20 @@ export interface Dashboard {
   signupsByMonth: { month: string; clients: number; players: number }[];
 }
 
+/** Ciudad de un negocio con su departamento (catálogo DANE). */
+export interface CityRef {
+  id: string;
+  name: string;
+  department: { id: string; name: string };
+}
+
 export interface Client {
   id: string;
   name: string;
   address: string;
   neighborhood: string;
+  /** null en negocios anteriores que aún no la completan. */
+  city: CityRef | null;
   createdAt: string;
   owner: { id: string; fullName: string; email: string | null; phone: string | null };
   plan: { id: string; name: string; monthlyPrice: number } | null;
@@ -99,6 +108,7 @@ export interface ClientDetail {
   name: string;
   address: string;
   neighborhood: string;
+  city: CityRef | null;
   description: string | null;
   imageUrl: string | null;
   /** Fotos del negocio (hasta 5); la primera es la portada. */

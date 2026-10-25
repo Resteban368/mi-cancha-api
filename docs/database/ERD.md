@@ -44,8 +44,21 @@ iniciar sesión ni usar la API (sus tokens dejan de valer)."
     String slug UK "opcional · Identificador del link público de reservas: /reservar/<slug>. Lo genera un
 trigger de la base a partir del nombre al crear el negocio (nunca queda nulo)."
     Boolean onlineBookingEnabled "Si el link público acepta reservas de jugadores."
+    String cityId FK "opcional · Ciudad (municipio de Colombia); de ella sale el departamento. Obligatoria al crear el negocio
+(los anteriores a este campo quedan en null hasta que la completen)."
     DateTime createdAt
     DateTime updatedAt
+  }
+  Department {
+    String id PK
+    String code UK "Código DANE de 2 dígitos, p. ej. 05 (Antioquia)."
+    String name
+  }
+  City {
+    String id PK
+    String code UK "Código DANE de 5 dígitos, p. ej. 05001 (Medellín)."
+    String name
+    String departmentId FK
   }
   BusinessProfileImage {
     String id PK
@@ -299,6 +312,8 @@ llegaron por la web y aún no la registran (el negocio siempre la pide)."
     DateTime createdAt
   }
   User ||--o| Business : "business"
+  City |o--o{ Business : "businesses"
+  Department ||--o{ City : "cities"
   Business ||--o{ BusinessProfileImage : "profileImages"
   Business ||--o{ Court : "courts"
   CourtSurface |o--o{ Court : "courts"
@@ -358,6 +373,7 @@ Los negocios entran con email y contraseña; los jugadores con Google o Apple.
 La sede deportiva de un cliente. Cada administrador de negocio tiene exactamente una.
 
 - **User**: Pertenece siempre a un User mediante ownerId; un User tiene como máximo un Business. Si se borra el User, se borra también su Business.
+- **City**: Puede pertenecer a un City mediante cityId; un City puede tener varios Business. Si se borra el City, el Business se conserva sin City.
 - **Amenity**: Muchos a muchos con Amenity: cada Business puede tener varios Amenity y cada Amenity puede estar en varios Business (campo amenities).
 - **Court**: Tiene cero o muchos Court (campo courts). Cada Court apunta a este Business.
 - **Customer**: Tiene cero o muchos Customer (campo customers). Cada Customer apunta a este Business.
@@ -368,6 +384,19 @@ La sede deportiva de un cliente. Cada administrador de negocio tiene exactamente
 - **BusinessProfileImage**: Tiene cero o muchos BusinessProfileImage (campo profileImages). Cada BusinessProfileImage apunta a este Business.
 - **SlotHold**: Tiene cero o muchos SlotHold (campo slotHolds). Cada SlotHold apunta a este Business.
 - **ReservationGroup**: Tiene cero o muchos ReservationGroup (campo reservationGroups). Cada ReservationGroup apunta a este Business.
+
+### Department
+
+Departamento de Colombia (DIVIPOLA del DANE; 32 más Bogotá D.C.). Catálogo fijo cargado por migración.
+
+- **City**: Tiene cero o muchos City (campo cities). Cada City apunta a este Department.
+
+### City
+
+Municipio de Colombia (DIVIPOLA del DANE). Catálogo fijo cargado por migración.
+
+- **Department**: Pertenece siempre a un Department mediante departmentId; un Department puede tener varios City. No se puede borrar un Department mientras tenga City.
+- **Business**: Tiene cero o muchos Business (campo businesses). Cada Business apunta a este City.
 
 ### BusinessProfileImage
 

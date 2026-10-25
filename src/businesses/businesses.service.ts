@@ -8,6 +8,11 @@ import { CatalogsService } from '../catalogs/catalogs.service.js';
 import { publicApiUrl } from '../common/public-url.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import {
+  citySelect,
+  requireCity,
+  toCityRef,
+} from '../catalogs/dto/location.dto.js';
 import { toBookingLink } from './booking-link.js';
 import { profileImagesSelect, toBusinessPhotos } from './business-photos.js';
 import { BusinessDto, SaveBusinessDto } from './dto/business.dto.js';
@@ -18,6 +23,7 @@ const businessInclude = {
   amenities: { select: { code: true }, orderBy: { sortOrder: 'asc' } },
   profileImages: profileImagesSelect,
   subscription: { select: { isActive: true } },
+  city: citySelect,
   courts: {
     where: { isActive: true },
     select: { photos: { select: { slot: true } } },
@@ -59,6 +65,7 @@ export class BusinessesService {
         'Envía latitude y longitude juntas, o ninguna de las dos',
       );
     }
+    if (dto.cityId) await requireCity(this.prisma, dto.cityId);
     const amenityIds = await this.catalogs.resolveAmenityIds(
       dto.amenities ?? [],
     );
@@ -77,13 +84,28 @@ export class BusinessesService {
       if (existing) {
         return tx.business.update({
           where: { ownerId },
-          data: { ...data, amenities: { set: amenityRefs } },
+          // Sin cityId se conserva la ciudad actual (los negocios anteriores pueden no tenerla).
+          data: {
+            ...data,
+            ...(dto.cityId && { cityId: dto.cityId }),
+            amenities: { set: amenityRefs },
+          },
           include: businessInclude,
         });
       }
 
+      if (!dto.cityId) {
+        throw new BadRequestException(
+          'Elige el departamento y la ciudad del negocio',
+        );
+      }
       const created = await tx.business.create({
-        data: { ...data, ownerId, amenities: { connect: amenityRefs } },
+        data: {
+          ...data,
+          cityId: dto.cityId,
+          ownerId,
+          amenities: { connect: amenityRefs },
+        },
         include: businessInclude,
       });
       const freePlan = await tx.plan.findFirst({
@@ -127,6 +149,7 @@ export class BusinessesService {
       amenities: business.amenities.map((a) => a.code),
       imageUrl: photos[0]?.url ?? null,
       photos,
+      city: toCityRef(business.city),
       bookingLink: toBookingLink(this.publicApiUrl, business),
       latitude: business.latitude,
       longitude: business.longitude,

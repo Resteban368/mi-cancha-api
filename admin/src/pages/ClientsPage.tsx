@@ -22,6 +22,7 @@ import {
 } from '../components/ui';
 import { useToast } from '../lib/toast';
 import { api, errorMessage } from '../lib/api';
+import { CityPicker } from '../components/CityPicker';
 import { formatCop, formatDate } from '../lib/format';
 import type { Client, Page, Plan } from '../lib/types';
 import { useApi, useDebounced } from '../lib/useApi';
@@ -135,7 +136,9 @@ export function ClientsPage() {
                         <Link to={client.id} className="font-medium hover:text-accent hover:underline">
                           {client.name}
                         </Link>
-                        <p className="text-xs text-fg-3">{client.neighborhood}</p>
+                        <p className="text-xs text-fg-3">
+                          {client.city ? `${client.city.name}, ${client.city.department.name}` : 'Sin ciudad'} · {client.neighborhood}
+                        </p>
                       </Td>
                       <Td>
                         <p>{client.owner.fullName}</p>
@@ -224,6 +227,7 @@ const EMPTY_FORM = {
   businessName: '',
   address: '',
   neighborhood: '',
+  cityId: '',
   planId: '',
 };
 
@@ -340,6 +344,7 @@ function CreateClientModal({
           <Field label="Dirección">
             {(id) => <Input id={id} required minLength={3} value={form.address} onChange={(e) => set('address')(e.target.value)} />}
           </Field>
+          <CityPicker cityId={form.cityId} onChange={set('cityId')} />
           <Field label="Barrio">
             {(id) => <Input id={id} required minLength={2} value={form.neighborhood} onChange={(e) => set('neighborhood')(e.target.value)} />}
           </Field>

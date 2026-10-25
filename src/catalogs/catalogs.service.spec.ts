@@ -115,7 +115,9 @@ describe('CatalogsService', () => {
       prisma.courtSurface.findUnique.mockResolvedValue(surface);
       await expect(
         service.resolveCourtSurfaceId('GRAMA_SINTETICA', Sport.BALONCESTO),
-      ).rejects.toThrow('La superficie Grama sintética no aplica a este deporte');
+      ).rejects.toThrow(
+        'La superficie Grama sintética no aplica a este deporte',
+      );
     });
 
     it('rechaza códigos inexistentes o inactivos, salvo la que ya tiene la cancha', async () => {

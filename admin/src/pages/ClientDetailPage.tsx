@@ -141,6 +141,13 @@ function ClientDetailView({
                   {data.address} · {data.neighborhood}
                 </span>
               </Detail>
+              <Detail label="Ciudad">
+                {data.city ? (
+                  `${data.city.name}, ${data.city.department.name}`
+                ) : (
+                  <span className="text-fg-3">Sin ciudad: edítala en la ubicación del negocio</span>
+                )}
+              </Detail>
               <Detail label="Descripción">
                 {data.description ?? <span className="text-fg-3">Sin descripción</span>}
               </Detail>

@@ -9,6 +9,7 @@ import {
   MapPinIcon,
   NavigationIcon,
 } from './icons';
+import { CityPicker } from './CityPicker';
 import { Badge, Button, Card, Field, Input, Modal } from './ui';
 import { api, errorMessage } from '../lib/api';
 import { useToast } from '../lib/toast';
@@ -334,6 +335,7 @@ function EditLocationModal({ open, client, onClose, onSaved }: EditLocationModal
   const toast = useToast();
   const [address, setAddress] = useState(client.address ?? '');
   const [neighborhood, setNeighborhood] = useState(client.neighborhood ?? '');
+  const [cityId, setCityId] = useState(client.city?.id ?? '');
   const [latInput, setLatInput] = useState(
     client.latitude != null ? client.latitude.toString() : '',
   );
@@ -444,6 +446,7 @@ function EditLocationModal({ open, client, onClose, onSaved }: EditLocationModal
         body: {
           address: address.trim(),
           neighborhood: neighborhood.trim(),
+          cityId: cityId || undefined,
           latitude: isRemoving ? null : parsedLat,
           longitude: isRemoving ? null : parsedLng,
         },
@@ -474,6 +477,7 @@ function EditLocationModal({ open, client, onClose, onSaved }: EditLocationModal
         )}
 
         <div className="grid gap-4 sm:grid-cols-2">
+          <CityPicker cityId={cityId} initial={client.city} onChange={setCityId} />
           <Field label="Dirección física">
             {(id) => (
               <Input
