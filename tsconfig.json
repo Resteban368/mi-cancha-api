@@ -26,6 +26,7 @@
     "node_modules",
     "dist",
     "admin",
-    "web"
+    "web",
+    "landing"
   ]
 }

@@ -23,11 +23,28 @@ import { NotificationsModule } from './notifications/notifications.module.js';
 import { SecurityModule } from './security/security.module.js';
 import { StorageModule } from './storage/storage.module.js';
 
+const STATIC_OPTIONS = {
+  etag: false,
+  lastModified: false,
+  setHeaders: (
+    res: { setHeader: (k: string, v: string) => void },
+    path: string,
+  ) => {
+    res.setHeader(
+      'Cache-Control',
+      path.includes(`${sep}assets${sep}`)
+        ? 'public, max-age=31536000, immutable'
+        : 'no-store',
+    );
+  },
+};
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
-    // Panel de super admin (public/admin → /admin) y web de reservas para
-    // jugadores (public/reservar → /reservar), compilados con Vite.
+    // Panel de super admin (public/admin → /admin), web de reservas para
+    // jugadores (public/reservar → /reservar) y landing (raíz de public/ → /),
+    // compilados con Vite.
     // En Vercel los archivos tienen la fecha fija, así que el ETag de index.html no
     // cambia entre despliegues y el navegador se quedaría con uno viejo (304) que
     // apunta a un JS que ya no existe. Por eso lo que no está en assets/ va con
@@ -36,22 +53,16 @@ import { StorageModule } from './storage/storage.module.js';
       ...['admin', 'reservar'].map((app) => ({
         rootPath: join(process.cwd(), 'public', app),
         serveRoot: `/${app}`,
-        serveStaticOptions: {
-          etag: false,
-          lastModified: false,
-          setHeaders: (
-            res: { setHeader: (k: string, v: string) => void },
-            path: string,
-          ) => {
-            res.setHeader(
-              'Cache-Control',
-              path.includes(`${sep}assets${sep}`)
-                ? 'public, max-age=31536000, immutable'
-                : 'no-store',
-            );
-          },
-        },
+        serveStaticOptions: STATIC_OPTIONS,
       })),
+      // La landing va al final para no tapar /admin ni /reservar. renderPath '/'
+      // devuelve index.html solo en la raíz: una ruta inexistente sigue dando 404.
+      {
+        rootPath: join(process.cwd(), 'public'),
+        renderPath: '/',
+        exclude: ['/api/{*path}'],
+        serveStaticOptions: STATIC_OPTIONS,
+      },
     ),
     PrismaModule,
     AccountStatusModule,
