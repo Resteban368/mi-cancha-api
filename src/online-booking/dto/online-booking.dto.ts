@@ -387,6 +387,17 @@ export class DirectoryQueryDto {
   @Max(180)
   lng?: number;
 
+  /**
+   * Radio en km alrededor de lat/lng: solo trae sedes a esa distancia o menos (las que no
+   * tienen punto en el mapa quedan fuera). Exige lat y lng.
+   */
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  @Max(1000)
+  radiusKm?: number;
+
   @IsOptional()
   @Type(() => Number)
   @IsInt()
@@ -399,6 +410,14 @@ export class DirectoryQueryDto {
   @Min(1)
   @Max(50)
   limit?: number;
+}
+
+/** Punto de una sede en el mapa del directorio. */
+export class DirectoryMapPointDto {
+  name: string;
+  slug: string;
+  latitude: number;
+  longitude: number;
 }
 
 export class DirectoryBusinessDto {

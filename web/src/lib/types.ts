@@ -71,6 +71,14 @@ export interface SlotHold {
   expiresAt: string;
 }
 
+/** Punto de una sede en el mapa de ubicación. */
+export interface DirectoryMapPoint {
+  name: string;
+  slug: string;
+  latitude: number;
+  longitude: number;
+}
+
 /** Sede del directorio general (/reservar). */
 export interface DirectoryBusiness {
   name: string;

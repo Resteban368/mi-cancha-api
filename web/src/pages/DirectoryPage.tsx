@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import {
   ChevronDownIcon,
@@ -12,6 +12,14 @@ import {
 import { Alert, Button, Card, Skeleton } from '../components/ui';
 import { api, errorMessage } from '../lib/api';
 import { formatMoney, SPORT_EMOJI, SPORT_LABELS } from '../lib/format';
+import {
+  locationPromptSkipped,
+  radiusLabel,
+  readLocation,
+  saveLocation,
+  skipLocationPrompt,
+  type SavedLocation,
+} from '../lib/location';
 import { useSession } from '../lib/session';
 import type {
   DirectoryBusiness,
@@ -21,6 +29,9 @@ import type {
   Sport,
 } from '../lib/types';
 import { useApi } from '../lib/useApi';
+
+// Leaflet pesa bastante: el mapa se descarga solo cuando se abre el diálogo.
+const LocationDialog = lazy(() => import('../components/LocationDialog'));
 
 const PAGE_SIZE = 12;
 
@@ -43,9 +54,10 @@ export function DirectoryPage() {
   const [term, setTerm] = useState('');
   const [sport, setSport] = useState<Sport | ''>('');
   const [amenity, setAmenity] = useState('');
-  const [origin, setOrigin] = useState<Origin | null>(null);
-  const [locating, setLocating] = useState(false);
-  const [locationError, setLocationError] = useState<string | null>(null);
+  const [location, setLocation] = useState<SavedLocation | null>(readLocation);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const origin: Origin | null = location && { lat: location.lat, lng: location.lng };
+  const radiusKm = location?.radiusKm ?? null;
   const [listing, setListing] = useState<Listing>({
     businesses: [],
     total: 0,
@@ -78,6 +90,7 @@ export function DirectoryPage() {
       if (origin) {
         params.set('lat', String(origin.lat));
         params.set('lng', String(origin.lng));
+        if (radiusKm !== null) params.set('radiusKm', String(radiusKm));
       }
       try {
         const data = await api<DirectoryResponse>(`/public/businesses?${params}`);
@@ -94,32 +107,34 @@ export function DirectoryPage() {
         setListing((s) => ({ ...s, loading: false, error: errorMessage(error) }));
       }
     },
-    [term, sport, amenity, origin],
+    [term, sport, amenity, location],
   );
 
   useEffect(() => {
     load(1);
   }, [load]);
 
-  /** Solo se pide el permiso de ubicación cuando el jugador toca el botón. */
-  function locate() {
-    if (!navigator.geolocation) {
-      setLocationError('Tu navegador no permite usar la ubicación. Puedes seguir buscando sin ella.');
-      return;
-    }
-    setLocating(true);
-    setLocationError(null);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setLocating(false);
-        setOrigin({ lat: position.coords.latitude, lng: position.coords.longitude });
-      },
-      () => {
-        setLocating(false);
-        setLocationError('No pudimos usar tu ubicación. Revisa el permiso del navegador o sigue buscando sin ella.');
-      },
-      { timeout: 10_000, maximumAge: 5 * 60_000 },
-    );
+  // Con sesión iniciada, la primera vez que entra a Explorar se le pregunta desde dónde busca.
+  useEffect(() => {
+    if (token && !readLocation() && !locationPromptSkipped()) setDialogOpen(true);
+  }, [token]);
+
+  function confirmLocation(next: SavedLocation) {
+    saveLocation(next);
+    setLocation(next);
+    setDialogOpen(false);
+  }
+
+  function clearLocation() {
+    saveLocation(null);
+    setLocation(null);
+    setDialogOpen(false);
+  }
+
+  function closeDialog() {
+    // «Ahora no»: sin ubicación guardada no se vuelve a preguntar en esta sesión.
+    if (!location) skipLocationPrompt();
+    setDialogOpen(false);
   }
 
   const hasFilters = Boolean(term || sport || amenity);
@@ -197,26 +212,20 @@ export function DirectoryPage() {
             </label>
             <button
               type="button"
-              onClick={origin ? () => setOrigin(null) : locate}
-              disabled={locating}
+              onClick={() => setDialogOpen(true)}
               aria-pressed={Boolean(origin)}
               className={
-                'col-span-5 flex items-center justify-center gap-1.5 rounded-xl border px-2 py-2.5 text-xs font-semibold transition active:scale-95 disabled:opacity-60 sm:col-span-3 ' +
+                'col-span-5 flex items-center justify-center gap-1.5 rounded-xl border px-2 py-2.5 text-xs font-semibold transition active:scale-95 sm:col-span-4 ' +
                 (origin
                   ? 'border-accent bg-accent text-accent-fg'
                   : 'border-accent/30 bg-surface text-accent-text hover:bg-hover')
               }
             >
-              {locating ? (
-                <span className="size-3.5 animate-spin rounded-full border-2 border-current border-r-transparent" />
-              ) : (
-                <PinIcon className="size-4" />
-              )}
-              {origin ? 'Quitar cercanía' : 'Cerca de mí'}
+              <PinIcon className="size-4" />
+              {origin ? `Cerca de ti · ${radiusLabel(radiusKm)}` : 'Mi ubicación'}
             </button>
           </div>
 
-          {locationError && <Alert tone="warn">{locationError}</Alert>}
         </section>
 
         {error && (
@@ -250,7 +259,7 @@ export function DirectoryPage() {
               <b className="font-bold text-fg">
                 {total} {total === 1 ? 'sede' : 'sedes'}
               </b>
-              {origin ? ' · ordenadas por cercanía' : ''}
+              {origin ? (radiusKm === null ? ' · de la más cercana a la más lejana' : ` · a ${radiusKm} km o menos de tu ubicación`) : ''}
             </p>
             <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {businesses.map((business) => (
@@ -270,6 +279,11 @@ export function DirectoryPage() {
         )}
       </main>
       <PitchBottomNav />
+      {dialogOpen && (
+        <Suspense fallback={null}>
+          <LocationDialog open current={location} onConfirm={confirmLocation} onClear={clearLocation} onClose={closeDialog} />
+        </Suspense>
+      )}
     </>
   );
 }

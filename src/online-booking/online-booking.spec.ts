@@ -513,6 +513,60 @@ describe('OnlineBookingService', () => {
       expect(page.businesses[1].distanceKm).toBeGreaterThan(100);
     });
 
+    it('con radiusKm solo trae las sedes dentro del radio y deja fuera las sin punto', async () => {
+      prisma.business.findMany
+        .mockResolvedValueOnce([
+          { id: 'lejos', latitude: 4.6, longitude: -74.08 },
+          { id: 'cerca', latitude: 1.62, longitude: -75.6 },
+          { id: 'sin-punto', latitude: null, longitude: null },
+        ])
+        .mockResolvedValueOnce([sede('cerca', { slug: 'cerca' })]);
+
+      const page = await service.directory({
+        lat: 1.6,
+        lng: -75.6,
+        radiusKm: 10,
+      });
+
+      expect(page.total).toBe(1);
+      expect(prisma.business.findMany.mock.calls[1][0].where).toEqual({
+        id: { in: ['cerca'] },
+      });
+    });
+
+    it('radiusKm exige lat y lng', async () => {
+      await expect(service.directory({ radiusKm: 10 })).rejects.toThrow(
+        'radiusKm necesita lat y lng',
+      );
+    });
+
+    it('el mapa trae solo las sedes reservables con punto', async () => {
+      prisma.business.findMany.mockResolvedValue([
+        {
+          name: 'El Golazo',
+          slug: 'el-golazo',
+          latitude: 1.6,
+          longitude: -75.6,
+        },
+      ]);
+
+      const points = await service.directoryMap();
+
+      expect(points).toEqual([
+        {
+          name: 'El Golazo',
+          slug: 'el-golazo',
+          latitude: 1.6,
+          longitude: -75.6,
+        },
+      ]);
+      expect(prisma.business.findMany.mock.calls[0][0].where).toMatchObject({
+        onlineBookingEnabled: true,
+        latitude: { not: null },
+        longitude: { not: null },
+      });
+    });
+
     it('exige lat y lng juntos', async () => {
       await expect(service.directory({ lat: 1.6 })).rejects.toThrow(
         'Envía lat y lng juntos',

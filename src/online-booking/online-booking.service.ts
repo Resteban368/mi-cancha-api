@@ -34,6 +34,7 @@ import {
 import {
   CurrentHoldDto,
   DirectoryBusinessDto,
+  DirectoryMapPointDto,
   DirectoryPageDto,
   DirectoryQueryDto,
   OnlineBookingSettingsDto,
@@ -194,6 +195,9 @@ export class OnlineBookingService {
     if ((query.lat === undefined) !== (query.lng === undefined)) {
       throw new BadRequestException('Envía lat y lng juntos');
     }
+    if (query.radiusKm !== undefined && query.lat === undefined) {
+      throw new BadRequestException('radiusKm necesita lat y lng');
+    }
     const origin =
       query.lat !== undefined && query.lng !== undefined
         ? { lat: query.lat, lng: query.lng }
@@ -212,6 +216,11 @@ export class OnlineBookingService {
         id: b.id,
         distance: origin ? distanceKm(origin, b) : null,
       }))
+      .filter(
+        (b) =>
+          query.radiusKm === undefined ||
+          (b.distance !== null && b.distance <= query.radiusKm),
+      )
       .sort(byDistance);
 
     const pageItems = ranked.slice((page - 1) * limit, page * limit);
@@ -232,6 +241,25 @@ export class OnlineBookingService {
           : [];
       }),
     };
+  }
+
+  /** Ubicación de todas las sedes que reciben reservas, para el mapa del directorio. */
+  async directoryMap(): Promise<DirectoryMapPointDto[]> {
+    const rows = await this.prisma.business.findMany({
+      where: {
+        ...directoryWhere({}),
+        latitude: { not: null },
+        longitude: { not: null },
+      },
+      select: { name: true, slug: true, latitude: true, longitude: true },
+      orderBy: { name: 'asc' },
+    });
+    return rows.map((b) => ({
+      name: b.name,
+      slug: b.slug!,
+      latitude: b.latitude!,
+      longitude: b.longitude!,
+    }));
   }
 
   /** Servicios activos para filtrar el directorio. */
@@ -463,6 +491,7 @@ export const RESERVED_SLUGS = [
   'perfil',
   'reservas',
   'bienvenida',
+  'map',
   'mis-sedes',
   'politica-de-datos',
 ];
