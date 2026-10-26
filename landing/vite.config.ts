@@ -11,11 +11,12 @@ export default defineConfig({
   build: {
     outDir: '../public',
     emptyOutDir: false,
-    // Dos páginas: la portada (/) y los términos y condiciones (/terminos/).
+    // Portada (/), términos y condiciones (/terminos/) y política de privacidad (/privacidad/).
     rollupOptions: {
       input: {
         main: 'index.html',
         terminos: 'terminos/index.html',
+        privacidad: 'privacidad/index.html',
       },
     },
   },

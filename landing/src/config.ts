@@ -18,5 +18,5 @@ export const EXAMPLE_BOOKING_URL = 'https://app.micanchaapp.com/reservar';
  */
 export const API_URL: string = import.meta.env.VITE_API_URL ?? 'https://app.micanchaapp.com/api/v1';
 
-/** Política de tratamiento de datos (la publica la web de reservas). */
-export const POLICY_URL = 'https://app.micanchaapp.com/reservar/politica-de-datos';
+/** Política de privacidad y tratamiento de datos (página /privacidad/ de esta landing). */
+export const POLICY_URL = '/privacidad/';

@@ -9,7 +9,7 @@ const root = fileURLToPath(new URL('..', import.meta.url));
 const publicDir = `${root}../public`;
 const ssrDir = `${root}dist-ssr`;
 
-const { render, renderTerminos, PREGUNTAS } = await import(`${ssrDir}/entry-server.js`);
+const { render, renderTerminos, renderPrivacidad, PREGUNTAS } = await import(`${ssrDir}/entry-server.js`);
 
 const faqLd = {
   '@context': 'https://schema.org',
@@ -38,5 +38,6 @@ await prerender('index.html', [
   ['<!--faq-ld-->', `<script type="application/ld+json">${JSON.stringify(faqLd)}</script>`],
 ]);
 await prerender('terminos/index.html', [['<div id="root"></div>', `<div id="root">${renderTerminos()}</div>`]]);
+await prerender('privacidad/index.html', [['<div id="root"></div>', `<div id="root">${renderPrivacidad()}</div>`]]);
 
 await rm(ssrDir, { recursive: true, force: true });

@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="es-CO">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b1f28" />
+    <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/brand/favicon-32.png" />
+    <link rel="apple-touch-icon" href="/brand/apple-touch-icon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet" />
+
+    <title>Política de privacidad | Mi Cancha</title>
+    <meta
+      name="description"
+      content="Política de privacidad y tratamiento de datos de Mi Cancha (Ley 1581 de 2012): qué datos guardamos, para qué, con quién los compartimos y cómo ejercer tus derechos."
+    />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://www.micanchaapp.com/privacidad/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="es_CO" />
+    <meta property="og:site_name" content="Mi Cancha" />
+    <meta property="og:url" content="https://www.micanchaapp.com/privacidad/" />
+    <meta property="og:title" content="Política de privacidad | Mi Cancha" />
+    <meta property="og:image" content="https://www.micanchaapp.com/og.png" />
+
+    <script>
+      // Igual que en index.html: marca que hay JavaScript y aplica el tema antes de pintar.
+      (function () {
+        var r = document.documentElement;
+        r.classList.add('js');
+        try {
+          var dark = matchMedia('(prefers-color-scheme: dark)').matches;
+          r.dataset.theme = dark ? 'dark' : 'light';
+          var t = document.querySelector('meta[name="theme-color"]');
+          if (t) t.setAttribute('content', dark ? '#0b1f28' : '#f8fafc');
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/privacidad-main.tsx"></script>
+  </body>
+</html>

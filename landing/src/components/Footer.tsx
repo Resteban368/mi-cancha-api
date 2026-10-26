@@ -42,7 +42,7 @@ export function Footer() {
               ['/#planes', 'Planes'],
               ['/#preguntas', 'Preguntas'],
               ['/terminos/', 'Términos y condiciones'],
-              [POLICY_URL, 'Política de datos'],
+              [POLICY_URL, 'Política de privacidad'],
             ].map(([href, label]) => (
               <li key={href}>
                 <a href={href} className="hover:text-fg">

@@ -15,3 +15,6 @@ export const CORREO = '[correo de contacto]';
 
 /** Fecha desde la que rige esta versión. Cámbiala cada vez que modifiques los términos. */
 export const TERMINOS_VIGENCIA = '26 de octubre de 2026';
+
+/** Igual para la política de privacidad. */
+export const PRIVACIDAD_VIGENCIA = '26 de octubre de 2026';

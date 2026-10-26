@@ -1,6 +1,7 @@
 import { StrictMode, type ReactNode } from 'react';
 import { renderToString } from 'react-dom/server';
 import { App } from './App';
+import { PrivacidadPage } from './pages/PrivacidadPage';
 import { TerminosPage } from './pages/TerminosPage';
 
 export { PREGUNTAS } from './faq';
@@ -14,4 +15,8 @@ export function render(): string {
 
 export function renderTerminos(): string {
   return html(<TerminosPage />);
+}
+
+export function renderPrivacidad(): string {
+  return html(<PrivacidadPage />);
 }
