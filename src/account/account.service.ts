@@ -35,6 +35,11 @@ export class AccountService {
     const subscription = user.business?.subscription;
     let subscriptionDto: SubscriptionDto | null = null;
     if (user.business && subscription) {
+      const nextPlan = await this.prisma.plan.findFirst({
+        where: { monthlyPrice: { gt: subscription.plan.monthlyPrice } },
+        orderBy: [{ monthlyPrice: 'asc' }, { courtLimit: 'asc' }],
+        select: { name: true },
+      });
       subscriptionDto = {
         planName: subscription.plan.name,
         monthlyPrice: subscription.plan.monthlyPrice,
@@ -46,6 +51,7 @@ export class AccountService {
         isActive: isSubscriptionUsable(subscription),
         autoBilling: subscription.autoBilling,
         ...trialStatusOf(subscription),
+        nextPlanName: nextPlan?.name ?? null,
       };
     }
 

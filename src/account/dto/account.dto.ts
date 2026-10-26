@@ -30,6 +30,11 @@ export class SubscriptionDto {
   trialDaysLeft: number | null;
   /** La prueba ya venció: debe comprar un plan para seguir operando. */
   trialExpired: boolean;
+  /**
+   * Plan al que puede mejorar: el más barato que cuesta más que el actual;
+   * null si ya tiene el plan más caro.
+   */
+  nextPlanName: string | null;
 }
 
 export class BusinessAccountDto {
