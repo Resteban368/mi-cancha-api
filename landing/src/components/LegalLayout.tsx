@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { CORREO } from '../legal';
 import { Footer } from './Footer';
 
 /** Marco de las páginas legales (términos, privacidad): header simple, título, vigencia y footer. */
@@ -58,4 +59,9 @@ export function Seccion({ n, titulo, children }: { n: number; titulo: string; ch
       {children}
     </section>
   );
+}
+
+/** Correo de contacto como enlace mailto. */
+export function Correo() {
+  return <a href={`mailto:${CORREO}`}>{CORREO}</a>;
 }

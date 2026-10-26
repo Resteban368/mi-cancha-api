@@ -1,6 +1,6 @@
-import { CORREO, DOCUMENTO, DOMICILIO, TERMINOS_VIGENCIA, TITULAR } from '../legal';
+import { DOMICILIO, TERMINOS_VIGENCIA, TITULAR } from '../legal';
 import { POLICY_URL } from '../config';
-import { LegalLayout, Seccion } from '../components/LegalLayout';
+import { Correo, LegalLayout, Seccion } from '../components/LegalLayout';
 
 /**
  * Términos y condiciones de Mi Cancha (Colombia). BORRADOR: completa los datos del titular en
@@ -15,8 +15,8 @@ export function TerminosPage() {
     >
           <Seccion n={1} titulo="Quiénes somos">
             <p>
-              Mi Cancha es un servicio prestado por {TITULAR}, identificado con {DOCUMENTO}, con domicilio en{' '}
-              {DOMICILIO}. Nuestro correo de contacto es {CORREO}.
+              Mi Cancha es un servicio prestado por {TITULAR}, con domicilio en {DOMICILIO}. Nuestro correo de
+              contacto es <Correo />.
             </p>
             <p>
               Mi Cancha es un software: le da a cada negocio deportivo una página de reservas propia y un panel para
@@ -121,7 +121,7 @@ export function TerminosPage() {
             </ul>
             <p>
               Nos autorizas a almacenar y mostrar ese contenido solo para que el servicio funcione, por ejemplo para
-              mostrar tus fotos en tu página de reservas. Si alguien reclama por un contenido, escríbenos a {CORREO}{' '}
+              mostrar tus fotos en tu página de reservas. Si alguien reclama por un contenido, escríbenos a <Correo />{' '}
               indicando cuál es, dónde está y por qué tienes derecho sobre él. Podemos retirarlo mientras se resuelve
               y avisaremos a quien lo subió.
             </p>
@@ -205,7 +205,7 @@ export function TerminosPage() {
               Si eres consumidor, conservas tu derecho a acudir a la Superintendencia de Industria y Comercio o a los
               jueces que la ley te permita.
             </p>
-            <p>Antes de llegar a eso, escríbenos a {CORREO}: casi todo se resuelve ahí.</p>
+            <p>Antes de llegar a eso, escríbenos a <Correo />: casi todo se resuelve ahí.</p>
           </Seccion>
     </LegalLayout>
   );

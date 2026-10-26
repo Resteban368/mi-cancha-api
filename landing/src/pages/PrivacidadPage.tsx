@@ -1,5 +1,5 @@
-import { CORREO, DOCUMENTO, DOMICILIO, PRIVACIDAD_VIGENCIA, TITULAR } from '../legal';
-import { LegalLayout, Seccion } from '../components/LegalLayout';
+import { DOMICILIO, PRIVACIDAD_VIGENCIA, TITULAR } from '../legal';
+import { Correo, LegalLayout, Seccion } from '../components/LegalLayout';
 
 /**
  * Política de privacidad y tratamiento de datos de Mi Cancha (Ley 1581 de 2012). BORRADOR:
@@ -16,8 +16,8 @@ export function PrivacidadPage() {
     >
       <Seccion n={1} titulo="Quién trata tus datos">
         <p>
-          El responsable del tratamiento es {TITULAR}, identificado con {DOCUMENTO}, con domicilio en {DOMICILIO}.
-          Para cualquier asunto sobre tus datos escríbenos a {CORREO}.
+          Los responsables del tratamiento son {TITULAR}, con domicilio en {DOMICILIO}. Para cualquier asunto
+          sobre tus datos escríbenos a <Correo />.
         </p>
         <p>Según quién seas, tratamos tus datos en un papel distinto:</p>
         <ul>
@@ -153,7 +153,7 @@ export function PrivacidadPage() {
 
       <Seccion n={8} titulo="Cómo ejercer tus derechos">
         <p>
-          Escríbenos a {CORREO} desde el correo de tu cuenta o indicando tu nombre, tu celular y lo que necesitas. Si
+          Escríbenos a <Correo /> desde el correo de tu cuenta o indicando tu nombre, tu celular y lo que necesitas. Si
           tus datos los registró un negocio, puedes pedírselo a él o a nosotros, y se lo trasladaremos.
         </p>
         <ul>
