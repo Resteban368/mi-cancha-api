@@ -327,7 +327,7 @@ export function RegisterPage() {
           minLength={8}
           value={form.password}
           onChange={set('password')}
-          hint="Mínimo 8 caracteres"
+          hint="Usa tu número de documento (cédula) como contraseña. Mínimo 8 caracteres."
         />
         <label className="flex items-start gap-3 text-sm text-fg-2">
           <input
