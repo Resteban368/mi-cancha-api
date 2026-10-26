@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { CtaLink } from './ui';
-import { PANEL_URL } from '../config';
+import { EntrarMenu, OPCIONES_ENTRAR } from './EntrarMenu';
+import { Icon } from './Icon';
 
 const LINKS = [
   { href: '#deportes', label: 'Deportes' },
@@ -40,9 +41,9 @@ export function Header() {
         </ul>
 
         <div className="flex items-center gap-2">
-          <a href={PANEL_URL} className="hidden px-3 text-sm font-semibold text-fg-2 hover:text-fg sm:block">
-            Entrar
-          </a>
+          <div className="hidden sm:block">
+            <EntrarMenu />
+          </div>
           <div className="hidden sm:block">
             <CtaLink href="#registro">Prueba gratis</CtaLink>
           </div>
@@ -71,11 +72,24 @@ export function Header() {
               </li>
             ))}
           </ul>
-          <div className="mt-4 flex flex-wrap items-center gap-4 sm:hidden">
-            <CtaLink href="#registro">Prueba gratis 15 días</CtaLink>
-            <a href={PANEL_URL} className="text-sm font-semibold">
-              Entrar
-            </a>
+          <div className="mt-5 border-t border-border pt-4 sm:hidden">
+            <p className="text-xs font-bold tracking-[0.18em] text-fg-3 uppercase">Entrar</p>
+            <div className="mt-2 grid gap-2">
+              {OPCIONES_ENTRAR.map((o) => (
+                <a key={o.href} href={o.href} className="flex items-center gap-3 rounded-xl bg-surface-2 p-3">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent-text">
+                    <Icon name={o.icono} className="h-5 w-5" />
+                  </span>
+                  <span>
+                    <span className="block text-sm font-bold">{o.titulo}</span>
+                    <span className="block text-xs text-fg-3">{o.texto}</span>
+                  </span>
+                </a>
+              ))}
+            </div>
+            <div className="mt-4">
+              <CtaLink href="#registro">Prueba gratis 15 días</CtaLink>
+            </div>
           </div>
         </div>
       )}

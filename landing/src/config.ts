@@ -3,6 +3,9 @@
 /** Panel web del negocio: ahí inicia sesión el dueño después de registrarse. */
 export const PANEL_URL = 'https://negocio.micanchaapp.com';
 
+/** Ingreso de jugadores: la web de reservas, con sus reservas y su perfil. */
+export const PLAYER_LOGIN_URL = 'https://www.micanchaapp.com/reservar/ingresar';
+
 /** WhatsApp para pedir planes o soporte, con el número en formato internacional sin "+". */
 export const WHATSAPP_URL = '';
 
