@@ -61,7 +61,7 @@ function validar(v: Valores, departamento: string | null, ciudad: string | null,
   if (!ciudad) e.cityId = AYUDA.cityId;
   if (!largo(v.address, 3, 200)) e.address = AYUDA.address;
   if (!largo(v.neighborhood, 2, 120)) e.neighborhood = AYUDA.neighborhood;
-  if (!politica) e.policy = 'Debes aceptar la política de tratamiento de datos.';
+  if (!politica) e.policy = 'Debes aceptar los términos y condiciones y la política de datos.';
   return e;
 }
 
@@ -351,7 +351,11 @@ export function Signup() {
                   aria-invalid={!!errores.policy}
                 />
                 <span>
-                  Acepto la{' '}
+                  Acepto los{' '}
+                  <a href="/terminos/" target="_blank" rel="noopener noreferrer" className="font-bold text-accent-text underline underline-offset-2">
+                    términos y condiciones
+                  </a>{' '}
+                  y la{' '}
                   <a href={POLICY_URL} target="_blank" rel="noopener noreferrer" className="font-bold text-accent-text underline underline-offset-2">
                     política de tratamiento de datos
                   </a>

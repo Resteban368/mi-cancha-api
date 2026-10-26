@@ -1,5 +1,5 @@
 import { CtaLink } from './ui';
-import { WHATSAPP_URL } from '../config';
+import { POLICY_URL, WHATSAPP_URL } from '../config';
 
 export function Footer() {
   return (
@@ -13,7 +13,7 @@ export function Footer() {
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
             {/* Sobre el fondo verde el botón principal va en negro azulado para que se vea. */}
             <a
-              href="#registro"
+              href="/#registro"
               className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full bg-[#0b1f28] px-6 py-3 text-sm font-bold text-[#f8fafc] transition-transform hover:-translate-y-0.5"
             >
               Prueba gratis 15 días
@@ -35,22 +35,21 @@ export function Footer() {
             height={36}
             className="hidden h-9 w-auto dark:block"
           />
-          <ul className="flex gap-6 font-semibold">
-            <li>
-              <a href="#como" className="hover:text-fg">
-                Cómo funciona
-              </a>
-            </li>
-            <li>
-              <a href="#planes" className="hover:text-fg">
-                Planes
-              </a>
-            </li>
-            <li>
-              <a href="#preguntas" className="hover:text-fg">
-                Preguntas
-              </a>
-            </li>
+          {/* Con "/" delante para que también funcionen desde /terminos. */}
+          <ul className="flex flex-wrap justify-center gap-x-6 gap-y-2 font-semibold">
+            {[
+              ['/#como', 'Cómo funciona'],
+              ['/#planes', 'Planes'],
+              ['/#preguntas', 'Preguntas'],
+              ['/terminos/', 'Términos y condiciones'],
+              [POLICY_URL, 'Política de datos'],
+            ].map(([href, label]) => (
+              <li key={href}>
+                <a href={href} className="hover:text-fg">
+                  {label}
+                </a>
+              </li>
+            ))}
           </ul>
           <p>© {new Date().getFullYear()} Mi Cancha</p>
         </div>

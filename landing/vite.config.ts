@@ -11,6 +11,13 @@ export default defineConfig({
   build: {
     outDir: '../public',
     emptyOutDir: false,
+    // Dos páginas: la portada (/) y los términos y condiciones (/terminos/).
+    rollupOptions: {
+      input: {
+        main: 'index.html',
+        terminos: 'terminos/index.html',
+      },
+    },
   },
   server: {
     port: 5175,
