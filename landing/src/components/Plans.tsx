@@ -1,6 +1,6 @@
 import { Reveal } from './Reveal';
 import { CtaLink, SectionTitle } from './ui';
-import { WHATSAPP_URL } from '../config';
+import { whatsapp } from '../config';
 
 const PLANES = [
   { nombre: 'Básico', canchas: 1, precio: '$ 69.000', porCancha: null, destacado: false },
@@ -74,7 +74,7 @@ export function Plans() {
         <div className="mt-10 flex flex-col items-center gap-4 text-center">
           <div className="flex flex-col items-center gap-3 sm:flex-row">
             <CtaLink href="#registro">Prueba gratis 15 días</CtaLink>
-            <CtaLink href={WHATSAPP_URL} variant="ghost">
+            <CtaLink href={whatsapp('Hola, quiero contratar un plan de Mi Cancha.')} variant="ghost">
               Pedir mi plan por WhatsApp
             </CtaLink>
           </div>

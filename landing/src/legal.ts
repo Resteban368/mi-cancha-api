@@ -9,6 +9,9 @@ export const DOMICILIO = 'Florencia, Caquetá, Colombia';
 /** Correo de contacto para dudas, reclamos y solicitudes sobre datos personales. */
 export const CORREO = 'appmicancha@gmail.com';
 
+/** Teléfono y WhatsApp de contacto. */
+export { WHATSAPP_TELEFONO as TELEFONO } from './config';
+
 /** Fecha desde la que rige esta versión. Cámbiala cada vez que modifiques los términos. */
 export const TERMINOS_VIGENCIA = '26 de octubre de 2026';
 

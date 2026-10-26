@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { fetchCiudades, fetchDepartamentos, signupBusiness, type Lugar } from '../lib/api';
-import { PANEL_URL, POLICY_URL, WHATSAPP_URL } from '../config';
+import { PANEL_URL, POLICY_URL, WHATSAPP_TELEFONO, whatsapp } from '../config';
 import { Icon } from './Icon';
 import { SearchSelect } from './SearchSelect';
 import { CtaLink, SectionTitle } from './ui';
@@ -385,6 +385,19 @@ export function Signup() {
                 igual puedes seguir consultando tu información.
               </p>
             </form>
+
+            <p className="mt-6 text-center text-sm text-fg-2">
+              ¿Prefieres que creemos tu cuenta por ti? Escríbenos por WhatsApp al{' '}
+              <a
+                href={whatsapp('Hola, quiero que me ayuden a registrar mi negocio en Mi Cancha.')}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-bold whitespace-nowrap text-accent-text underline underline-offset-2"
+              >
+                {WHATSAPP_TELEFONO}
+              </a>
+              .
+            </p>
           </>
         )}
       </div>
@@ -421,7 +434,7 @@ function Exito() {
         >
           Entrar a mi panel
         </a>
-        <CtaLink href={WHATSAPP_URL} variant="ghost">
+        <CtaLink href={whatsapp('Hola, acabo de registrar mi negocio en Mi Cancha y tengo una duda.')} variant="ghost">
           ¿Dudas? Escríbenos por WhatsApp
         </CtaLink>
       </div>
