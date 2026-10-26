@@ -52,6 +52,21 @@
   }
 }
 
+/* Secciones que van siempre en oscuro (el hero), sin importar el tema del sistema. */
+.tema-oscuro {
+  color-scheme: dark;
+  --bg: #0b1f28;
+  --surface: #102b37;
+  --surface-2: #163845;
+  --border: #1f4352;
+  --fg: #f8fafc;
+  --fg-2: #bfd0d8;
+  --fg-3: #8aa3ae;
+  --accent-text: #00c853;
+  --accent-soft: rgba(0, 200, 83, 0.14);
+  --danger: #ff8a80;
+}
+
 html {
   scroll-behavior: smooth;
 }
