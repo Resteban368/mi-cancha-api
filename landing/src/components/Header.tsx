@@ -4,7 +4,7 @@ import { EntrarMenu, OPCIONES_ENTRAR } from './EntrarMenu';
 import { Icon } from './Icon';
 
 const LINKS = [
-  { href: '#deportes', label: 'Deportes' },
+  // { href: '#deportes', label: 'Deportes' }, // oculta junto con la sección (ver App.tsx)
   { href: '#como', label: 'Cómo funciona' },
   { href: '#jugadores', label: 'Para jugadores' },
   { href: '#negocios', label: 'Para negocios' },

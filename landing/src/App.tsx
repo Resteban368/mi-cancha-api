@@ -6,7 +6,8 @@ import { Header } from './components/Header';
 import { Hero } from './components/Hero';
 import { Plans } from './components/Plans';
 import { Signup } from './components/Signup';
-import { Sports } from './components/Sports';
+// Sección de deportes oculta por ahora; para volver a mostrarla, descomenta esto y <Sports />.
+// import { Sports } from './components/Sports';
 import { Steps } from './components/Steps';
 
 export function App() {
@@ -15,7 +16,7 @@ export function App() {
       <Header />
       <main>
         <Hero />
-        <Sports />
+        {/* <Sports /> */}
         <Steps />
         <Audiences />
         <Features />
