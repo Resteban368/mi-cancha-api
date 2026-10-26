@@ -80,6 +80,7 @@ import {
   PlanDto,
   SystemEnumDto,
   UpdateClientDto,
+  UpdateClientOwnerDto,
   UpdatePlanDto,
   UpdateSubscriptionDto,
   UserPageDto,
@@ -175,6 +176,27 @@ export class AdminController {
     @Body() dto: UpdateClientDto,
   ): Promise<ClientDetailDto> {
     return this.clientsService.update(id, dto);
+  }
+
+  @Patch('clients/:id/owner')
+  @ApiOperation({
+    summary: 'Editar nombre, correo o celular del responsable del cliente',
+  })
+  updateClientOwner(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateClientOwnerDto,
+  ): Promise<ClientDetailDto> {
+    return this.clientsService.updateOwner(id, dto);
+  }
+
+  @Delete('clients/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary:
+      'Eliminar el cliente de forma definitiva (negocio, canchas, reservas, pagos y la cuenta del responsable)',
+  })
+  removeClient(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
+    return this.clientsService.remove(id);
   }
 
   @Put('clients/:id/image')

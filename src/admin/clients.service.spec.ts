@@ -13,6 +13,7 @@ import {
 } from '../../test/support/prisma-mock.js';
 import { UserRole } from '../generated/prisma/enums.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { FileStorage } from '../storage/file-storage.js';
 import { ClientsService } from './clients.service.js';
 
 const dto = {
@@ -54,13 +55,16 @@ const storedClient = {
 describe('ClientsService', () => {
   let service: ClientsService;
   let prisma: PrismaMock;
+  let storage: { delete: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     prisma = createPrismaMock();
+    storage = { delete: vi.fn().mockResolvedValue(undefined) };
     const moduleRef = await Test.createTestingModule({
       providers: [
         ClientsService,
         { provide: PrismaService, useValue: prisma },
+        { provide: FileStorage, useValue: storage },
         {
           provide: ConfigService,
           useValue: new ConfigService({ PUBLIC_API_URL: 'https://api.test' }),
@@ -279,6 +283,95 @@ describe('ClientsService', () => {
       await expect(
         service.update('biz-1', { latitude: 4.6789, longitude: null }),
       ).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe('updateOwner', () => {
+    beforeEach(() => {
+      prisma.business.findUnique.mockResolvedValue({ ownerId: 'owner-1' });
+      vi.spyOn(service, 'findOne').mockResolvedValue({ id: 'biz-1' } as any);
+    });
+
+    it('edita nombre, correo (en minúsculas) y celular', async () => {
+      prisma.user.findUnique.mockResolvedValue(null);
+      prisma.user.findFirst.mockResolvedValue(null);
+      await service.updateOwner('biz-1', {
+        fullName: 'Ana Pérez',
+        email: 'ANA@Golazo.co',
+        phone: ' 3001234567 ',
+      });
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'owner-1' },
+        data: { displayName: 'Ana Pérez', email: 'ana@golazo.co', phone: '3001234567' },
+      });
+    });
+
+    it('rechaza un correo que ya usa otra cuenta', async () => {
+      prisma.user.findUnique.mockResolvedValue({ id: 'otro' });
+      await expect(
+        service.updateOwner('biz-1', { email: 'dup@golazo.co' }),
+      ).rejects.toThrow(ConflictException);
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it('permite dejar el mismo correo de siempre', async () => {
+      prisma.user.findUnique.mockResolvedValue({ id: 'owner-1' });
+      await service.updateOwner('biz-1', { email: 'mismo@golazo.co' });
+      expect(prisma.user.update).toHaveBeenCalled();
+    });
+
+    it('rechaza un celular que ya usa otro responsable', async () => {
+      prisma.user.findFirst.mockResolvedValue({ id: 'otro' });
+      await expect(
+        service.updateOwner('biz-1', { phone: '3001234567' }),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('lanza 404 si el cliente no existe', async () => {
+      prisma.business.findUnique.mockResolvedValue(null);
+      await expect(service.updateOwner('x', { fullName: 'Ana' })).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('remove', () => {
+    const stored = {
+      ownerId: 'owner-1',
+      owner: { role: UserRole.ADMIN_NEGOCIO },
+      profileImages: [{ storagePath: 'biz/cover.jpg' }],
+      courts: [{ photos: [{ storagePath: 'courts/c1/main.jpg' }] }],
+    };
+
+    it('borra reservas y la cuenta del responsable, y luego las fotos', async () => {
+      prisma.business.findUnique.mockResolvedValue(stored);
+      await service.remove('biz-1');
+      expect(prisma.reservation.deleteMany).toHaveBeenCalledWith({
+        where: { businessId: 'biz-1' },
+      });
+      expect(prisma.user.delete).toHaveBeenCalledWith({ where: { id: 'owner-1' } });
+      expect(storage.delete).toHaveBeenCalledWith('biz/cover.jpg');
+      expect(storage.delete).toHaveBeenCalledWith('courts/c1/main.jpg');
+    });
+
+    it('si falla borrar una foto, igual elimina el cliente', async () => {
+      prisma.business.findUnique.mockResolvedValue(stored);
+      storage.delete.mockRejectedValue(new Error('koofr caído'));
+      await expect(service.remove('biz-1')).resolves.toBeUndefined();
+    });
+
+    it('no elimina cuentas que no son de negocio', async () => {
+      prisma.business.findUnique.mockResolvedValue({
+        ...stored,
+        owner: { role: UserRole.SUPER_ADMIN },
+      });
+      await expect(service.remove('biz-1')).rejects.toThrow(ConflictException);
+      expect(prisma.user.delete).not.toHaveBeenCalled();
+    });
+
+    it('lanza 404 si el cliente no existe', async () => {
+      prisma.business.findUnique.mockResolvedValue(null);
+      await expect(service.remove('x')).rejects.toThrow(NotFoundException);
     });
   });
 

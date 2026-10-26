@@ -3,12 +3,13 @@ import { Link, useParams } from 'react-router';
 import { StatTile } from '../components/charts/StatTile';
 import { ClientCourts } from '../components/ClientCourts';
 import { ClientCover } from '../components/ClientCover';
+import { DeleteClientModal, EditBusinessModal, EditOwnerModal } from '../components/ClientEditDialogs';
 import { ClientCustomers } from '../components/ClientCustomers';
 import { ClientLocationMap } from '../components/ClientLocationMap';
 import { ClientOnlineBooking } from '../components/ClientOnlineBooking';
 import { NewReservationModal } from '../components/NewReservation';
 import { CancelReservationModal, RefundsCard } from '../components/ReservationCancel';
-import { ArrowLeftIcon, MapPinIcon, PlusIcon } from '../components/icons';
+import { ArrowLeftIcon, EditIcon, MapPinIcon, PlusIcon, TrashIcon } from '../components/icons';
 import {
   Badge,
   Button,
@@ -85,6 +86,7 @@ function ClientDetailView({
 }) {
   const { owner, subscription, stats } = data;
   const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<'business' | 'owner' | 'delete' | null>(null);
   const [cancelling, setCancelling] = useState<ClientDetail['recentReservations'][number] | null>(null);
   const [version, setVersion] = useState(0);
   const refresh = () => {
@@ -134,7 +136,15 @@ function ClientDetailView({
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <Card title="Negocio" className="lg:col-span-2">
+        <Card
+          title="Negocio"
+          className="lg:col-span-2"
+          actions={
+            <Button size="sm" onClick={() => setEditing('business')}>
+              <EditIcon width={14} height={14} /> Editar
+            </Button>
+          }
+        >
           <div className="grid gap-5 p-5 sm:grid-cols-[200px_1fr]">
             <ClientCover client={data} onChanged={refresh} />
             <dl className="grid content-start gap-4">
@@ -171,7 +181,14 @@ function ClientDetailView({
           </div>
         </Card>
 
-        <Card title="Responsable">
+        <Card
+          title="Responsable"
+          actions={
+            <Button size="sm" onClick={() => setEditing('owner')}>
+              <EditIcon width={14} height={14} /> Editar
+            </Button>
+          }
+        >
           <dl className="grid gap-4 p-5">
             <Detail label="Nombre">{owner.fullName}</Detail>
             <Detail label="Email">
@@ -324,6 +341,42 @@ function ClientDetailView({
         </Card>
         <RefundsCard clientId={data.id} version={version} />
       </div>
+
+      <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-danger/40 bg-surface px-5 py-4">
+        <div>
+          <h2 className="text-base font-semibold text-danger">Eliminar cliente</h2>
+          <p className="mt-0.5 text-sm text-fg-3">
+            Borra el negocio, sus datos y la cuenta del responsable. No se puede deshacer.
+          </p>
+        </div>
+        <Button variant="danger" onClick={() => setEditing('delete')}>
+          <TrashIcon width={14} height={14} /> Eliminar cliente
+        </Button>
+      </section>
+
+      {editing === 'business' && (
+        <EditBusinessModal
+          open
+          client={data}
+          onClose={() => setEditing(null)}
+          onSaved={() => {
+            setEditing(null);
+            onChanged();
+          }}
+        />
+      )}
+      {editing === 'owner' && (
+        <EditOwnerModal
+          open
+          client={data}
+          onClose={() => setEditing(null)}
+          onSaved={() => {
+            setEditing(null);
+            onChanged();
+          }}
+        />
+      )}
+      {editing === 'delete' && <DeleteClientModal open client={data} onClose={() => setEditing(null)} />}
 
       {creating && (
         <NewReservationModal
