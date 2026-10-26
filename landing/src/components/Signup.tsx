@@ -32,12 +32,14 @@ const VACIO: Valores = {
 };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/** Dígitos con +, espacios, guiones o paréntesis: «+57 300 123 4567». */
+const CELULAR_RE = /^\+?[\d\s()-]+$/;
 
 /** Mensaje de cada campo: los mismos límites que valida la API (SignupBusinessDto). */
 const AYUDA: Partial<Record<Campo, string>> = {
   fullName: 'Escribe tu nombre completo (entre 2 y 100 caracteres).',
   email: 'Escribe un correo válido.',
-  phone: 'Máximo 20 caracteres.',
+  phone: 'Escribe tu celular (entre 7 y 20 caracteres).',
   password: 'La contraseña debe tener entre 8 y 72 caracteres.',
   businessName: 'Escribe el nombre del negocio (entre 2 y 120 caracteres).',
   address: 'Escribe la dirección (entre 3 y 200 caracteres).',
@@ -51,7 +53,7 @@ function validar(v: Valores, departamento: string | null, ciudad: string | null,
   const e: Partial<Record<Campo, string>> = {};
   if (!largo(v.fullName, 2, 100)) e.fullName = AYUDA.fullName;
   if (!EMAIL_RE.test(v.email.trim())) e.email = AYUDA.email;
-  if (v.phone.trim().length > 20) e.phone = AYUDA.phone;
+  if (!largo(v.phone, 7, 20) || !CELULAR_RE.test(v.phone.trim())) e.phone = AYUDA.phone;
   if (v.password.length < 8 || v.password.length > 72) e.password = AYUDA.password;
   if (v.confirm !== v.password) e.confirm = 'Las contraseñas no coinciden.';
   if (!largo(v.businessName, 2, 120)) e.businessName = AYUDA.businessName;
@@ -159,7 +161,7 @@ export function Signup() {
       fullName: valores.fullName.trim(),
       email: valores.email.trim().toLowerCase(),
       password: valores.password,
-      phone: valores.phone.trim() || undefined,
+      phone: valores.phone.trim(),
       businessName: valores.businessName.trim(),
       address: valores.address.trim(),
       neighborhood: valores.neighborhood.trim(),
@@ -233,7 +235,7 @@ export function Signup() {
                   inputMode="email"
                 />
                 <Campo
-                  label="Celular (opcional)"
+                  label="Celular"
                   type="tel"
                   value={valores.phone}
                   onChange={cambiar('phone')}

@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, OmitType } from '@nestjs/swagger';
 import {
   IsEmail,
   IsUUID,
@@ -34,8 +34,21 @@ export class RegisterBusinessAdminDto {
   phone?: string;
 }
 
-/** Registro de un negocio nuevo desde la página web: cuenta, negocio y 15 días de prueba. */
-export class SignupBusinessDto extends RegisterBusinessAdminDto {
+/**
+ * Registro de un negocio nuevo desde la página web: cuenta, negocio y 15 días de prueba.
+ * Aquí el celular es obligatorio (en RegisterBusinessAdminDto es opcional), por eso se omite
+ * el heredado y se declara de nuevo: si no, su @IsOptional saltaría la validación.
+ */
+export class SignupBusinessDto extends OmitType(RegisterBusinessAdminDto, [
+  'phone',
+] as const) {
+  /** Celular de contacto del negocio. @example +57 300 123 4567 */
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(7)
+  @MaxLength(20)
+  phone: string;
+
   /** @example Cancha El Golazo */
   @IsString()
   @MinLength(2)

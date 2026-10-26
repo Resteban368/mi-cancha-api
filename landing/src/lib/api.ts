@@ -6,7 +6,7 @@ export type SignupInput = {
   fullName: string;
   email: string;
   password: string;
-  phone?: string;
+  phone: string;
   businessName: string;
   address: string;
   neighborhood: string;

@@ -140,6 +140,7 @@ describe('AuthService', () => {
       fullName: 'Andrés',
       email: 'ADMIN@golazo.co',
       password: 'secreta123',
+      phone: '+57 300 123 4567',
       businessName: 'El Golazo',
       address: 'Calle 10 # 5-20',
       neighborhood: 'Centro',
