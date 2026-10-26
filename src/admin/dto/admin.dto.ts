@@ -183,6 +183,25 @@ export class UpdateClientDto {
   longitude?: number | null;
 }
 
+export class UpdateClientOwnerDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(100)
+  fullName?: string;
+
+  /** Con este correo inicia sesión el responsable; no puede repetirse. */
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+
+  /** Celular del responsable. Cadena vacía para quitarlo. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  phone?: string;
+}
+
 export class ClientPageDto {
   @ApiProperty({ type: [ClientDto] })
   items: ClientDto[];

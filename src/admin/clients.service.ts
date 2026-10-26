@@ -1,6 +1,7 @@
 import {
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -30,11 +31,13 @@ import {
 } from '../businesses/business-photos.js';
 import { REQUIRED_PHOTOS } from '../courts/courts.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { FileStorage } from '../storage/file-storage.js';
 import {
   ClientDetailDto,
   ClientDto,
   CreateClientDto,
   UpdateClientDto,
+  UpdateClientOwnerDto,
   UpdateSubscriptionDto,
 } from './dto/admin.dto.js';
 
@@ -101,9 +104,12 @@ export class ClientsService {
   constructor(
     private readonly prisma: PrismaService,
     config: ConfigService,
+    private readonly storage: FileStorage,
   ) {
     this.publicApiUrl = publicApiUrl(config);
   }
+
+  private readonly logger = new Logger(ClientsService.name);
 
   async findAll(query: PageQueryDto): Promise<Page<ClientDto>> {
     const search = query.search?.trim();
@@ -400,6 +406,91 @@ export class ClientsService {
     });
 
     return this.findOne(businessId);
+  }
+
+  /** Edita los datos del responsable (nombre, correo, celular); el correo y el celular no se repiten. */
+  async updateOwner(
+    businessId: string,
+    dto: UpdateClientOwnerDto,
+  ): Promise<ClientDetailDto> {
+    const business = await this.prisma.business.findUnique({
+      where: { id: businessId },
+      select: { ownerId: true },
+    });
+    if (!business) throw new NotFoundException('El cliente no existe');
+
+    const email = dto.email?.toLowerCase();
+    const phone = dto.phone === undefined ? undefined : dto.phone.trim() || null;
+    if (email) {
+      const taken = await this.prisma.user.findUnique({ where: { email } });
+      if (taken && taken.id !== business.ownerId) {
+        throw new ConflictException('El email ya está registrado');
+      }
+    }
+    if (phone) {
+      const taken = await this.prisma.user.findFirst({
+        where: {
+          phone,
+          role: UserRole.ADMIN_NEGOCIO,
+          id: { not: business.ownerId },
+        },
+        select: { id: true },
+      });
+      if (taken) {
+        throw new ConflictException('Ese celular ya lo usa otro responsable');
+      }
+    }
+
+    await this.prisma.user.update({
+      where: { id: business.ownerId },
+      data: {
+        ...(dto.fullName !== undefined && { displayName: dto.fullName }),
+        ...(email !== undefined && { email }),
+        ...(phone !== undefined && { phone }),
+      },
+    });
+    return this.findOne(businessId);
+  }
+
+  /**
+   * Elimina el cliente de forma definitiva: negocio, canchas, reservas, clientes, pagos y la cuenta
+   * del responsable. Las fotos se borran del almacenamiento después (si falla, solo se avisa en el log).
+   */
+  async remove(businessId: string): Promise<void> {
+    const business = await this.prisma.business.findUnique({
+      where: { id: businessId },
+      select: {
+        ownerId: true,
+        owner: { select: { role: true } },
+        profileImages: { select: { storagePath: true } },
+        courts: { select: { photos: { select: { storagePath: true } } } },
+      },
+    });
+    if (!business) throw new NotFoundException('El cliente no existe');
+    if (business.owner.role !== UserRole.ADMIN_NEGOCIO) {
+      throw new ConflictException('Solo se pueden eliminar cuentas de negocio');
+    }
+
+    // Las reservas se borran antes que las canchas (la relación con la cancha es RESTRICT);
+    // el resto cae en cascada al borrar la cuenta del responsable.
+    await this.prisma.$transaction([
+      this.prisma.reservation.deleteMany({ where: { businessId } }),
+      this.prisma.user.delete({ where: { id: business.ownerId } }),
+    ]);
+
+    const paths = [
+      ...business.profileImages.map((i) => i.storagePath),
+      ...business.courts.flatMap((c) => c.photos.map((p) => p.storagePath)),
+    ];
+    await Promise.all(
+      paths.map((path) =>
+        this.storage
+          .delete(path)
+          .catch((error: unknown) =>
+            this.logger.warn(`No se pudo borrar ${path}: ${String(error)}`),
+          ),
+      ),
+    );
   }
 }
 

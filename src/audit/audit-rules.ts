@@ -34,6 +34,8 @@ const admin = (success: string, entityType: string, entityParam?: string): Audit
 export const AUDIT_RULES: Record<string, AuditRule> = {
   'POST /admin/clients': admin('client.created', 'Business'),
   'PATCH /admin/clients/:id': admin('client.updated', 'Business'),
+  'PATCH /admin/clients/:id/owner': admin('client.owner_updated', 'Business'),
+  'DELETE /admin/clients/:id': admin('client.deleted', 'Business'),
   'PUT /admin/clients/:id/image': admin('client.image_set', 'Business'),
   'DELETE /admin/clients/:id/image': admin('client.image_removed', 'Business'),
   'PATCH /admin/clients/:id/subscription': admin('client.subscription_updated', 'Business'),
