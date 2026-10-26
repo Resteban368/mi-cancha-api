@@ -1,4 +1,3 @@
-import { CtaLink } from './ui';
 import { POLICY_URL, WHATSAPP_URL } from '../config';
 
 export function Footer() {
@@ -18,9 +17,14 @@ export function Footer() {
             >
               Prueba gratis 15 días
             </a>
-            <CtaLink href={WHATSAPP_URL} variant="ghost">
+            <a
+              href={WHATSAPP_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full border border-[#0b1f28]/40 px-6 py-3 text-sm font-bold text-[#0b1f28] transition-transform hover:-translate-y-0.5"
+            >
               Hablar por WhatsApp
-            </CtaLink>
+            </a>
           </div>
         </div>
       </section>

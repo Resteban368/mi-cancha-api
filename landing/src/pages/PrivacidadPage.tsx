@@ -1,4 +1,4 @@
-import { DOMICILIO, PRIVACIDAD_VIGENCIA, TITULAR } from '../legal';
+import { DOMICILIO, PRIVACIDAD_VIGENCIA, TELEFONO, TITULAR } from '../legal';
 import { Correo, LegalLayout, Seccion } from '../components/LegalLayout';
 
 /**
@@ -17,7 +17,7 @@ export function PrivacidadPage() {
       <Seccion n={1} titulo="Quién trata tus datos">
         <p>
           Los responsables del tratamiento son {TITULAR}, con domicilio en {DOMICILIO}. Para cualquier asunto
-          sobre tus datos escríbenos a <Correo />.
+          sobre tus datos escríbenos a <Correo /> o al WhatsApp {TELEFONO}.
         </p>
         <p>Según quién seas, tratamos tus datos en un papel distinto:</p>
         <ul>

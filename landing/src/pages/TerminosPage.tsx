@@ -1,4 +1,4 @@
-import { DOMICILIO, TERMINOS_VIGENCIA, TITULAR } from '../legal';
+import { DOMICILIO, TELEFONO, TERMINOS_VIGENCIA, TITULAR } from '../legal';
 import { POLICY_URL } from '../config';
 import { Correo, LegalLayout, Seccion } from '../components/LegalLayout';
 
@@ -16,7 +16,7 @@ export function TerminosPage() {
           <Seccion n={1} titulo="Quiénes somos">
             <p>
               Mi Cancha es un servicio prestado por {TITULAR}, con domicilio en {DOMICILIO}. Nuestro correo de
-              contacto es <Correo />.
+              contacto es <Correo /> y nuestro WhatsApp, {TELEFONO}.
             </p>
             <p>
               Mi Cancha es un software: le da a cada negocio deportivo una página de reservas propia y un panel para

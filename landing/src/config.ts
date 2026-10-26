@@ -6,8 +6,18 @@ export const PANEL_URL = 'https://negocio.micanchaapp.com';
 /** Ingreso de jugadores: la web de reservas, con sus reservas y su perfil. */
 export const PLAYER_LOGIN_URL = 'https://www.micanchaapp.com/reservar/ingresar';
 
-/** WhatsApp para pedir planes o soporte, con el número en formato internacional sin "+". */
-export const WHATSAPP_URL = '';
+/** WhatsApp de Mi Cancha para planes, registro y soporte, en formato internacional sin "+". */
+export const WHATSAPP_NUMERO = '573203515491';
+
+/** El mismo número, para mostrarlo en pantalla. */
+export const WHATSAPP_TELEFONO = '+57 320 351 5491';
+
+/** Enlace a WhatsApp con un mensaje ya escrito, para saber desde dónde nos escriben. */
+export const whatsapp = (mensaje: string) =>
+  `https://wa.me/${WHATSAPP_NUMERO}?text=${encodeURIComponent(mensaje)}`;
+
+/** Enlace general de contacto por WhatsApp. */
+export const WHATSAPP_URL = whatsapp('Hola, quiero información sobre Mi Cancha.');
 
 /** Página de reservas de ejemplo que los jugadores ven (la web pública del negocio). */
 export const EXAMPLE_BOOKING_URL = 'https://app.micanchaapp.com/reservar';
