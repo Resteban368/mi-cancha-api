@@ -21,6 +21,7 @@ import {
   Table,
   Td,
   Th,
+  TrialBadge,
 } from '../components/ui';
 import { api, errorMessage } from '../lib/api';
 import {
@@ -96,9 +97,13 @@ function ClientDetailView({
     <div className="flex flex-col gap-6">
       <header className="flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-semibold tracking-tight text-fg">{data.name}</h1>
-        <Badge tone={subscription?.isActive ? 'success' : 'warn'}>
-          {subscription ? (subscription.isActive ? 'Activo' : 'Suspendido') : 'Sin plan'}
-        </Badge>
+        {subscription?.trialEndsAt && subscription.isActive ? (
+          <TrialBadge trial={subscription} />
+        ) : (
+          <Badge tone={subscription?.isActive ? 'success' : 'warn'}>
+            {subscription ? (subscription.isActive ? 'Activo' : 'Suspendido') : 'Sin plan'}
+          </Badge>
+        )}
         <p className="w-full text-sm text-fg-2">
           Cliente desde el {formatDate(data.createdAt)} · perfil actualizado el{' '}
           {formatDate(data.updatedAt)}
@@ -425,7 +430,11 @@ function SubscriptionCard({
             <>
               {formatDate(subscription.nextPayment)}
               <span className="block text-xs text-fg-3">
-                {subscription.autoBilling ? 'Cobro automático' : 'Cobro manual'}
+                {subscription.trialEndsAt
+                  ? 'Fin de la prueba gratuita'
+                  : subscription.autoBilling
+                    ? 'Cobro automático'
+                    : 'Cobro manual'}
               </span>
             </>
           ) : (

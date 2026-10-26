@@ -6,6 +6,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { CatalogsService } from '../catalogs/catalogs.service.js';
 import { publicApiUrl } from '../common/public-url.js';
+import { createTrialSubscription } from '../common/trial.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
@@ -17,12 +18,10 @@ import { toBookingLink } from './booking-link.js';
 import { profileImagesSelect, toBusinessPhotos } from './business-photos.js';
 import { BusinessDto, SaveBusinessDto } from './dto/business.dto.js';
 
-const SUBSCRIPTION_PERIOD_DAYS = 30;
-
 const businessInclude = {
   amenities: { select: { code: true }, orderBy: { sortOrder: 'asc' } },
   profileImages: profileImagesSelect,
-  subscription: { select: { isActive: true } },
+  subscription: { select: { isActive: true, trialEndsAt: true } },
   city: citySelect,
   courts: {
     where: { isActive: true },
@@ -108,20 +107,7 @@ export class BusinessesService {
         },
         include: businessInclude,
       });
-      const freePlan = await tx.plan.findFirst({
-        where: { monthlyPrice: 0 },
-        orderBy: { courtLimit: 'desc' },
-      });
-      if (freePlan) {
-        await tx.subscription.create({
-          data: {
-            businessId: created.id,
-            planId: freePlan.id,
-            nextPayment: addDays(new Date(), SUBSCRIPTION_PERIOD_DAYS),
-            autoBilling: false,
-          },
-        });
-      }
+      await createTrialSubscription(tx, created.id);
       return created;
     });
 
@@ -159,8 +145,4 @@ export class BusinessesService {
 
 function notCreatedYet(): NotFoundException {
   return new NotFoundException('Aún no has registrado tu negocio');
-}
-
-function addDays(date: Date, days: number): Date {
-  return new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
 }

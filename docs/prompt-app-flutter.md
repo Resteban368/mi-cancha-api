@@ -76,7 +76,7 @@ activa con foto principal ya es reservable (isComplete = true, missingPhotos = [
 ==================================================================
 El link existe desde que se crea el negocio. GET/PUT /business/profile traen ahora:
   "bookingLink": { "enabled", "slug", "url", "bookingAvailable", "unavailableReason" }
-unavailableReason: NO_COURTS | DISABLED | PLAN_INACTIVE | null. Está activo (bookingAvailable=true)
+unavailableReason: NO_COURTS | DISABLED | PLAN_INACTIVE | TRIAL_EXPIRED | null. Está activo (bookingAvailable=true)
 cuando hay reservas encendidas, plan activo y al menos una cancha activa con foto principal.
 
 Tarjeta «Link de reservas» en la pantalla Negocio: siempre muestra `url` con Copiar y Compartir.
@@ -84,7 +84,8 @@ Tarjeta «Link de reservas» en la pantalla Negocio: siempre muestra `url` con C
 - false: chip gris «Pendiente» + motivo:
   NO_COURTS -> «Crea al menos una cancha activa con foto principal para activarlo» (botón a Crear cancha);
   DISABLED -> «Reservas apagadas» con interruptor que llama PATCH /business/online-booking {"enabled":true};
-  PLAN_INACTIVE -> «Tu plan está inactivo».
+  PLAN_INACTIVE -> «Tu plan está inactivo»;
+  TRIAL_EXPIRED -> «Tu prueba gratuita terminó» (ver sección 8).
 Refresca el estado al crear o editar una cancha. El dueño también puede cambiar el slug con
 PATCH /business/online-booking {"slug":"..."} (409 si ya lo usa otro negocio).
 
@@ -122,6 +123,18 @@ Sin cambios de contrato: al crear una reserva con un cliente nuevo (`customer`) 
 (POST /customers), la API crea además su cuenta de jugador con la cédula como clave inicial (debe
 cambiarla al primer ingreso en la web). Puede responder 409 si el celular y la cédula ya pertenecen
 a cuentas de jugador distintas: muestra el mensaje al usuario tal cual.
+
+==================================================================
+8) PRUEBA GRATUITA DE 15 DÍAS
+==================================================================
+Los negocios nuevos arrancan con el plan «Prueba» (hasta 2 canchas) por 15 días. GET /account trae en
+`subscription`: trialEndsAt (fecha o null), trialDaysLeft (0 si vence hoy; null si no está en prueba) y
+trialExpired. `isActive` es false cuando la prueba venció.
+- En prueba: banner discreto en el inicio «Prueba gratis · quedan N días» (en rojo suave con ≤ 3 días).
+- Vencida: toda escritura responde 403 con `code: "TRIAL_EXPIRED"` (las lecturas siguen). No lo trates
+  como sesión vencida. Muestra una pantalla/diálogo «Tu prueba terminó: compra un plan para seguir»
+  con botón de WhatsApp a Mi Cancha y deja el resto de la app en solo lectura.
+- Detalle en `docs/prueba-gratuita.md`.
 
 ==================================================================
 Pruebas y entrega

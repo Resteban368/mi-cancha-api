@@ -242,6 +242,8 @@ llegaron por la web y aún no la registran (el negocio siempre la pide)."
     DateTime nextPayment
     Boolean isActive
     Boolean autoBilling
+    DateTime trialEndsAt "opcional · Fin de la prueba gratuita; null si el plan es de pago. Vencida la fecha, el negocio queda
+como sin plan activo (solo consulta) hasta que se le asigne uno."
   }
   OtpCode {
     String id PK

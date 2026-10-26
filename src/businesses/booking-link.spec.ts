@@ -4,7 +4,7 @@ import { toBookingLink, type BookingLinkSource } from './booking-link.js';
 const ready: BookingLinkSource = {
   slug: 'el-golazo',
   onlineBookingEnabled: true,
-  subscription: { isActive: true },
+  subscription: { isActive: true, trialEndsAt: null },
   courts: [{ photos: [{ slot: CourtPhotoSlot.MAIN }] }],
 };
 
@@ -46,7 +46,7 @@ describe('toBookingLink', () => {
     expect(
       toBookingLink('https://api.test', {
         ...ready,
-        subscription: { isActive: false },
+        subscription: { isActive: false, trialEndsAt: null },
       }).unavailableReason,
     ).toBe('PLAN_INACTIVE');
   });

@@ -89,6 +89,17 @@ const UTC_OFFSET =process.env.APP_UTC_OFFSET ?? '-05:00';
 
 const plans = [
   {
+    name: 'Prueba',
+    monthlyPrice: 0,
+    courtLimit: 2,
+    benefits: [
+      {
+        title: 'Prueba gratis de 15 días',
+        detail: 'Usa todo el panel con hasta 2 canchas',
+      },
+    ],
+  },
+  {
     name: 'Gratis',
     monthlyPrice: 0,
     courtLimit: 1,

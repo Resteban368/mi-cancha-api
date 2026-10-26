@@ -407,3 +407,19 @@ export function Modal({
     </div>
   );
 }
+
+/** Estado de la prueba gratuita: «En prueba · N días» o «Prueba vencida»; nada si el plan es de pago. */
+export function TrialBadge({
+  trial,
+}: {
+  trial: { trialEndsAt: string | null; trialDaysLeft: number | null; trialExpired: boolean };
+}) {
+  if (!trial.trialEndsAt) return null;
+  if (trial.trialExpired) return <Badge tone="danger">Prueba vencida</Badge>;
+  const days = trial.trialDaysLeft ?? 0;
+  return (
+    <Badge tone="warn">
+      En prueba · {days === 1 ? 'queda 1 día' : `quedan ${days} días`}
+    </Badge>
+  );
+}

@@ -13,6 +13,7 @@ import {
 } from '../businesses/business-photos.js';
 import { BusinessesService } from '../businesses/businesses.service.js';
 import { businessImageUrl, publicApiUrl } from '../common/public-url.js';
+import { usableSubscriptionWhere } from '../common/trial.js';
 import { localDate } from '../courts/court-time.js';
 import {
   courtInclude,
@@ -65,7 +66,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 const businessInclude = {
   city: citySelect,
-  subscription: { select: { isActive: true } },
+  subscription: { select: { isActive: true, trialEndsAt: true } },
   profileImages: profileImagesSelect,
   amenities: {
     where: { active: true },
@@ -530,7 +531,7 @@ function directoryWhere(query: DirectoryQueryDto): Prisma.BusinessWhereInput {
   };
   return {
     onlineBookingEnabled: true,
-    subscription: { is: { isActive: true } },
+    subscription: { is: usableSubscriptionWhere() },
     courts: { some: court },
     ...(q
       ? {

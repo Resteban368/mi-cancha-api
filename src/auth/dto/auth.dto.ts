@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
   IsEmail,
+  IsUUID,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -31,6 +32,31 @@ export class RegisterBusinessAdminDto {
   @IsString()
   @MaxLength(20)
   phone?: string;
+}
+
+/** Registro de un negocio nuevo desde la página web: cuenta, negocio y 15 días de prueba. */
+export class SignupBusinessDto extends RegisterBusinessAdminDto {
+  /** @example Cancha El Golazo */
+  @IsString()
+  @MinLength(2)
+  @MaxLength(120)
+  businessName: string;
+
+  /** @example Calle 10 # 5-20 */
+  @IsString()
+  @MinLength(3)
+  @MaxLength(200)
+  address: string;
+
+  /** @example Centro */
+  @IsString()
+  @MinLength(2)
+  @MaxLength(120)
+  neighborhood: string;
+
+  /** Ciudad del negocio (GET /catalogs/departments/:id/cities). */
+  @IsUUID()
+  cityId: string;
 }
 
 export class LoginDto {

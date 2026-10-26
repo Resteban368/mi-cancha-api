@@ -49,6 +49,10 @@ export interface Client {
   plan: { id: string; name: string; monthlyPrice: number } | null;
   subscriptionActive: boolean;
   nextPayment: string | null;
+  /** Fin de la prueba gratuita; null si el plan es de pago. */
+  trialEndsAt: string | null;
+  trialDaysLeft: number | null;
+  trialExpired: boolean;
   activeCourts: number;
 }
 
@@ -140,6 +144,9 @@ export interface ClientDetail {
     nextPayment: string;
     isActive: boolean;
     autoBilling: boolean;
+    trialEndsAt: string | null;
+    trialDaysLeft: number | null;
+    trialExpired: boolean;
   } | null;
   courts: {
     id: string;

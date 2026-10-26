@@ -109,12 +109,12 @@ describe('BusinessesService', () => {
     ).rejects.toThrow(BadRequestException);
   });
 
-  it('al crear el negocio conecta sus servicios y le asigna el plan gratuito', async () => {
+  it('al crear el negocio conecta sus servicios y le da 15 días de prueba', async () => {
     prisma.business.findUnique.mockResolvedValue(null);
     prisma.business.create.mockImplementation(({ data }) =>
       storedBusiness(data),
     );
-    prisma.plan.findFirst.mockResolvedValue({ id: 'plan-free' });
+    prisma.plan.findUnique.mockResolvedValue({ id: 'plan-trial' });
     prisma.city.count.mockResolvedValue(1);
 
     const result = await service.save('owner-1', {
@@ -133,9 +133,13 @@ describe('BusinessesService', () => {
     expect(prisma.subscription.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         businessId: 'biz-1',
-        planId: 'plan-free',
+        planId: 'plan-trial',
+        trialEndsAt: expect.any(Date),
       }),
     });
+    const { trialEndsAt } = prisma.subscription.create.mock.calls[0][0].data;
+    const days = (trialEndsAt.getTime() - Date.now()) / (24 * 60 * 60 * 1000);
+    expect(Math.round(days)).toBe(15);
     expect(result.amenities).toEqual(['WIFI']);
     expect(result.imageUrl).toBeNull();
   });

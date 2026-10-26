@@ -136,8 +136,14 @@ export class ClientDto {
     phone: string | null;
   };
   plan: { id: string; name: string; monthlyPrice: number } | null;
+  /** false si el cliente está suspendido (aparte de si su prueba venció: ver trialExpired). */
   subscriptionActive: boolean;
   nextPayment: Date | null;
+  /** Fin de la prueba gratuita; null si el plan es de pago. */
+  trialEndsAt: Date | null;
+  /** Días que le quedan de prueba (0 si vence hoy); null si no está en prueba. */
+  trialDaysLeft: number | null;
+  trialExpired: boolean;
   activeCourts: number;
 }
 

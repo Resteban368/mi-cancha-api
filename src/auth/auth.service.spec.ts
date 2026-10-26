@@ -135,6 +135,61 @@ describe('AuthService', () => {
     });
   });
 
+  describe('signupBusiness', () => {
+    const dto = {
+      fullName: 'Andrés',
+      email: 'ADMIN@golazo.co',
+      password: 'secreta123',
+      businessName: 'El Golazo',
+      address: 'Calle 10 # 5-20',
+      neighborhood: 'Centro',
+      cityId: 'city-1',
+    };
+
+    it('rechaza un email ya registrado', async () => {
+      prisma.user.findUnique.mockResolvedValue(baseUser);
+      await expect(service.signupBusiness(dto)).rejects.toThrow(
+        ConflictException,
+      );
+    });
+
+    it('rechaza una ciudad que no existe', async () => {
+      prisma.user.findUnique.mockResolvedValue(null);
+      prisma.city.count.mockResolvedValue(0);
+      await expect(service.signupBusiness(dto)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('crea la cuenta, el negocio y la suscripción de prueba', async () => {
+      prisma.user.findUnique.mockResolvedValue(null);
+      prisma.city.count.mockResolvedValue(1);
+      prisma.plan.findUnique.mockResolvedValue({ id: 'plan-trial' });
+      prisma.user.create.mockImplementation(({ data }) => ({
+        ...baseUser,
+        ...data,
+      }));
+      prisma.business.create.mockResolvedValue({ id: 'biz-1' });
+
+      const result = await service.signupBusiness(dto);
+
+      expect(prisma.user.create.mock.calls[0][0].data).toMatchObject({
+        email: 'admin@golazo.co',
+        role: UserRole.ADMIN_NEGOCIO,
+      });
+      expect(prisma.business.create.mock.calls[0][0].data).toMatchObject({
+        name: 'El Golazo',
+        cityId: 'city-1',
+      });
+      expect(prisma.subscription.create.mock.calls[0][0].data).toMatchObject({
+        businessId: 'biz-1',
+        planId: 'plan-trial',
+        trialEndsAt: expect.any(Date),
+      });
+      expect(result.accessToken).toBe('signed-token');
+    });
+  });
+
   describe('loginBusiness', () => {
     it('rechaza una contraseña incorrecta', async () => {
       prisma.user.findUnique.mockResolvedValue({

@@ -1,3 +1,4 @@
+import { isSubscriptionUsable, isTrialExpired } from '../common/trial.js';
 import { REQUIRED_PHOTOS } from '../courts/required-photos.js';
 import type { CourtPhotoSlot } from '../generated/prisma/enums.js';
 import type { BookingLinkDto } from './dto/business.dto.js';
@@ -6,13 +7,13 @@ import type { BookingLinkDto } from './dto/business.dto.js';
 export interface BookingLinkSource {
   slug: string | null;
   onlineBookingEnabled: boolean;
-  subscription: { isActive: boolean } | null;
+  subscription: { isActive: boolean; trialEndsAt: Date | null } | null;
   /** Solo las canchas activas. */
   courts: { photos: { slot: CourtPhotoSlot }[] }[];
 }
 
 export type BookingUnavailableReason =
-  'DISABLED' | 'PLAN_INACTIVE' | 'NO_COURTS';
+  'DISABLED' | 'PLAN_INACTIVE' | 'TRIAL_EXPIRED' | 'NO_COURTS';
 
 /** El link se activa con reservas encendidas, plan activo y al menos una cancha activa completa. */
 export function bookingStateOf(business: BookingLinkSource): {
@@ -22,8 +23,13 @@ export function bookingStateOf(business: BookingLinkSource): {
   if (!business.onlineBookingEnabled) {
     return { available: false, reason: 'DISABLED' };
   }
-  if (!business.subscription?.isActive) {
-    return { available: false, reason: 'PLAN_INACTIVE' };
+  if (!isSubscriptionUsable(business.subscription)) {
+    return {
+      available: false,
+      reason: isTrialExpired(business.subscription)
+        ? 'TRIAL_EXPIRED'
+        : 'PLAN_INACTIVE',
+    };
   }
   const hasBookableCourt = business.courts.some((c) =>
     REQUIRED_PHOTOS.every((slot) => c.photos.some((p) => p.slot === slot)),

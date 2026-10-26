@@ -11,6 +11,8 @@ import type { AuthPayload } from '../common/auth/auth-payload.js';
 import { assertNotBanned } from '../common/auth/banned-users.service.js';
 import type { Prisma, User } from '../generated/prisma/client.js';
 import { UserRole } from '../generated/prisma/enums.js';
+import { requireCity } from '../catalogs/dto/location.dto.js';
+import { createTrialSubscription } from '../common/trial.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
   AppleSignInDto,
@@ -20,6 +22,7 @@ import {
   GoogleSignInDto,
   LoginDto,
   RegisterBusinessAdminDto,
+  SignupBusinessDto,
 } from './dto/auth.dto.js';
 import {
   SocialIdentity,
@@ -56,6 +59,43 @@ export class AuthService {
         phone: dto.phone,
         role: UserRole.ADMIN_NEGOCIO,
       },
+    });
+    return this.issueSession(user);
+  }
+
+  /**
+   * Alta de un negocio por su cuenta (formulario de la página web): crea el usuario, el negocio
+   * y la suscripción de prueba de 15 días con el plan «Prueba», y deja la sesión abierta.
+   */
+  async signupBusiness(dto: SignupBusinessDto): Promise<AuthResponseDto> {
+    const email = dto.email.toLowerCase();
+    if (await this.prisma.user.findUnique({ where: { email } })) {
+      throw new ConflictException('El email ya está registrado');
+    }
+    await requireCity(this.prisma, dto.cityId);
+    const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
+
+    const user = await this.prisma.$transaction(async (tx) => {
+      const owner = await tx.user.create({
+        data: {
+          email,
+          passwordHash,
+          displayName: dto.fullName,
+          phone: dto.phone,
+          role: UserRole.ADMIN_NEGOCIO,
+        },
+      });
+      const business = await tx.business.create({
+        data: {
+          name: dto.businessName,
+          address: dto.address,
+          neighborhood: dto.neighborhood,
+          cityId: dto.cityId,
+          ownerId: owner.id,
+        },
+      });
+      await createTrialSubscription(tx, business.id);
+      return owner;
     });
     return this.issueSession(user);
   }

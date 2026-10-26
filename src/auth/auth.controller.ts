@@ -22,6 +22,7 @@ import {
   GoogleSignInDto,
   LoginDto,
   RegisterBusinessAdminDto,
+  SignupBusinessDto,
 } from './dto/auth.dto.js';
 
 @ApiTags('auth')
@@ -34,6 +35,16 @@ export class AuthController {
   @ApiOperation({ summary: 'Registrar un administrador de negocio' })
   register(@Body() dto: RegisterBusinessAdminDto): Promise<AuthResponseDto> {
     return this.authService.registerBusinessAdmin(dto);
+  }
+
+  @Public()
+  @Post('business/signup')
+  @ApiOperation({
+    summary:
+      'Registrar un negocio nuevo con 15 días de prueba (crea cuenta, negocio y suscripción «Prueba»)',
+  })
+  signup(@Body() dto: SignupBusinessDto): Promise<AuthResponseDto> {
+    return this.authService.signupBusiness(dto);
   }
 
   @Public()

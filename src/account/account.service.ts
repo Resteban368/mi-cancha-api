@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { isSubscriptionUsable, trialStatusOf } from '../common/trial.js';
 import { UserRole } from '../generated/prisma/enums.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
@@ -42,8 +43,9 @@ export class AccountService {
         courtLimit: subscription.plan.courtLimit,
         courtsInUse: user.business._count.courts,
         benefits: parseBenefits(subscription.plan.benefits),
-        isActive: subscription.isActive,
+        isActive: isSubscriptionUsable(subscription),
         autoBilling: subscription.autoBilling,
+        ...trialStatusOf(subscription),
       };
     }
 

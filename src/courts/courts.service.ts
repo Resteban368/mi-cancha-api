@@ -9,6 +9,7 @@ import { BusinessesService } from '../businesses/businesses.service.js';
 import { CatalogsService } from '../catalogs/catalogs.service.js';
 import { REQUIRED_PHOTOS } from './required-photos.js';
 import { courtPhotoUrl, publicApiUrl } from '../common/public-url.js';
+import { isSubscriptionUsable, isTrialExpired } from '../common/trial.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import { CourtPhotoSlot, Sport } from '../generated/prisma/enums.js';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -247,13 +248,19 @@ export class CourtsService {
       where: { businessId },
       include: { plan: true },
     });
-    if (activating && !subscription?.isActive) {
-      throw planError(
-        'PLAN_INACTIVE',
-        'Necesitas un plan activo para habilitar canchas',
-      );
+    const usable = isSubscriptionUsable(subscription);
+    if (activating && !usable) {
+      throw isTrialExpired(subscription)
+        ? planError(
+            'TRIAL_EXPIRED',
+            'Tu prueba gratuita terminó: compra un plan para habilitar canchas',
+          )
+        : planError(
+            'PLAN_INACTIVE',
+            'Necesitas un plan activo para habilitar canchas',
+          );
     }
-    const limit = subscription?.isActive ? subscription.plan.courtLimit : 0;
+    const limit = usable && subscription ? subscription.plan.courtLimit : 0;
     const activeCourts = await this.prisma.court.count({
       where: { businessId, isActive: true },
     });

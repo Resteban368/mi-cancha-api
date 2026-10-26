@@ -68,4 +68,31 @@ describe('ActiveSubscriptionGuard', () => {
       }
     },
   );
+
+  it('permite escribir durante la prueba gratuita', async () => {
+    prisma.business.findUnique.mockResolvedValue({
+      subscription: {
+        isActive: true,
+        trialEndsAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
+      },
+    });
+    await expect(guard.canActivate(contextWith('POST'))).resolves.toBe(true);
+  });
+
+  it('con la prueba vencida solo deja consultar y avisa con TRIAL_EXPIRED', async () => {
+    prisma.business.findUnique.mockResolvedValue({
+      subscription: {
+        isActive: true,
+        trialEndsAt: new Date(Date.now() - 1000),
+      },
+    });
+    const error = await guard
+      .canActivate(contextWith('POST'))
+      .catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ForbiddenException);
+    expect((error as ForbiddenException).getResponse()).toMatchObject({
+      code: 'TRIAL_EXPIRED',
+    });
+    await expect(guard.canActivate(contextWith('GET'))).resolves.toBe(true);
+  });
 });

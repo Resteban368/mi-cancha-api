@@ -7,6 +7,11 @@ import { ConfigService } from '@nestjs/config';
 import bcrypt from 'bcryptjs';
 import { Page, pageArgs, PageQueryDto } from '../common/dto/page.dto.js';
 import { publicApiUrl } from '../common/public-url.js';
+import {
+  TRIAL_DAYS,
+  TRIAL_PLAN_NAME,
+  trialStatusOf,
+} from '../common/trial.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import {
   PaymentStatus,
@@ -226,6 +231,7 @@ export class ClientsService {
         nextPayment: subscription.nextPayment,
         isActive: subscription.isActive,
         autoBilling: subscription.autoBilling,
+        ...trialStatusOf(subscription),
       },
       courts: business.courts.map(({ photos, basePricePerHour, ...court }) => {
         const slots = new Set(photos.map((p) => p.slot));
@@ -304,7 +310,7 @@ export class ClientsService {
         subscription: {
           create: {
             planId: plan.id,
-            nextPayment: addDays(new Date(), SUBSCRIPTION_PERIOD_DAYS),
+            ...periodFor(plan.name),
             autoBilling: plan.monthlyPrice > 0,
           },
         },
@@ -325,17 +331,20 @@ export class ClientsService {
     });
     if (!business) throw new NotFoundException('El cliente no existe');
 
+    let planPeriod: { nextPayment: Date; trialEndsAt: Date | null } | undefined;
     if (dto.planId) {
       const plan = await this.prisma.plan.findUnique({
         where: { id: dto.planId },
       });
       if (!plan) throw new NotFoundException('El plan no existe');
+      // Cambiar de plan reinicia el periodo: un plan de pago quita la prueba y «Prueba» la reinicia.
+      planPeriod = periodFor(plan.name);
     }
 
     if (business.subscription) {
       await this.prisma.subscription.update({
         where: { businessId },
-        data: { planId: dto.planId, isActive: dto.isActive },
+        data: { planId: dto.planId, isActive: dto.isActive, ...planPeriod },
       });
     } else {
       if (!dto.planId) {
@@ -348,7 +357,7 @@ export class ClientsService {
           businessId,
           planId: dto.planId,
           isActive: dto.isActive ?? true,
-          nextPayment: addDays(new Date(), SUBSCRIPTION_PERIOD_DAYS),
+          ...(planPeriod ?? periodFor(undefined)),
         },
       });
     }
@@ -394,6 +403,21 @@ export class ClientsService {
   }
 }
 
+/** Próximo cobro y fin de prueba para un plan recién asignado. */
+function periodFor(planName: string | undefined): {
+  nextPayment: Date;
+  trialEndsAt: Date | null;
+} {
+  if (planName === TRIAL_PLAN_NAME) {
+    const trialEndsAt = addDays(new Date(), TRIAL_DAYS);
+    return { nextPayment: trialEndsAt, trialEndsAt };
+  }
+  return {
+    nextPayment: addDays(new Date(), SUBSCRIPTION_PERIOD_DAYS),
+    trialEndsAt: null,
+  };
+}
+
 function addDays(date: Date, days: number): Date {
   return new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
 }
@@ -415,6 +439,7 @@ function toClientDto(b: ClientRecord): ClientDto {
     plan: b.subscription?.plan ?? null,
     subscriptionActive: b.subscription?.isActive ?? false,
     nextPayment: b.subscription?.nextPayment ?? null,
+    ...trialStatusOf(b.subscription),
     activeCourts: b._count.courts,
   };
 }

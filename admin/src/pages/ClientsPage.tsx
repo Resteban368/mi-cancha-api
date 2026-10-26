@@ -19,6 +19,7 @@ import {
   Table,
   Td,
   Th,
+  TrialBadge,
 } from '../components/ui';
 import { useToast } from '../lib/toast';
 import { api, errorMessage } from '../lib/api';
@@ -173,9 +174,13 @@ export function ClientsPage() {
                             label={client.subscriptionActive ? 'Suspender cliente' : 'Reactivar cliente'}
                             onChange={(isActive) => updateSubscription(client, { isActive })}
                           />
-                          <Badge tone={client.subscriptionActive ? 'success' : 'warn'}>
-                            {client.subscriptionActive ? 'Activo' : 'Suspendido'}
-                          </Badge>
+                          {client.trialEndsAt && client.subscriptionActive ? (
+                            <TrialBadge trial={client} />
+                          ) : (
+                            <Badge tone={client.subscriptionActive ? 'success' : 'warn'}>
+                              {client.subscriptionActive ? 'Activo' : 'Suspendido'}
+                            </Badge>
+                          )}
                         </div>
                       </Td>
                       <Td className="whitespace-nowrap text-fg-2">{formatDate(client.createdAt)}</Td>

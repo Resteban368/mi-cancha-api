@@ -529,6 +529,9 @@ model Subscription {
   nextPayment DateTime
   isActive    Boolean  @default(true)
   autoBilling Boolean  @default(true)
+  /// Fin de la prueba gratuita; null si el plan es de pago. Vencida la fecha, el negocio queda
+  /// como sin plan activo (solo consulta) hasta que se le asigne uno.
+  trialEndsAt DateTime?
 }
 
 /// Códigos de un solo uso (OTP) enviados por SMS para verificar un celular. Se
