@@ -1,8 +1,13 @@
 import { Injectable } from '@nestjs/common';
+import { UserRole } from '../generated/prisma/enums.js';
 import { Page, pageArgs } from '../common/dto/page.dto.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { AdminUserDto, UsersQueryDto } from './dto/admin.dto.js';
+import {
+  AdminUserDto,
+  DeleteUsersResultDto,
+  UsersQueryDto,
+} from './dto/admin.dto.js';
 
 const userInclude = {
   business: { select: { name: true } },
@@ -45,6 +50,17 @@ export class UsersService {
       page: query.page,
       pageSize: query.pageSize,
     };
+  }
+
+  /**
+   * Elimina jugadores de forma definitiva. Solo toca cuentas de jugador: los ids de negocios o
+   * super admins se ignoran. Sus reservas se conservan en el negocio, sin vínculo a la cuenta.
+   */
+  async removePlayers(ids: string[]): Promise<DeleteUsersResultDto> {
+    const { count } = await this.prisma.user.deleteMany({
+      where: { id: { in: ids }, role: UserRole.JUGADOR },
+    });
+    return { deleted: count, skipped: ids.length - count };
   }
 }
 

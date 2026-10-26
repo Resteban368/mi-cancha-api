@@ -2,6 +2,8 @@ import { ApiProperty, OmitType, PartialType } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import {
   ArrayMaxSize,
+  ArrayMinSize,
+  ArrayUnique,
   IsArray,
   IsBoolean,
   IsEmail,
@@ -330,6 +332,23 @@ export class UsersQueryDto extends PageQueryDto {
   )
   @IsBoolean()
   banned?: boolean;
+}
+
+export class DeleteUsersDto {
+  /** Ids de los jugadores a eliminar (hasta 100 por vez). */
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(100)
+  @ArrayUnique()
+  @IsUUID('all', { each: true })
+  ids: string[];
+}
+
+export class DeleteUsersResultDto {
+  /** Jugadores eliminados. */
+  deleted: number;
+  /** Ids ignorados: no existen o no son jugadores (los negocios y super admins no se borran aquí). */
+  skipped: number;
 }
 
 export class AdminUserDto {
