@@ -14,6 +14,10 @@ export const PREGUNTAS = [
     r: 'Fútbol en cancha sintética, pádel, vóley playa o voleibol y baloncesto, según las canchas de cada negocio.',
   },
   {
+    p: '¿Puedo probar Mi Cancha gratis?',
+    r: 'Sí. Al registrar tu negocio tienes 15 días gratis, sin tarjeta, con hasta 2 canchas y todo el panel. Al terminar eliges un plan para seguir creando reservas y canchas, y siempre puedes consultar tu información.',
+  },
+  {
     p: '¿Cuánto cuesta el sistema de reservas para mi cancha?',
     r: 'Depende de cuántas canchas tienes: Básico $69.000 al mes (1 cancha), Dúo $109.000 (2), Plus $159.000 (5) y Pro $209.000 (10).',
   },

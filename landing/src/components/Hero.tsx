@@ -1,5 +1,5 @@
 import { CtaLink } from './ui';
-import { EXAMPLE_BOOKING_URL, PANEL_URL } from '../config';
+import { EXAMPLE_BOOKING_URL } from '../config';
 
 const TURNOS = [
   { hora: '18:00 – 19:00', cancha: 'Cancha 1 · Fútbol 5', estado: 'Pagó anticipo', ok: true },
@@ -33,12 +33,12 @@ export function Hero() {
           </p>
 
           <div className="mt-9 flex flex-col items-center gap-3 sm:flex-row sm:justify-center lg:justify-start">
-            <CtaLink href={PANEL_URL}>Crear mi negocio</CtaLink>
+            <CtaLink href="#registro">Prueba gratis 15 días</CtaLink>
             <CtaLink href={EXAMPLE_BOOKING_URL} variant="ghost">
               Ver una página de reservas
             </CtaLink>
           </div>
-          <p className="mt-4 text-xs text-fg-3">Para jugadores, siempre gratis · Planes desde $69.000 al mes</p>
+          <p className="mt-4 text-xs text-fg-3">Para jugadores, siempre gratis · Negocios: 15 días gratis, sin tarjeta</p>
         </div>
 
         <div className="relative mx-auto w-full max-w-md">

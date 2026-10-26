@@ -22,7 +22,7 @@ export function Plans() {
         <SectionTitle
           eyebrow="Planes"
           title="Planes según cuántas canchas tienes."
-          lead="Todos los planes incluyen agenda, panel y soporte. Para los jugadores, reservar es totalmente gratis."
+          lead="Todos empiezan con 15 días de prueba gratis, sin tarjeta. Cada plan incluye agenda, panel y soporte; para los jugadores, reservar es totalmente gratis."
         />
 
         <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -72,7 +72,12 @@ export function Plans() {
         </div>
 
         <div className="mt-10 flex flex-col items-center gap-4 text-center">
-          <CtaLink href={WHATSAPP_URL}>Pedir mi plan por WhatsApp</CtaLink>
+          <div className="flex flex-col items-center gap-3 sm:flex-row">
+            <CtaLink href="#registro">Prueba gratis 15 días</CtaLink>
+            <CtaLink href={WHATSAPP_URL} variant="ghost">
+              Pedir mi plan por WhatsApp
+            </CtaLink>
+          </div>
           <p className="max-w-xl text-xs leading-relaxed text-fg-3">
             Si tu suscripción se suspende, sigues viendo toda tu información. Solo se bloquean los cambios hasta que la
             reactives.

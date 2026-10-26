@@ -1,5 +1,5 @@
 import { CtaLink } from './ui';
-import { PANEL_URL, WHATSAPP_URL } from '../config';
+import { WHATSAPP_URL } from '../config';
 
 export function Footer() {
   return (
@@ -8,10 +8,16 @@ export function Footer() {
         <div className="relative mx-auto max-w-4xl overflow-hidden rounded-[2rem] bg-accent px-6 py-14 text-center text-accent-fg sm:px-12">
           <h2 className="text-3xl leading-tight font-extrabold sm:text-4xl">Tu cancha, llena y ordenada.</h2>
           <p className="mx-auto mt-4 max-w-xl text-sm sm:text-base">
-            Crea tu negocio desde el navegador, agrega tus canchas y comparte tu link de reservas hoy mismo.
+            Crea tu negocio desde el navegador y pruébalo 15 días gratis: sin tarjeta, hasta 2 canchas y todo el panel.
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <CtaLink href={PANEL_URL}>Crear mi negocio</CtaLink>
+            {/* Sobre el fondo verde el botón principal va en negro azulado para que se vea. */}
+            <a
+              href="#registro"
+              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full bg-[#0b1f28] px-6 py-3 text-sm font-bold text-[#f8fafc] transition-transform hover:-translate-y-0.5"
+            >
+              Prueba gratis 15 días
+            </a>
             <CtaLink href={WHATSAPP_URL} variant="ghost">
               Hablar por WhatsApp
             </CtaLink>

@@ -40,8 +40,11 @@ export function Header() {
         </ul>
 
         <div className="flex items-center gap-2">
+          <a href={PANEL_URL} className="hidden px-3 text-sm font-semibold text-fg-2 hover:text-fg sm:block">
+            Entrar
+          </a>
           <div className="hidden sm:block">
-            <CtaLink href={PANEL_URL}>Crear mi negocio</CtaLink>
+            <CtaLink href="#registro">Prueba gratis</CtaLink>
           </div>
           <button
             type="button"
@@ -68,8 +71,11 @@ export function Header() {
               </li>
             ))}
           </ul>
-          <div className="mt-4 sm:hidden">
-            <CtaLink href={PANEL_URL}>Crear mi negocio</CtaLink>
+          <div className="mt-4 flex flex-wrap items-center gap-4 sm:hidden">
+            <CtaLink href="#registro">Prueba gratis 15 días</CtaLink>
+            <a href={PANEL_URL} className="text-sm font-semibold">
+              Entrar
+            </a>
           </div>
         </div>
       )}

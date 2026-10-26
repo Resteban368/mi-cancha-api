@@ -17,6 +17,7 @@
   --color-accent-fg: var(--accent-fg);
   --color-accent-text: var(--accent-text);
   --color-accent-soft: var(--accent-soft);
+  --color-danger: var(--danger);
 }
 
 :root {
@@ -32,6 +33,7 @@
   --accent-fg: #0b1f28;
   --accent-text: #007a33;
   --accent-soft: #e1f8ea;
+  --danger: #c62828;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -46,6 +48,7 @@
     --fg-3: #8aa3ae;
     --accent-text: #00c853;
     --accent-soft: rgba(0, 200, 83, 0.14);
+    --danger: #ff8a80;
   }
 }
 

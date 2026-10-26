@@ -29,8 +29,14 @@ export function CtaLink({
     );
   }
 
+  // Los anclas de la misma página (#registro) se abren aquí; los enlaces externos, en otra pestaña.
+  const externo = /^https?:/.test(href);
   return (
-    <a href={href} className={`${base} ${style}`} target="_blank" rel="noopener noreferrer">
+    <a
+      href={href}
+      className={`${base} ${style}`}
+      {...(externo ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+    >
       {children}
     </a>
   );
