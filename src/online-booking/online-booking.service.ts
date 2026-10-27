@@ -56,7 +56,8 @@ import { PlayerAuthService } from './player-auth.service.js';
 
 /** Reglas de las reservas web (iguales para todos los negocios por ahora). */
 export const WEB_RULES: WebBookingRules = {
-  minAdvanceMinutes: 60,
+  // Negativo: se puede reservar un turno que empezó hace hasta 15 minutos.
+  minAdvanceMinutes: -15,
   maxDaysAhead: 30,
   maxReservationsPerDay: 2,
   maxSlots: WEB_MAX_SLOTS,
