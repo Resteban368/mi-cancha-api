@@ -362,7 +362,7 @@ describe('OnlineBookingService', () => {
     expect(error).toBeInstanceOf(ConflictException);
   });
 
-  it('marca UNAVAILABLE los turnos dentro de la anticipación mínima y limita la fecha', async () => {
+  it('marca UNAVAILABLE los turnos que empezaron hace más de 15 minutos y limita la fecha', async () => {
     prisma.business.findUnique.mockResolvedValue(business());
     reservations.sportAvailability.mockResolvedValue({
       date: '2026-10-15',
@@ -373,7 +373,8 @@ describe('OnlineBookingService', () => {
           court: { id: 'c-1' },
           availableCount: 2,
           slots: [
-            { start: new Date('2026-10-15T15:30:00Z'), status: 'AVAILABLE' },
+            { start: new Date('2026-10-15T14:40:00Z'), status: 'AVAILABLE' },
+            { start: new Date('2026-10-15T14:50:00Z'), status: 'AVAILABLE' },
             { start: new Date('2026-10-15T17:00:00Z'), status: 'AVAILABLE' },
           ],
         },
@@ -392,8 +393,9 @@ describe('OnlineBookingService', () => {
     expect(result.courts[0].slots.map((s) => s.status)).toEqual([
       'UNAVAILABLE',
       'AVAILABLE',
+      'AVAILABLE',
     ]);
-    expect(result.courts[0].availableCount).toBe(1);
+    expect(result.courts[0].availableCount).toBe(2);
 
     await expect(
       service.availability('el-golazo', Sport.FUTBOL, '2026-11-20', now),

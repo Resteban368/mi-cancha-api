@@ -833,7 +833,9 @@ export class ReservationsService {
       now.getTime() + rules.minAdvanceMinutes * 60_000
     ) {
       throw new BadRequestException(
-        `Reserva con al menos ${rules.minAdvanceMinutes} minutos de anticipación`,
+        rules.minAdvanceMinutes > 0
+          ? `Reserva con al menos ${rules.minAdvanceMinutes} minutos de anticipación`
+          : `Ese turno empezó hace más de ${-rules.minAdvanceMinutes} minutos`,
       );
     }
     if (first.start.getTime() > now.getTime() + rules.maxDaysAhead * DAY_MS) {
