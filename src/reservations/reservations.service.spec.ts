@@ -17,7 +17,10 @@ import {
   Sport,
 } from '../generated/prisma/enums.js';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { ReservationsService } from './reservations.service.js';
+import {
+  LATE_BOOKING_MINUTES,
+  ReservationsService,
+} from './reservations.service.js';
 
 const court = {
   id: 'court-1',
@@ -595,6 +598,50 @@ describe('ReservationsService', () => {
       await expect(
         service.create('owner-1', { ...dto, sport: Sport.FUTBOL }),
       ).rejects.toThrow('courtId');
+    });
+  });
+
+  describe(`hasta ${LATE_BOOKING_MINUTES} minutos después del inicio`, () => {
+    const at = (time: string) => new Date(`2030-10-21T${time}:00-05:00`);
+    const statusAt18 = async (time: string) => {
+      prisma.court.findMany.mockResolvedValue([court]);
+      prisma.reservation.findMany.mockResolvedValue([]);
+      const result = await service.sportAvailability(
+        'biz-1',
+        Sport.FUTBOL,
+        '2030-10-21',
+        at(time),
+      );
+      return result.courts[0].slots.find(
+        (s) => s.start.getTime() === at('18:00').getTime(),
+      )?.status;
+    };
+
+    afterEach(() => vi.useRealTimers());
+
+    it('el turno de las 18:00 se ofrece hasta las 18:15', async () => {
+      expect(await statusAt18('17:50')).toBe('AVAILABLE');
+      expect(await statusAt18('18:05')).toBe('AVAILABLE');
+      expect(await statusAt18('18:15')).toBe('AVAILABLE');
+      expect(await statusAt18('18:16')).toBe('PAST');
+    });
+
+    it('el negocio puede reservarlo a las 18:05 pero no a las 18:16', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      prisma.reservation.create.mockRejectedValue(new Error('stop'));
+
+      vi.setSystemTime(at('18:05'));
+      await expect(service.create('owner-1', dto)).rejects.toThrow('stop');
+
+      vi.setSystemTime(at('18:16'));
+      await expect(service.create('owner-1', dto)).rejects.toThrow(
+        'Ese turno empezó hace más de 15 minutos',
+      );
+      prisma.court.findMany.mockResolvedValue([court]);
+      const { courtId: _c, ...byCourt } = dto;
+      await expect(
+        service.create('owner-1', { ...byCourt, sport: Sport.FUTBOL }),
+      ).rejects.toThrow('Ese turno empezó hace más de 15 minutos');
     });
   });
 
