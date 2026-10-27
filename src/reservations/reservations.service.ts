@@ -60,6 +60,8 @@ const BLOCKING_STATUSES: ReservationStatus[] = [
 ];
 const DEFAULT_PAYMENT_METHOD = 'EFECTIVO';
 const DAY_MS = 24 * 60 * 60 * 1000;
+/** Minutos después de su inicio en que un turno todavía se puede reservar. */
+export const LATE_BOOKING_MINUTES = 15;
 
 /** Reglas de las reservas hechas por jugadores desde la web. */
 export interface WebBookingRules {
@@ -452,7 +454,7 @@ export class ReservationsService {
       end: slot.end,
       status: overlaps(booked, slot)
         ? 'BOOKED'
-        : slot.end <= now
+        : lateBookingError(slot, now)
           ? 'PAST'
           : overlaps(held, slot)
             ? 'HELD'
@@ -987,7 +989,8 @@ export class ReservationsService {
     assertBookable(court);
 
     const { first, last } = this.findSlots(court, start, count);
-    if (last.end <= now) throw new BadRequestException('Ese turno ya pasó');
+    const late = lateBookingError({ start: first.start, end: last.end }, now);
+    if (late) throw new BadRequestException(late);
     if (await isTaken(tx, court.id, first.start, last.end)) {
       throw new ConflictException(
         `La cancha ${court.name} ya está reservada en ese horario`,
@@ -1082,8 +1085,11 @@ export class ReservationsService {
         continue; // esta cancha no tiene ese turno o cierra antes
       }
       matched = true;
-      if (range.last.end <= now)
-        throw new BadRequestException('Ese turno ya pasó');
+      const late = lateBookingError(
+        { start: range.first.start, end: range.last.end },
+        now,
+      );
+      if (late) throw new BadRequestException(late);
       const [base] = claimed;
       if (base && court.slotDuration !== base.court.slotDuration) continue;
       if (!(await isTaken(tx, court.id, range.first.start, range.last.end))) {
@@ -1211,6 +1217,15 @@ async function isTaken(
     select: { id: true },
   });
   return overlapping !== null;
+}
+
+/** Por qué ya no se puede reservar un turno, o null si todavía se puede. */
+function lateBookingError(slot: Range, now: Date): string | null {
+  if (slot.end <= now) return 'Ese turno ya pasó';
+  if (slot.start.getTime() < now.getTime() - LATE_BOOKING_MINUTES * 60_000) {
+    return `Ese turno empezó hace más de ${LATE_BOOKING_MINUTES} minutos`;
+  }
+  return null;
 }
 
 function assertBookable(court: CourtWithDetails): void {
