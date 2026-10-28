@@ -201,6 +201,9 @@ export class SaleDto {
   createdAt: Date;
   @ApiProperty({ type: [SaleItemDto] })
   items: SaleItemDto[];
-  /** Código del método con que se pagó una venta suelta. */
+  /** Código del método con que se pagó (venta suelta o consumo cobrado ya). */
   paymentMethod: string | null;
+  /** Cancha e inicio de la reserva de un consumo. */
+  courtName: string | null;
+  reservationStart: Date | null;
 }
