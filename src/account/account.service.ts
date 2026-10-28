@@ -69,10 +69,6 @@ export class AccountService {
           enabled: user.business?.salesModuleEnabled ?? false,
           enabledAt: user.business?.salesModuleEnabledAt ?? null,
         },
-        inventory: {
-          enabled: user.business?.inventoryModuleEnabled ?? false,
-          enabledAt: user.business?.inventoryModuleEnabledAt ?? null,
-        },
       },
     };
   }

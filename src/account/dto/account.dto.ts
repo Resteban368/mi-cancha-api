@@ -44,10 +44,8 @@ export class SalesModuleDto {
 }
 
 export class BusinessModulesDto {
-  /** Ventas: productos, consumos en reservas, ventas sueltas y caja. */
+  /** Ventas e inventario: productos, consumos, ventas sueltas, caja y stock. */
   sales: SalesModuleDto;
-  /** Inventario: stock de productos, entradas y ajustes. */
-  inventory: SalesModuleDto;
 }
 
 export class BusinessAccountDto {

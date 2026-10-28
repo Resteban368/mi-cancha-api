@@ -149,10 +149,7 @@ export interface ClientDetail {
     trialExpired: boolean;
   } | null;
   /** Módulos adicionales del negocio (los activa el super admin). */
-  modules: {
-    sales: { enabled: boolean; enabledAt: string | null };
-    inventory: { enabled: boolean; enabledAt: string | null };
-  };
+  modules: { sales: { enabled: boolean; enabledAt: string | null } };
   courts: {
     id: string;
     name: string;

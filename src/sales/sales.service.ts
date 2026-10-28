@@ -251,16 +251,10 @@ export class SalesService {
     const method = dto.payment
       ? await this.catalogs.resolvePaymentMethod(dto.payment.method)
       : null;
-    const [business, actor] = await Promise.all([
-      this.prisma.business.findUnique({
-        where: { id: businessId },
-        select: { inventoryModuleEnabled: true },
-      }),
-      this.prisma.user.findUnique({
-        where: { id: actorId },
-        select: { displayName: true },
-      }),
-    ]);
+    const actor = await this.prisma.user.findUnique({
+      where: { id: actorId },
+      select: { displayName: true },
+    });
 
     const sale = await this.prisma.$transaction(async (tx) => {
       let customerName = dto.customerName || null;
@@ -294,15 +288,14 @@ export class SalesService {
         },
       });
 
-      // Con Inventario, descuenta el stock (y no deja vender de más).
-      if (business?.inventoryModuleEnabled) {
-        await takeStockForSale(tx, {
-          businessId,
-          saleId: created.id,
-          lines: items,
-          actor: { id: actorId, name: actor?.displayName ?? null },
-        });
-      }
+      // Descuenta el stock de los productos que lo controlan (y no deja
+      // vender de más).
+      await takeStockForSale(tx, {
+        businessId,
+        saleId: created.id,
+        lines: items,
+        actor: { id: actorId, name: actor?.displayName ?? null },
+      });
 
       if (method && total > 0) {
         const reference = dto.payment?.reference?.trim() || null;

@@ -39,7 +39,7 @@ export class InventoryService {
   ) {}
 
   async overview(ownerId: string): Promise<InventoryDto> {
-    const businessId = await this.businesses.requireInventoryModule(ownerId);
+    const businessId = await this.businesses.requireSalesModule(ownerId);
     const products = await this.prisma.product.findMany({
       where: { businessId, isActive: true },
       orderBy: { name: 'asc' },
@@ -69,7 +69,7 @@ export class InventoryService {
     ownerId: string,
     dto: StockEntryDto,
   ): Promise<StockMovementDto> {
-    const businessId = await this.businesses.requireInventoryModule(ownerId);
+    const businessId = await this.businesses.requireSalesModule(ownerId);
     const [product, supplier, actorName] = await Promise.all([
       this.requireProduct(businessId, dto.productId),
       dto.supplierId
@@ -113,7 +113,7 @@ export class InventoryService {
     ownerId: string,
     dto: StockAdjustmentDto,
   ): Promise<StockMovementDto> {
-    const businessId = await this.businesses.requireInventoryModule(ownerId);
+    const businessId = await this.businesses.requireSalesModule(ownerId);
     const [, actorName] = await Promise.all([
       this.requireProduct(businessId, dto.productId),
       this.userName(ownerId),
@@ -152,7 +152,7 @@ export class InventoryService {
     ownerId: string,
     query: StockMovementsQueryDto,
   ): Promise<Page<StockMovementDto>> {
-    const businessId = await this.businesses.requireInventoryModule(ownerId);
+    const businessId = await this.businesses.requireSalesModule(ownerId);
     const where = { businessId, productId: query.productId };
     const [items, total] = await Promise.all([
       this.prisma.stockMovement.findMany({

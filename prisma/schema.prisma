@@ -149,34 +149,31 @@ model User {
 
 /// La sede deportiva de un cliente. Cada administrador de negocio tiene exactamente una.
 model Business {
-  id                       String    @id @default(uuid())
-  ownerId                  String    @unique
-  owner                    User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  name                     String
-  address                  String
-  neighborhood             String
-  description              String?
+  id                   String    @id @default(uuid())
+  ownerId              String    @unique
+  owner                User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name                 String
+  address              String
+  neighborhood         String
+  description          String?
   /// Punto de llegada (WGS84). Ambos nulos si aún no se fijó en el mapa.
-  latitude                 Float?
-  longitude                Float?
+  latitude             Float?
+  longitude            Float?
   /// Identificador del link público de reservas: /reservar/<slug>. Lo genera un
   /// trigger de la base a partir del nombre al crear el negocio (nunca queda nulo).
-  slug                     String?   @unique
+  slug                 String?   @unique
   /// Si el link público acepta reservas de jugadores.
-  onlineBookingEnabled     Boolean   @default(true)
+  onlineBookingEnabled Boolean   @default(true)
   /// Módulo de Ventas (productos, consumos, ventas sueltas y caja). Lo activa el super admin.
-  salesModuleEnabled       Boolean   @default(false)
-  salesModuleEnabledAt     DateTime?
-  /// Módulo de Inventario (stock de productos). Requiere el de Ventas; lo activa el super admin.
-  inventoryModuleEnabled   Boolean   @default(false)
-  inventoryModuleEnabledAt DateTime?
+  salesModuleEnabled   Boolean   @default(false)
+  salesModuleEnabledAt DateTime?
   /// Ciudad (municipio de Colombia); de ella sale el departamento. Obligatoria al crear el negocio
   /// (los anteriores a este campo quedan en null hasta que la completen).
-  cityId                   String?
-  city                     City?     @relation(fields: [cityId], references: [id], onDelete: SetNull)
-  amenities                Amenity[]
-  createdAt                DateTime  @default(now())
-  updatedAt                DateTime  @updatedAt
+  cityId               String?
+  city                 City?     @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  amenities            Amenity[]
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   courts            Court[]
   customers         Customer[]

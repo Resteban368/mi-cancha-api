@@ -381,48 +381,33 @@ describe('ClientsService', () => {
       vi.spyOn(service, 'findOne').mockResolvedValue({ id: 'biz-1' } as any);
     });
 
-    it('activar Inventario activa también Ventas', async () => {
+    it('activar guarda la fecha de activación', async () => {
       prisma.business.findUniqueOrThrow.mockResolvedValue({
         salesModuleEnabled: false,
-        inventoryModuleEnabled: false,
       });
-      await service.updateModules('biz-1', { inventory: true });
+      await service.updateModules('biz-1', { sales: true });
       const { data } = prisma.business.update.mock.calls[0][0];
-      expect(data).toMatchObject({
-        salesModuleEnabled: true,
-        inventoryModuleEnabled: true,
-      });
+      expect(data.salesModuleEnabled).toBe(true);
       expect(data.salesModuleEnabledAt).toBeInstanceOf(Date);
-      expect(data.inventoryModuleEnabledAt).toBeInstanceOf(Date);
     });
 
-    it('apagar Ventas apaga también Inventario', async () => {
+    it('desactivar borra la fecha', async () => {
       prisma.business.findUniqueOrThrow.mockResolvedValue({
         salesModuleEnabled: true,
-        inventoryModuleEnabled: true,
       });
       await service.updateModules('biz-1', { sales: false });
-      expect(prisma.business.update.mock.calls[0][0].data).toMatchObject({
+      expect(prisma.business.update.mock.calls[0][0].data).toEqual({
         salesModuleEnabled: false,
         salesModuleEnabledAt: null,
-        inventoryModuleEnabled: false,
-        inventoryModuleEnabledAt: null,
       });
     });
 
-    it('apagar Inventario deja Ventas como estaba', async () => {
+    it('si no cambia, no toca la fecha', async () => {
       prisma.business.findUniqueOrThrow.mockResolvedValue({
         salesModuleEnabled: true,
-        inventoryModuleEnabled: true,
       });
-      await service.updateModules('biz-1', { inventory: false });
-      const { data } = prisma.business.update.mock.calls[0][0];
-      expect(data).toMatchObject({
-        salesModuleEnabled: true,
-        inventoryModuleEnabled: false,
-      });
-      // No cambia la fecha de Ventas.
-      expect(data).not.toHaveProperty('salesModuleEnabledAt');
+      await service.updateModules('biz-1', { sales: true });
+      expect(prisma.business.update).not.toHaveBeenCalled();
     });
   });
 

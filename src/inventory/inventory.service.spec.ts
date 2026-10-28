@@ -107,7 +107,7 @@ describe('InventoryService', () => {
     service = new InventoryService(
       prisma as unknown as PrismaService,
       {
-        requireInventoryModule: vi.fn().mockResolvedValue('biz-1'),
+        requireSalesModule: vi.fn().mockResolvedValue('biz-1'),
       } as unknown as BusinessesService,
     );
   });

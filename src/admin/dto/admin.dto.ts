@@ -116,20 +116,13 @@ export class CreateClientDto {
 }
 
 export class UpdateModulesDto {
-  /** Ventas (productos, consumos y caja). Apagarlo apaga también Inventario. */
-  @IsOptional()
+  /** Ventas e inventario: productos, consumos, caja y stock. */
   @IsBoolean()
-  sales?: boolean;
-
-  /** Inventario (stock de productos). Encenderlo enciende también Ventas. */
-  @IsOptional()
-  @IsBoolean()
-  inventory?: boolean;
+  sales: boolean;
 }
 
 export class ClientModulesDto {
   sales: { enabled: boolean; enabledAt: Date | null };
-  inventory: { enabled: boolean; enabledAt: Date | null };
 }
 
 export class UpdateSubscriptionDto {

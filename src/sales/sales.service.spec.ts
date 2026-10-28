@@ -58,12 +58,20 @@ function storedSale(overrides: Record<string, unknown> = {}) {
 describe('SalesService', () => {
   let service: SalesService;
   let prisma: PrismaMock;
+
+  /** Catálogo del negocio; ninguno controla stock salvo que lo diga. */
+  function catalog(products: Record<string, unknown>[]) {
+    prisma.product.findMany.mockImplementation(
+      async ({ where }: { where?: { trackStock?: boolean } }) =>
+        where?.trackStock ? products.filter((p) => p.trackStock) : products,
+    );
+  }
   const catalogs = { resolvePaymentMethod: vi.fn() };
 
   beforeEach(async () => {
     prisma = createPrismaMock();
     catalogs.resolvePaymentMethod.mockReset().mockResolvedValue(cash);
-    prisma.product.findMany.mockResolvedValue([water, drink]);
+    catalog([water, drink]);
     prisma.sale.create.mockResolvedValue({ id: 'sale-1' });
     prisma.sale.findUniqueOrThrow.mockImplementation(() => storedSale());
     const moduleRef = await Test.createTestingModule({
@@ -116,7 +124,7 @@ describe('SalesService', () => {
     });
 
     it('junta el mismo producto en una sola línea', async () => {
-      prisma.product.findMany.mockResolvedValue([water]);
+      catalog([water]);
 
       await service.createSale(
         'owner-1',
@@ -137,7 +145,7 @@ describe('SalesService', () => {
     });
 
     it('una venta suelta se paga en el momento con concepto VENTA', async () => {
-      prisma.product.findMany.mockResolvedValue([water]);
+      catalog([water]);
 
       await service.createSale(
         'owner-1',
@@ -166,7 +174,7 @@ describe('SalesService', () => {
         status: ReservationStatus.CONFIRMED,
         customerName: 'Juan',
       });
-      prisma.product.findMany.mockResolvedValue([water]);
+      catalog([water]);
 
       await service.createSale(
         'owner-1',
@@ -202,7 +210,7 @@ describe('SalesService', () => {
     });
 
     it('rechaza productos desactivados o de otro negocio', async () => {
-      prisma.product.findMany.mockResolvedValue([water]);
+      catalog([water]);
 
       await expect(
         service.createSale(
@@ -221,7 +229,7 @@ describe('SalesService', () => {
     });
 
     it('no carga consumos a una reserva cancelada', async () => {
-      prisma.product.findMany.mockResolvedValue([water]);
+      catalog([water]);
       prisma.reservation.findFirst.mockResolvedValue({
         id: 'res-1',
         status: ReservationStatus.CANCELLED,
@@ -309,7 +317,7 @@ describe('SalesService', () => {
     });
 
     it('popular: más vendidos primero y, a igual venta, por nombre', async () => {
-      prisma.product.findMany.mockResolvedValue([
+      catalog([
         stored('p-a', 'Agua'),
         stored('p-b', 'Balón'),
         stored('p-g', 'Gatorade'),

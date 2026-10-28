@@ -46,8 +46,6 @@ trigger de la base a partir del nombre al crear el negocio (nunca queda nulo)."
     Boolean onlineBookingEnabled "Si el link público acepta reservas de jugadores."
     Boolean salesModuleEnabled "Módulo de Ventas (productos, consumos, ventas sueltas y caja). Lo activa el super admin."
     DateTime salesModuleEnabledAt "opcional"
-    Boolean inventoryModuleEnabled "Módulo de Inventario (stock de productos). Requiere el de Ventas; lo activa el super admin."
-    DateTime inventoryModuleEnabledAt "opcional"
     String cityId FK "opcional · Ciudad (municipio de Colombia); de ella sale el departamento. Obligatoria al crear el negocio
 (los anteriores a este campo quedan en null hasta que la completen)."
     DateTime createdAt
