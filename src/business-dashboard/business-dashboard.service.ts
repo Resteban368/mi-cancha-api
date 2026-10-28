@@ -269,6 +269,7 @@ export class BusinessDashboardService {
           SELECT
             MIN(r."status"::text) AS status,
             SUM(r."totalPrice") AS total,
+            SUM(r."consumptionsTotal") AS consumptions,
             SUM(r."discount") AS discount,
             SUM(COALESCE(paid.amount, 0)) AS paid
           FROM "Reservation" r
@@ -288,7 +289,7 @@ export class BusinessDashboardService {
           COALESCE(SUM(u.total) FILTER (WHERE ${UNIT_ACTIVE}), 0)::float8 AS "booked",
           COALESCE(SUM(u.discount) FILTER (WHERE ${UNIT_ACTIVE}), 0)::float8 AS "discounts",
           COALESCE(
-            SUM(GREATEST(u.total - u.paid, 0)) FILTER (WHERE ${UNIT_ACTIVE}),
+            SUM(GREATEST(u.total + u.consumptions - u.paid, 0)) FILTER (WHERE ${UNIT_ACTIVE}),
             0
           )::float8 AS "pendingBalance"
         FROM units u`,

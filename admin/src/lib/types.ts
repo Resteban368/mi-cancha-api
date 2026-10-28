@@ -59,7 +59,7 @@ export interface Client {
 export type Sport = 'FUTBOL' | 'PADEL' | 'BALONCESTO' | 'VOLEIBOL';
 export type ReservationStatus = 'CONFIRMED' | 'COMPLETED' | 'NO_SHOW' | 'CANCELLED';
 export type PaymentStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'REFUNDED';
-export type PaymentConcept = 'ANTICIPO' | 'SALDO' | 'TOTAL';
+export type PaymentConcept = 'ANTICIPO' | 'SALDO' | 'TOTAL' | 'VENTA';
 
 export type DayOfWeek =
   | 'MONDAY'

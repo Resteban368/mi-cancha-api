@@ -144,6 +144,8 @@ trigger de la base a partir del nombre al crear el negocio (nunca queda nulo)."
     Decimal subtotal "Valor según las tarifas, antes del descuento."
     Decimal discount
     Decimal totalPrice "subtotal - discount, en la moneda de la cancha."
+    Decimal consumptionsTotal "Suma de las ventas activas cargadas a la reserva (bebidas, snacks…). El saldo es
+totalPrice + consumptionsTotal - pagos aprobados. Se actualiza con cada venta."
     ReservationStatus status
     String groupId FK "opcional · Reserva de varias canchas a la vez: las del mismo grupo comparten franja,
 se pagan y se cancelan juntas. null = reserva de una sola cancha."
@@ -195,8 +197,40 @@ llegaron por la web y aún no la registran (el negocio siempre la pide)."
     String note "opcional"
     String rejectionReason "opcional"
     Boolean registeredByBusiness
+    String saleId FK, UK "opcional · Venta suelta que se pagó con este pago (concepto VENTA)."
     DateTime receivedAt
     DateTime updatedAt
+  }
+  Product {
+    String id PK
+    String businessId FK
+    String name
+    Decimal price "Precio por unidad en la moneda del negocio."
+    Boolean isActive
+    DateTime createdAt
+    DateTime updatedAt
+  }
+  Sale {
+    String id PK
+    String businessId FK
+    String reservationId FK "opcional"
+    String customerName "opcional · A quién se le vendió (en una venta suelta es opcional)."
+    Decimal total
+    String note "opcional"
+    SaleStatus status
+    String voidReason "opcional"
+    DateTime voidedAt "opcional"
+    String createdById "opcional · Quién la registró (sin llave foránea: el dato sobrevive si se borra la cuenta)."
+    DateTime createdAt
+  }
+  SaleItem {
+    String id PK
+    String saleId FK
+    String productId FK "opcional"
+    String productName
+    Decimal unitPrice
+    Int quantity
+    Decimal subtotal
   }
   Amenity {
     String id PK
@@ -342,6 +376,12 @@ como sin plan activo (solo consulta) hasta que se le asigne uno."
   Business ||--o{ Payment : "payments"
   Reservation |o--o{ Payment : "payments"
   PaymentMethod ||--o{ Payment : "payments"
+  Sale |o--o| Payment : "payment"
+  Business ||--o{ Product : "products"
+  Business ||--o{ Sale : "sales"
+  Reservation |o--o{ Sale : "sales"
+  Sale ||--o{ SaleItem : "items"
+  Product |o--o{ SaleItem : "saleItems"
   Amenity }o--o{ Business : "AmenityToBusiness"
   Business ||--o| Subscription : "subscription"
   Plan ||--o{ Subscription : "subscriptions"
@@ -386,6 +426,8 @@ La sede deportiva de un cliente. Cada administrador de negocio tiene exactamente
 - **BusinessProfileImage**: Tiene cero o muchos BusinessProfileImage (campo profileImages). Cada BusinessProfileImage apunta a este Business.
 - **SlotHold**: Tiene cero o muchos SlotHold (campo slotHolds). Cada SlotHold apunta a este Business.
 - **ReservationGroup**: Tiene cero o muchos ReservationGroup (campo reservationGroups). Cada ReservationGroup apunta a este Business.
+- **Product**: Tiene cero o muchos Product (campo products). Cada Product apunta a este Business.
+- **Sale**: Tiene cero o muchos Sale (campo sales). Cada Sale apunta a este Business.
 
 ### Department
 
@@ -462,6 +504,7 @@ Un turno reservado en una cancha. La crea el negocio desde la app (o un jugador,
 - **User**: Puede pertenecer a un User mediante cancelledById; un User puede tener varios Reservation. Si se borra el User, el Reservation se conserva sin User.
 - **Payment**: Tiene cero o muchos Payment (campo payments). Cada Payment apunta a este Reservation.
 - **Refund**: Tiene cero o muchos Refund (campo refunds). Cada Refund apunta a este Reservation.
+- **Sale**: Tiene cero o muchos Sale (campo sales). Cada Sale apunta a este Reservation.
 
 ### ReservationGroup
 
@@ -500,7 +543,33 @@ quedan pendientes hasta que el negocio los aprueba o rechaza.
 - **Business**: Pertenece siempre a un Business mediante businessId; un Business puede tener varios Payment. Si se borra el Business, se borran también sus Payment.
 - **Reservation**: Puede pertenecer a un Reservation mediante reservationId; un Reservation puede tener varios Payment. Si se borra el Reservation, el Payment se conserva sin Reservation.
 - **PaymentMethod**: Pertenece siempre a un PaymentMethod mediante methodId; un PaymentMethod puede tener varios Payment. No se puede borrar un PaymentMethod mientras tenga Payment.
+- **Sale**: Puede pertenecer a un Sale mediante saleId; un Sale tiene como máximo un Payment. Si se borra el Sale, el Payment se conserva sin Sale.
 - **Refund**: Puede tener un Refund (campo refund); la llave foránea está en Refund.
+
+### Product
+
+Producto que vende el negocio por unidad (agua, bebida hidratante, alquiler de petos…).
+No se borra: se desactiva, para no romper las ventas que ya lo usan.
+
+- **Business**: Pertenece siempre a un Business mediante businessId; un Business puede tener varios Product. Si se borra el Business, se borran también sus Product.
+- **SaleItem**: Tiene cero o muchos SaleItem (campo saleItems). Cada SaleItem apunta a este Product.
+
+### Sale
+
+Venta de productos: cargada a una reserva (consumo del turno, se paga con la reserva) o
+suelta (sin reserva, se paga en el momento con su propio pago).
+
+- **Business**: Pertenece siempre a un Business mediante businessId; un Business puede tener varios Sale. Si se borra el Business, se borran también sus Sale.
+- **Reservation**: Puede pertenecer a un Reservation mediante reservationId; un Reservation puede tener varios Sale. Si se borra el Reservation, el Sale se conserva sin Reservation.
+- **SaleItem**: Tiene cero o muchos SaleItem (campo items). Cada SaleItem apunta a este Sale.
+- **Payment**: Puede tener un Payment (campo payment); la llave foránea está en Payment.
+
+### SaleItem
+
+Línea de una venta. Guarda nombre y precio del producto al momento de vender.
+
+- **Sale**: Pertenece siempre a un Sale mediante saleId; un Sale puede tener varios SaleItem. Si se borra el Sale, se borran también sus SaleItem.
+- **Product**: Puede pertenecer a un Product mediante productId; un Product puede tener varios SaleItem. Si se borra el Product, el SaleItem se conserva sin Product.
 
 ### Amenity
 
@@ -586,7 +655,8 @@ Imagen que acompaña a un aviso. El archivo vive en el almacenamiento (Koofr); a
 | `CourtPhotoSlot` | `MAIN`, `SURFACE`, `LIGHTING`, `EXTRA_1`, `EXTRA_2` |
 | `ReservationSource` | `BUSINESS`, `WEB` |
 | `ReservationStatus` | `CONFIRMED`, `COMPLETED`, `NO_SHOW`, `CANCELLED` |
-| `PaymentConcept` | `ANTICIPO`, `SALDO`, `TOTAL` |
+| `PaymentConcept` | `ANTICIPO`, `SALDO`, `TOTAL`, `VENTA` |
+| `SaleStatus` | `ACTIVE`, `VOIDED` |
 | `PaymentStatus` | `PENDING`, `APPROVED`, `REJECTED`, `REFUNDED` |
 | `AuditCategory` | `ADMIN`, `SECURITY` |
 | `NotificationType` | `NEW_RESERVATION`, `ADMIN_BROADCAST` |
@@ -601,3 +671,4 @@ Imagen que acompaña a un aviso. El archivo vive en el almacenamiento (Koofr); a
 - Customer: (businessId, phone)
 - Customer: (businessId, documentId)
 - Customer: (businessId, userId)
+- Product: (businessId, name)

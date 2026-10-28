@@ -18,6 +18,7 @@ import { OnlineBookingModule } from './online-booking/online-booking.module.js';
 import { PaymentsModule } from './payments/payments.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { RefundsModule } from './refunds/refunds.module.js';
+import { SalesModule } from './sales/sales.module.js';
 import { ReservationsModule } from './reservations/reservations.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
 import { SecurityModule } from './security/security.module.js';
@@ -77,6 +78,7 @@ const STATIC_OPTIONS = {
     BusinessDashboardModule,
     OnlineBookingModule,
     PaymentsModule,
+    SalesModule,
     AccountModule,
     CatalogsModule,
     AdminModule,
