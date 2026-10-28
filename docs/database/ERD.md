@@ -205,6 +205,7 @@ llegaron por la web y aún no la registran (el negocio siempre la pide)."
     String id PK
     String businessId FK
     String name
+    ProductCategory category
     Decimal price "Precio por unidad en la moneda del negocio."
     Boolean isActive
     DateTime createdAt
@@ -656,6 +657,7 @@ Imagen que acompaña a un aviso. El archivo vive en el almacenamiento (Koofr); a
 | `ReservationSource` | `BUSINESS`, `WEB` |
 | `ReservationStatus` | `CONFIRMED`, `COMPLETED`, `NO_SHOW`, `CANCELLED` |
 | `PaymentConcept` | `ANTICIPO`, `SALDO`, `TOTAL`, `VENTA` |
+| `ProductCategory` | `AGUA`, `BEBIDA`, `HIDRATANTE`, `CERVEZA`, `SNACK`, `COMIDA`, `ALQUILER`, `OTRO` |
 | `SaleStatus` | `ACTIVE`, `VOIDED` |
 | `PaymentStatus` | `PENDING`, `APPROVED`, `REJECTED`, `REFUNDED` |
 | `AuditCategory` | `ADMIN`, `SECURITY` |

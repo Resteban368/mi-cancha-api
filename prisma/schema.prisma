@@ -70,6 +70,19 @@ enum PaymentConcept {
   VENTA
 }
 
+/// Categoría de un producto: define su ícono en la app.
+enum ProductCategory {
+  AGUA
+  BEBIDA
+  HIDRATANTE
+  CERVEZA
+  SNACK
+  COMIDA
+  /// Alquiler de petos, balones, raquetas…
+  ALQUILER
+  OTRO
+}
+
 enum SaleStatus {
   ACTIVE
   /// Anulada por el negocio (no se borra: queda para control).
@@ -479,15 +492,16 @@ model Payment {
 /// Producto que vende el negocio por unidad (agua, bebida hidratante, alquiler de petos…).
 /// No se borra: se desactiva, para no romper las ventas que ya lo usan.
 model Product {
-  id         String     @id @default(uuid())
+  id         String          @id @default(uuid())
   businessId String
-  business   Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business   Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
   name       String
+  category   ProductCategory @default(OTRO)
   /// Precio por unidad en la moneda del negocio.
-  price      Decimal    @db.Decimal(12, 2)
-  isActive   Boolean    @default(true)
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
+  price      Decimal         @db.Decimal(12, 2)
+  isActive   Boolean         @default(true)
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
 
   saleItems SaleItem[]
 
@@ -597,15 +611,15 @@ model Plan {
 
 /// Plan que tiene contratado un negocio, su estado (activo o suspendido) y la fecha del próximo cobro.
 model Subscription {
-  id          String   @id @default(uuid())
-  businessId  String   @unique
-  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  id          String    @id @default(uuid())
+  businessId  String    @unique
+  business    Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
   planId      String
-  plan        Plan     @relation(fields: [planId], references: [id])
-  since       DateTime @default(now())
+  plan        Plan      @relation(fields: [planId], references: [id])
+  since       DateTime  @default(now())
   nextPayment DateTime
-  isActive    Boolean  @default(true)
-  autoBilling Boolean  @default(true)
+  isActive    Boolean   @default(true)
+  autoBilling Boolean   @default(true)
   /// Fin de la prueba gratuita; null si el plan es de pago. Vencida la fecha, el negocio queda
   /// como sin plan activo (solo consulta) hasta que se le asigne uno.
   trialEndsAt DateTime?
