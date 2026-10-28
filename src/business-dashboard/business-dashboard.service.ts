@@ -66,6 +66,10 @@ export class BusinessDashboardService {
       newCustomers,
       previousNewCustomers,
       refunds,
+      sales,
+      previousSales,
+      topProducts,
+      salesDays,
     ] = await Promise.all([
       this.reservationCounts(businessId, current, filter),
       this.reservationCounts(businessId, previous, filter),
@@ -103,6 +107,10 @@ export class BusinessDashboardService {
         },
       }),
       this.refunds(businessId, current, filter),
+      this.salesSummary(businessId, current, filter),
+      this.salesSummary(businessId, previous, filter),
+      this.topProducts(businessId, current, filter),
+      this.salesByDay(businessId, current, filter),
     ]);
 
     // Ocupación: horas reservadas sobre las horas abiertas de las canchas activas.
@@ -196,6 +204,29 @@ export class BusinessDashboardService {
         pct: pct(m.amount, collected),
       })),
       bySport: sports.map((s) => ({ ...s, booked: round2(s.booked) })),
+      sales: {
+        total: trend(round2(sales.total), round2(previousSales.total)),
+        walkIn: round2(sales.walkIn),
+        consumptions: round2(sales.total - sales.walkIn),
+        count: sales.count,
+        units: sales.units,
+        averageConsumption: activeReservations
+          ? round2(counts.consumptions / activeReservations)
+          : 0,
+        pendingConsumptions: round2(counts.pendingConsumptions),
+        topProducts: topProducts.map((p) => ({
+          ...p,
+          amount: round2(p.amount),
+        })),
+        byDay: datesBetween(period.from, period.to).map((date) => {
+          const row = salesDays.find((d) => d.date === date);
+          return {
+            date,
+            walkIn: round2(row?.walkIn ?? 0),
+            consumptions: round2(row?.consumptions ?? 0),
+          };
+        }),
+      },
     };
   }
 
@@ -291,7 +322,14 @@ export class BusinessDashboardService {
           COALESCE(
             SUM(GREATEST(u.total + u.consumptions - u.paid, 0)) FILTER (WHERE ${UNIT_ACTIVE}),
             0
-          )::float8 AS "pendingBalance"
+          )::float8 AS "pendingBalance",
+          COALESCE(SUM(u.consumptions) FILTER (WHERE ${UNIT_ACTIVE}), 0)::float8 AS "consumptions",
+          -- Los pagos cubren primero la cancha: lo que falta, hasta el valor de los consumos.
+          COALESCE(
+            SUM(LEAST(u.consumptions, GREATEST(u.total + u.consumptions - u.paid, 0)))
+              FILTER (WHERE ${UNIT_ACTIVE}),
+            0
+          )::float8 AS "pendingConsumptions"
         FROM units u`,
       )
       .then((rows) => rows[0]);
@@ -428,6 +466,82 @@ export class BusinessDashboardService {
       ORDER BY "reservations" DESC`);
   }
 
+  /** Ventas activas creadas en el rango. Con filtro, las sueltas (sin cancha) no cuentan. */
+  private salesSummary(
+    businessId: string,
+    range: Range,
+    filter: Filter,
+  ): Promise<SalesRow> {
+    return this.prisma
+      .$queryRaw<SalesRow[]>(
+        Prisma.sql`
+        WITH units AS (
+          SELECT si."saleId", SUM(si."quantity") AS units
+          FROM "SaleItem" si
+          GROUP BY si."saleId"
+        )
+        SELECT COUNT(*)::int AS "count",
+          COALESCE(SUM(units.units), 0)::int AS "units",
+          COALESCE(SUM(s."total"), 0)::float8 AS "total",
+          COALESCE(SUM(s."total") FILTER (WHERE s."reservationId" IS NULL), 0)::float8 AS "walkIn"
+        FROM "Sale" s
+        LEFT JOIN units ON units."saleId" = s."id"
+        LEFT JOIN "Reservation" r ON r."id" = s."reservationId"
+        LEFT JOIN "Court" co ON co."id" = r."courtId"
+        WHERE s."businessId" = ${businessId} AND s."status" = 'ACTIVE'
+          AND s."createdAt" >= ${range.from} AND s."createdAt" < ${range.to}
+          ${courtFilter(filter)}`,
+      )
+      .then((rows) => rows[0] ?? { count: 0, units: 0, total: 0, walkIn: 0 });
+  }
+
+  private topProducts(
+    businessId: string,
+    range: Range,
+    filter: Filter,
+  ): Promise<
+    { productId: string | null; name: string; units: number; amount: number }[]
+  > {
+    return this.prisma.$queryRaw(Prisma.sql`
+      SELECT si."productId",
+        COALESCE(pr."name", MIN(si."productName")) AS "name",
+        SUM(si."quantity")::int AS "units",
+        SUM(si."subtotal")::float8 AS "amount"
+      FROM "SaleItem" si
+      JOIN "Sale" s ON s."id" = si."saleId"
+      LEFT JOIN "Product" pr ON pr."id" = si."productId"
+      LEFT JOIN "Reservation" r ON r."id" = s."reservationId"
+      LEFT JOIN "Court" co ON co."id" = r."courtId"
+      WHERE s."businessId" = ${businessId} AND s."status" = 'ACTIVE'
+        AND s."createdAt" >= ${range.from} AND s."createdAt" < ${range.to}
+        ${courtFilter(filter)}
+      GROUP BY si."productId", pr."name"
+      ORDER BY "amount" DESC, "units" DESC, "name"
+      LIMIT 5`);
+  }
+
+  /** Ventas por día local (solo los días con ventas). */
+  private salesByDay(
+    businessId: string,
+    range: Range,
+    filter: Filter,
+  ): Promise<{ date: string; walkIn: number; consumptions: number }[]> {
+    const offset = offsetMinutes(this.utcOffset);
+    return this.prisma.$queryRaw(Prisma.sql`
+      SELECT
+        to_char(s."createdAt" + make_interval(mins => ${offset}), 'YYYY-MM-DD') AS "date",
+        COALESCE(SUM(s."total") FILTER (WHERE s."reservationId" IS NULL), 0)::float8 AS "walkIn",
+        COALESCE(SUM(s."total") FILTER (WHERE s."reservationId" IS NOT NULL), 0)::float8 AS "consumptions"
+      FROM "Sale" s
+      LEFT JOIN "Reservation" r ON r."id" = s."reservationId"
+      LEFT JOIN "Court" co ON co."id" = r."courtId"
+      WHERE s."businessId" = ${businessId} AND s."status" = 'ACTIVE'
+        AND s."createdAt" >= ${range.from} AND s."createdAt" < ${range.to}
+        ${courtFilter(filter)}
+      GROUP BY 1
+      ORDER BY 1`);
+  }
+
   private refunds(
     businessId: string,
     range: Range,
@@ -457,6 +571,15 @@ interface ReservationCounts {
   booked: number;
   discounts: number;
   pendingBalance: number;
+  consumptions: number;
+  pendingConsumptions: number;
+}
+
+interface SalesRow {
+  count: number;
+  units: number;
+  total: number;
+  walkIn: number;
 }
 
 interface MethodRow {

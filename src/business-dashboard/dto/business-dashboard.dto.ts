@@ -155,6 +155,43 @@ export class SportStatDto {
   booked: number;
 }
 
+export class TopProductDto {
+  /** null si el producto ya no existe. */
+  productId: string | null;
+  name: string;
+  units: number;
+  amount: number;
+}
+
+export class SalesDayDto {
+  /** YYYY-MM-DD, hora del negocio. */
+  date: string;
+  walkIn: number;
+  consumptions: number;
+}
+
+/** Ventas de productos del período (sin las anuladas), por fecha de la venta. */
+export class DashboardSalesDto {
+  /** Ventas sueltas + consumos cargados a reservas. */
+  total: TrendDto;
+  /** Ventas sueltas (cobradas en el momento). */
+  walkIn: number;
+  /** Consumos cargados a reservas (se cobran con la reserva). */
+  consumptions: number;
+  count: number;
+  units: number;
+  /** Consumos ÷ reservas confirmadas y jugadas que empiezan en el período. */
+  averageConsumption: number;
+  /** Parte del saldo pendiente que son consumos (los pagos cubren primero la cancha). */
+  pendingConsumptions: number;
+  /** Los 5 que más dinero dejaron. */
+  @ApiProperty({ type: [TopProductDto] })
+  topProducts: TopProductDto[];
+  /** Todos los días del período, de más antiguo a más nuevo. */
+  @ApiProperty({ type: [SalesDayDto] })
+  byDay: SalesDayDto[];
+}
+
 export class BusinessDashboardDto {
   period: DashboardPeriodDto;
   currency: string;
@@ -174,4 +211,6 @@ export class BusinessDashboardDto {
   paymentMethods: PaymentMethodStatDto[];
   @ApiProperty({ type: [SportStatDto] })
   bySport: SportStatDto[];
+  /** Con filtro de deporte o cancha solo cuentan los consumos de esas canchas. */
+  sales: DashboardSalesDto;
 }
