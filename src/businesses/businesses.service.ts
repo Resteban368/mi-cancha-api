@@ -137,6 +137,28 @@ export class BusinessesService {
     return business.id;
   }
 
+  /**
+   * Id del negocio si tiene activo el módulo de Inventario; si no, 403 con
+   * `code: MODULE_DISABLED`.
+   */
+  async requireInventoryModule(ownerId: string): Promise<string> {
+    const business = await this.prisma.business.findUnique({
+      where: { ownerId },
+      select: { id: true, inventoryModuleEnabled: true },
+    });
+    if (!business) throw notCreatedYet();
+    if (!business.inventoryModuleEnabled) {
+      throw new ForbiddenException({
+        statusCode: 403,
+        error: 'Forbidden',
+        code: 'MODULE_DISABLED',
+        message:
+          'El módulo de Inventario no está activo para tu negocio. Pídelo a Mi Cancha.',
+      });
+    }
+    return business.id;
+  }
+
   /** Id del negocio del administrador; lanza 404 si aún no lo ha creado. */
   async requireBusinessId(ownerId: string): Promise<string> {
     const business = await this.prisma.business.findUnique({

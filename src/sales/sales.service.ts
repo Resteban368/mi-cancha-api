@@ -16,6 +16,10 @@ import {
   ReservationStatus,
   SaleStatus,
 } from '../generated/prisma/enums.js';
+import {
+  restoreStockForSales,
+  takeStockForSale,
+} from '../inventory/stock.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
   CreateProductDto,
@@ -121,6 +125,8 @@ export class SalesService {
         name: dto.name,
         category: dto.category,
         price: dto.price,
+        trackStock: dto.trackStock,
+        minStock: dto.minStock,
       },
     });
     return toProductDto(product);
@@ -146,6 +152,8 @@ export class SalesService {
         category: dto.category,
         price: dto.price,
         isActive: dto.isActive,
+        trackStock: dto.trackStock,
+        minStock: dto.minStock,
       },
     });
     const sold = await this.soldUnits([id]);
@@ -243,6 +251,16 @@ export class SalesService {
     const method = dto.payment
       ? await this.catalogs.resolvePaymentMethod(dto.payment.method)
       : null;
+    const [business, actor] = await Promise.all([
+      this.prisma.business.findUnique({
+        where: { id: businessId },
+        select: { inventoryModuleEnabled: true },
+      }),
+      this.prisma.user.findUnique({
+        where: { id: actorId },
+        select: { displayName: true },
+      }),
+    ]);
 
     const sale = await this.prisma.$transaction(async (tx) => {
       let customerName = dto.customerName || null;
@@ -275,6 +293,16 @@ export class SalesService {
           items: { create: items },
         },
       });
+
+      // Con Inventario, descuenta el stock (y no deja vender de más).
+      if (business?.inventoryModuleEnabled) {
+        await takeStockForSale(tx, {
+          businessId,
+          saleId: created.id,
+          lines: items,
+          actor: { id: actorId, name: actor?.displayName ?? null },
+        });
+      }
 
       if (method && total > 0) {
         const reference = dto.payment?.reference?.trim() || null;
@@ -339,6 +367,12 @@ export class SalesService {
         where: { saleId: current.id, status: PaymentStatus.APPROVED },
         data: { status: PaymentStatus.REFUNDED },
       });
+      // Lo vendido vuelve al stock.
+      await restoreStockForSales(tx, {
+        businessId,
+        saleIds: [current.id],
+        actor: { id: ownerId, name: null },
+      });
       return current;
     });
     return toSaleDto(sale);
@@ -356,6 +390,9 @@ function toProductDto(
     category: ProductCategory;
     price: Prisma.Decimal | number;
     isActive: boolean;
+    trackStock: boolean;
+    stock: number;
+    minStock: number | null;
   },
   sold = 0,
 ): ProductDto {
@@ -366,7 +403,21 @@ function toProductDto(
     price: Number(p.price),
     isActive: p.isActive,
     sold,
+    trackStock: p.trackStock,
+    stock: p.stock,
+    minStock: p.minStock,
+    lowStock: isLowStock(p),
   };
+}
+
+/** Sin unidades, o en el mínimo o por debajo. */
+export function isLowStock(p: {
+  trackStock: boolean;
+  stock: number;
+  minStock: number | null;
+}): boolean {
+  if (!p.trackStock) return false;
+  return p.stock <= 0 || (p.minStock !== null && p.stock <= p.minStock);
 }
 
 export function toSaleDto(s: SaleWithItems): SaleDto {

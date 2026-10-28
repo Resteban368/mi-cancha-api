@@ -46,6 +46,8 @@ trigger de la base a partir del nombre al crear el negocio (nunca queda nulo)."
     Boolean onlineBookingEnabled "Si el link público acepta reservas de jugadores."
     Boolean salesModuleEnabled "Módulo de Ventas (productos, consumos, ventas sueltas y caja). Lo activa el super admin."
     DateTime salesModuleEnabledAt "opcional"
+    Boolean inventoryModuleEnabled "Módulo de Inventario (stock de productos). Requiere el de Ventas; lo activa el super admin."
+    DateTime inventoryModuleEnabledAt "opcional"
     String cityId FK "opcional · Ciudad (municipio de Colombia); de ella sale el departamento. Obligatoria al crear el negocio
 (los anteriores a este campo quedan en null hasta que la completen)."
     DateTime createdAt
@@ -210,6 +212,9 @@ llegaron por la web y aún no la registran (el negocio siempre la pide)."
     ProductCategory category
     Decimal price "Precio por unidad en la moneda del negocio."
     Boolean isActive
+    Boolean trackStock "Con el módulo de Inventario: si se controlan sus existencias."
+    Int stock "Unidades disponibles (solo cuenta si trackStock)."
+    Int minStock "opcional · Alerta de stock bajo cuando stock <= minStock (null = sin alerta)."
     DateTime createdAt
     DateTime updatedAt
   }
@@ -264,6 +269,21 @@ llegaron por la web y aún no la registran (el negocio siempre la pide)."
     DateTime createdAt
     DateTime voidedAt "opcional"
     String voidReason "opcional"
+  }
+  StockMovement {
+    String id PK
+    String businessId FK
+    String productId FK
+    StockMovementType type
+    Int quantity "Unidades que entran (+) o salen (−)."
+    Int stockAfter "Stock del producto después del movimiento."
+    Decimal unitCost "opcional · Costo por unidad de una entrada (opcional)."
+    String supplierId FK "opcional"
+    String saleId "opcional"
+    String note "opcional"
+    String createdById "opcional"
+    String createdByName "opcional"
+    DateTime createdAt
   }
   Supplier {
     String id PK
@@ -444,6 +464,9 @@ como sin plan activo (solo consulta) hasta que se le asigne uno."
   Business ||--o{ CashSession : "cashSessions"
   Business ||--o{ CashMovement : "cashMovements"
   CashSession ||--o{ CashMovement : "movements"
+  Business ||--o{ StockMovement : "stockMovements"
+  Product ||--o{ StockMovement : "stockMovements"
+  Supplier |o--o{ StockMovement : "stockMovements"
   Business ||--o{ Supplier : "suppliers"
   Business ||--o{ CashExpense : "cashExpenses"
   CashSession ||--o{ CashExpense : "expenses"
@@ -499,6 +522,7 @@ La sede deportiva de un cliente. Cada administrador de negocio tiene exactamente
 - **Supplier**: Tiene cero o muchos Supplier (campo suppliers). Cada Supplier apunta a este Business.
 - **CashExpense**: Tiene cero o muchos CashExpense (campo cashExpenses). Cada CashExpense apunta a este Business.
 - **CashMovement**: Tiene cero o muchos CashMovement (campo cashMovements). Cada CashMovement apunta a este Business.
+- **StockMovement**: Tiene cero o muchos StockMovement (campo stockMovements). Cada StockMovement apunta a este Business.
 
 ### Department
 
@@ -624,6 +648,7 @@ No se borra: se desactiva, para no romper las ventas que ya lo usan.
 
 - **Business**: Pertenece siempre a un Business mediante businessId; un Business puede tener varios Product. Si se borra el Business, se borran también sus Product.
 - **SaleItem**: Tiene cero o muchos SaleItem (campo saleItems). Cada SaleItem apunta a este Product.
+- **StockMovement**: Tiene cero o muchos StockMovement (campo stockMovements). Cada StockMovement apunta a este Product.
 
 ### Sale
 
@@ -659,12 +684,21 @@ al efectivo esperado. Se anula (no se borra) mientras la caja está abierta.
 - **Business**: Pertenece siempre a un Business mediante businessId; un Business puede tener varios CashMovement. Si se borra el Business, se borran también sus CashMovement.
 - **CashSession**: Pertenece siempre a un CashSession mediante sessionId; un CashSession puede tener varios CashMovement. Si se borra el CashSession, se borran también sus CashMovement.
 
+### StockMovement
+
+Historial de existencias: cada cambio de stock de un producto.
+
+- **Business**: Pertenece siempre a un Business mediante businessId; un Business puede tener varios StockMovement. Si se borra el Business, se borran también sus StockMovement.
+- **Product**: Pertenece siempre a un Product mediante productId; un Product puede tener varios StockMovement. Si se borra el Product, se borran también sus StockMovement.
+- **Supplier**: Puede pertenecer a un Supplier mediante supplierId; un Supplier puede tener varios StockMovement. Si se borra el Supplier, el StockMovement se conserva sin Supplier.
+
 ### Supplier
 
 Proveedor del negocio (bebidas, hielo, aseo…). No se borra: se desactiva.
 
 - **Business**: Pertenece siempre a un Business mediante businessId; un Business puede tener varios Supplier. Si se borra el Business, se borran también sus Supplier.
 - **CashExpense**: Tiene cero o muchos CashExpense (campo expenses). Cada CashExpense apunta a este Supplier.
+- **StockMovement**: Tiene cero o muchos StockMovement (campo stockMovements). Cada StockMovement apunta a este Supplier.
 
 ### CashExpense
 
@@ -766,6 +800,7 @@ Imagen que acompaña a un aviso. El archivo vive en el almacenamiento (Koofr); a
 | `SaleStatus` | `ACTIVE`, `VOIDED` |
 | `PaymentStatus` | `PENDING`, `APPROVED`, `REJECTED`, `REFUNDED` |
 | `CashMovementType` | `INGRESO`, `RETIRO` |
+| `StockMovementType` | `ENTRADA`, `AJUSTE`, `VENTA`, `ANULACION` |
 | `AuditCategory` | `ADMIN`, `SECURITY` |
 | `NotificationType` | `NEW_RESERVATION`, `ADMIN_BROADCAST` |
 

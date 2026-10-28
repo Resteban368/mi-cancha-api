@@ -44,6 +44,7 @@ import {
   SaleStatus,
   type Sport,
 } from '../generated/prisma/enums.js';
+import { restoreStockForSales } from '../inventory/stock.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { saleInclude, toSaleDto } from '../sales/sales.service.js';
 import {
@@ -969,7 +970,17 @@ export class ReservationsService {
         }
       }
 
-      // Sus consumos se anulan con ella (sus pagos ya quedaron devueltos arriba).
+      // Sus consumos se anulan con ella (sus pagos ya quedaron devueltos
+      // arriba) y lo que descontaron del inventario vuelve al stock.
+      const activeSales = await tx.sale.findMany({
+        where: { reservationId: current.id, status: SaleStatus.ACTIVE },
+        select: { id: true },
+      });
+      await restoreStockForSales(tx, {
+        businessId,
+        saleIds: activeSales.map((sale) => sale.id),
+        actor: { id: actorId, name: null },
+      });
       await tx.sale.updateMany({
         where: { reservationId: current.id, status: SaleStatus.ACTIVE },
         data: {

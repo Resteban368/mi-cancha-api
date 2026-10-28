@@ -375,6 +375,57 @@ describe('ClientsService', () => {
     });
   });
 
+  describe('updateModules', () => {
+    beforeEach(() => {
+      vi.spyOn(service, 'requireClient').mockResolvedValue();
+      vi.spyOn(service, 'findOne').mockResolvedValue({ id: 'biz-1' } as any);
+    });
+
+    it('activar Inventario activa también Ventas', async () => {
+      prisma.business.findUniqueOrThrow.mockResolvedValue({
+        salesModuleEnabled: false,
+        inventoryModuleEnabled: false,
+      });
+      await service.updateModules('biz-1', { inventory: true });
+      const { data } = prisma.business.update.mock.calls[0][0];
+      expect(data).toMatchObject({
+        salesModuleEnabled: true,
+        inventoryModuleEnabled: true,
+      });
+      expect(data.salesModuleEnabledAt).toBeInstanceOf(Date);
+      expect(data.inventoryModuleEnabledAt).toBeInstanceOf(Date);
+    });
+
+    it('apagar Ventas apaga también Inventario', async () => {
+      prisma.business.findUniqueOrThrow.mockResolvedValue({
+        salesModuleEnabled: true,
+        inventoryModuleEnabled: true,
+      });
+      await service.updateModules('biz-1', { sales: false });
+      expect(prisma.business.update.mock.calls[0][0].data).toMatchObject({
+        salesModuleEnabled: false,
+        salesModuleEnabledAt: null,
+        inventoryModuleEnabled: false,
+        inventoryModuleEnabledAt: null,
+      });
+    });
+
+    it('apagar Inventario deja Ventas como estaba', async () => {
+      prisma.business.findUniqueOrThrow.mockResolvedValue({
+        salesModuleEnabled: true,
+        inventoryModuleEnabled: true,
+      });
+      await service.updateModules('biz-1', { inventory: false });
+      const { data } = prisma.business.update.mock.calls[0][0];
+      expect(data).toMatchObject({
+        salesModuleEnabled: true,
+        inventoryModuleEnabled: false,
+      });
+      // No cambia la fecha de Ventas.
+      expect(data).not.toHaveProperty('salesModuleEnabledAt');
+    });
+  });
+
   it('requireClient lanza 404 si el negocio no existe', async () => {
     prisma.business.count.mockResolvedValue(0);
     await expect(service.requireClient('biz-x')).rejects.toThrow(

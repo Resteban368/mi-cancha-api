@@ -71,9 +71,13 @@ export function createPrismaMock() {
     supplier: modelMock(),
     cashExpense: modelMock(),
     cashMovement: modelMock(),
+    stockMovement: modelMock(),
     $queryRaw: vi.fn(),
     $transaction: vi.fn(),
   };
+  // Listas que la lógica recorre aunque el test no las use.
+  prisma.sale.findMany.mockResolvedValue([]);
+  prisma.stockMovement.findMany.mockResolvedValue([]);
   prisma.$transaction.mockImplementation(
     (work: ((tx: typeof prisma) => unknown) | Promise<unknown>[]) =>
       Array.isArray(work) ? Promise.all(work) : work(prisma),

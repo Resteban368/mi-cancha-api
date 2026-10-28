@@ -226,6 +226,10 @@ export class ClientsService {
           enabled: business.salesModuleEnabled,
           enabledAt: business.salesModuleEnabledAt,
         },
+        inventory: {
+          enabled: business.inventoryModuleEnabled,
+          enabledAt: business.inventoryModuleEnabledAt,
+        },
       },
       amenities: business.amenities,
       createdAt: business.createdAt,
@@ -340,11 +344,28 @@ export class ClientsService {
     dto: UpdateModulesDto,
   ): Promise<ClientDetailDto> {
     await this.requireClient(businessId);
+    const current = await this.prisma.business.findUniqueOrThrow({
+      where: { id: businessId },
+      select: { salesModuleEnabled: true, inventoryModuleEnabled: true },
+    });
+    // Inventario depende de Ventas: encender Inventario enciende Ventas y
+    // apagar Ventas apaga Inventario.
+    let sales = dto.sales ?? current.salesModuleEnabled;
+    let inventory = dto.inventory ?? current.inventoryModuleEnabled;
+    if (dto.inventory === true) sales = true;
+    if (dto.sales === false) inventory = false;
+    const now = new Date();
     await this.prisma.business.update({
       where: { id: businessId },
       data: {
-        salesModuleEnabled: dto.sales,
-        salesModuleEnabledAt: dto.sales ? new Date() : null,
+        salesModuleEnabled: sales,
+        ...(sales !== current.salesModuleEnabled && {
+          salesModuleEnabledAt: sales ? now : null,
+        }),
+        inventoryModuleEnabled: inventory,
+        ...(inventory !== current.inventoryModuleEnabled && {
+          inventoryModuleEnabledAt: inventory ? now : null,
+        }),
       },
     });
     return this.findOne(businessId);

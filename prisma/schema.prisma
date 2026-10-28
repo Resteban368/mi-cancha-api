@@ -149,31 +149,34 @@ model User {
 
 /// La sede deportiva de un cliente. Cada administrador de negocio tiene exactamente una.
 model Business {
-  id                   String    @id @default(uuid())
-  ownerId              String    @unique
-  owner                User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  name                 String
-  address              String
-  neighborhood         String
-  description          String?
+  id                       String    @id @default(uuid())
+  ownerId                  String    @unique
+  owner                    User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name                     String
+  address                  String
+  neighborhood             String
+  description              String?
   /// Punto de llegada (WGS84). Ambos nulos si aún no se fijó en el mapa.
-  latitude             Float?
-  longitude            Float?
+  latitude                 Float?
+  longitude                Float?
   /// Identificador del link público de reservas: /reservar/<slug>. Lo genera un
   /// trigger de la base a partir del nombre al crear el negocio (nunca queda nulo).
-  slug                 String?   @unique
+  slug                     String?   @unique
   /// Si el link público acepta reservas de jugadores.
-  onlineBookingEnabled Boolean   @default(true)
+  onlineBookingEnabled     Boolean   @default(true)
   /// Módulo de Ventas (productos, consumos, ventas sueltas y caja). Lo activa el super admin.
-  salesModuleEnabled   Boolean   @default(false)
-  salesModuleEnabledAt DateTime?
+  salesModuleEnabled       Boolean   @default(false)
+  salesModuleEnabledAt     DateTime?
+  /// Módulo de Inventario (stock de productos). Requiere el de Ventas; lo activa el super admin.
+  inventoryModuleEnabled   Boolean   @default(false)
+  inventoryModuleEnabledAt DateTime?
   /// Ciudad (municipio de Colombia); de ella sale el departamento. Obligatoria al crear el negocio
   /// (los anteriores a este campo quedan en null hasta que la completen).
-  cityId               String?
-  city                 City?     @relation(fields: [cityId], references: [id], onDelete: SetNull)
-  amenities            Amenity[]
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
+  cityId                   String?
+  city                     City?     @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  amenities                Amenity[]
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
 
   courts            Court[]
   customers         Customer[]
@@ -190,6 +193,7 @@ model Business {
   suppliers         Supplier[]
   cashExpenses      CashExpense[]
   cashMovements     CashMovement[]
+  stockMovements    StockMovement[]
 
   @@index([cityId])
 }
@@ -507,10 +511,17 @@ model Product {
   /// Precio por unidad en la moneda del negocio.
   price      Decimal         @db.Decimal(12, 2)
   isActive   Boolean         @default(true)
+  /// Con el módulo de Inventario: si se controlan sus existencias.
+  trackStock Boolean         @default(false)
+  /// Unidades disponibles (solo cuenta si trackStock).
+  stock      Int             @default(0)
+  /// Alerta de stock bajo cuando stock <= minStock (null = sin alerta).
+  minStock   Int?
   createdAt  DateTime        @default(now())
   updatedAt  DateTime        @updatedAt
 
-  saleItems SaleItem[]
+  saleItems      SaleItem[]
+  stockMovements StockMovement[]
 
   @@unique([businessId, name])
 }
@@ -618,6 +629,44 @@ model CashMovement {
   @@index([sessionId])
 }
 
+/// Por qué cambió el stock de un producto.
+enum StockMovementType {
+  /// Entrada de mercancía (compra a un proveedor).
+  ENTRADA
+  /// Ajuste manual (conteo físico, merma, vencido…).
+  AJUSTE
+  /// Salida por una venta.
+  VENTA
+  /// Devolución al stock al anular una venta.
+  ANULACION
+}
+
+/// Historial de existencias: cada cambio de stock de un producto.
+model StockMovement {
+  id            String            @id @default(uuid())
+  businessId    String
+  business      Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  productId     String
+  product       Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  type          StockMovementType
+  /// Unidades que entran (+) o salen (−).
+  quantity      Int
+  /// Stock del producto después del movimiento.
+  stockAfter    Int
+  /// Costo por unidad de una entrada (opcional).
+  unitCost      Decimal?          @db.Decimal(12, 2)
+  supplierId    String?
+  supplier      Supplier?         @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  saleId        String?
+  note          String?
+  createdById   String?
+  createdByName String?
+  createdAt     DateTime          @default(now())
+
+  @@index([productId, createdAt])
+  @@index([businessId, createdAt])
+}
+
 /// Proveedor del negocio (bebidas, hielo, aseo…). No se borra: se desactiva.
 model Supplier {
   id         String   @id @default(uuid())
@@ -632,7 +681,8 @@ model Supplier {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  expenses CashExpense[]
+  expenses       CashExpense[]
+  stockMovements StockMovement[]
 
   @@unique([businessId, name])
 }

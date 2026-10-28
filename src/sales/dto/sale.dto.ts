@@ -16,6 +16,7 @@ import {
   MaxLength,
   Min,
   MinLength,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 import { CATALOG_CODE_PATTERN } from '../../catalogs/dto/catalog.dto.js';
@@ -66,6 +67,18 @@ export class CreateProductDto {
   @Min(0)
   @Max(100_000_000)
   price: number;
+
+  /** Con el módulo de Inventario: controlar sus existencias. */
+  @IsOptional()
+  @IsBoolean()
+  trackStock?: boolean;
+
+  /** Alerta de stock bajo; null = sin alerta. */
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(100_000)
+  minStock?: number | null;
 }
 
 export class UpdateProductDto {
@@ -90,6 +103,17 @@ export class UpdateProductDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  trackStock?: boolean;
+
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsInt()
+  @Min(0)
+  @Max(100_000)
+  minStock?: number | null;
 }
 
 export class ProductDto {
@@ -101,6 +125,12 @@ export class ProductDto {
   isActive: boolean;
   /** Unidades vendidas en los últimos 30 días (sin anuladas). */
   sold: number;
+  /** Inventario: si se controlan sus existencias y cuántas hay. */
+  trackStock: boolean;
+  stock: number;
+  minStock: number | null;
+  /** Sin unidades o en el mínimo (solo si trackStock). */
+  lowStock: boolean;
 }
 
 export class SaleItemInputDto {

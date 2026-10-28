@@ -20,6 +20,7 @@ import { PrismaModule } from './prisma/prisma.module.js';
 import { RefundsModule } from './refunds/refunds.module.js';
 import { SalesModule } from './sales/sales.module.js';
 import { CashModule } from './cash/cash.module.js';
+import { InventoryModule } from './inventory/inventory.module.js';
 import { ReservationsModule } from './reservations/reservations.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
 import { SecurityModule } from './security/security.module.js';
@@ -81,6 +82,7 @@ const STATIC_OPTIONS = {
     PaymentsModule,
     SalesModule,
     CashModule,
+    InventoryModule,
     AccountModule,
     CatalogsModule,
     AdminModule,
