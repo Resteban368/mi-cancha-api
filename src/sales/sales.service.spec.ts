@@ -72,6 +72,8 @@ describe('SalesService', () => {
     prisma = createPrismaMock();
     catalogs.resolvePaymentMethod.mockReset().mockResolvedValue(cash);
     catalog([water, drink]);
+    // Caja abierta, salvo que el test diga otra cosa.
+    prisma.cashSession.count.mockResolvedValue(1);
     prisma.sale.create.mockResolvedValue({ id: 'sale-1' });
     prisma.sale.findUniqueOrThrow.mockImplementation(() => storedSale());
     const moduleRef = await Test.createTestingModule({
@@ -93,6 +95,28 @@ describe('SalesService', () => {
   });
 
   describe('createSale', () => {
+    it('con la caja cerrada no deja vender', async () => {
+      prisma.cashSession.count.mockResolvedValue(0);
+      const error = await service
+        .createSale(
+          'owner-1',
+          {
+            items: [{ productId: 'p-water', quantity: 1 }],
+            payment: { method: 'EFECTIVO' },
+          },
+          'owner-1',
+        )
+        .catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(ConflictException);
+      expect((error as ConflictException).getResponse()).toMatchObject({
+        code: 'CASH_CLOSED',
+      });
+      expect(prisma.cashSession.count.mock.calls[0][0]).toEqual({
+        where: { businessId: 'biz-1', closedAt: null },
+      });
+      expect(prisma.sale.create).not.toHaveBeenCalled();
+    });
+
     it('carga el consumo a la reserva y suma al saldo, sin pago propio', async () => {
       prisma.reservation.findFirst.mockResolvedValue({
         id: 'res-1',

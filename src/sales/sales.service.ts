@@ -16,10 +16,7 @@ import {
   ReservationStatus,
   SaleStatus,
 } from '../generated/prisma/enums.js';
-import {
-  restoreStockForSales,
-  takeStockForSale,
-} from '../inventory/stock.js';
+import { restoreStockForSales, takeStockForSale } from '../inventory/stock.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
   CreateProductDto,
@@ -207,6 +204,19 @@ export class SalesService {
     actorId: string,
   ): Promise<SaleDto> {
     const businessId = await this.businesses.requireSalesModule(ownerId);
+    // Sin caja abierta no se vende: todo lo vendido cae en un turno.
+    const openCash = await this.prisma.cashSession.count({
+      where: { businessId, closedAt: null },
+    });
+    if (openCash === 0) {
+      throw new ConflictException({
+        statusCode: 409,
+        error: 'Conflict',
+        code: 'CASH_CLOSED',
+        message:
+          'La caja está cerrada. Ábrela con la base de efectivo para registrar ventas.',
+      });
+    }
     if (!dto.reservationId && !dto.payment) {
       throw new BadRequestException(
         'Una venta suelta necesita el método de pago',
