@@ -159,6 +159,37 @@ describe('SalesService', () => {
       expect(prisma.reservation.update).not.toHaveBeenCalled();
     });
 
+    it('consumo cobrado ya: el pago queda en la reserva', async () => {
+      prisma.reservation.findFirst.mockResolvedValue({
+        id: 'res-1',
+        status: ReservationStatus.CONFIRMED,
+        customerName: 'Juan',
+      });
+      prisma.product.findMany.mockResolvedValue([water]);
+
+      await service.createSale(
+        'owner-1',
+        {
+          reservationId: 'res-1',
+          items: [{ productId: water.id, quantity: 2 }],
+          payment: { method: 'EFECTIVO' },
+        },
+        'owner-1',
+      );
+
+      expect(prisma.reservation.update).toHaveBeenCalledWith({
+        where: { id: 'res-1' },
+        data: { consumptionsTotal: { increment: 5_000 } },
+      });
+      expect(prisma.payment.create.mock.calls[0][0].data).toMatchObject({
+        reservationId: 'res-1',
+        saleId: 'sale-1',
+        amount: 5_000,
+        concept: PaymentConcept.VENTA,
+        customerName: 'Juan',
+      });
+    });
+
     it('pide el método de pago en una venta suelta', async () => {
       await expect(
         service.createSale(

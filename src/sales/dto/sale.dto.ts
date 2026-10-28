@@ -138,7 +138,7 @@ export class CreateSaleDto {
   @ArrayMaxSize(MAX_SALE_ITEMS)
   items: SaleItemInputDto[];
 
-  /** Obligatorio en una venta suelta; no se admite en un consumo de reserva. */
+  /** Obligatorio en una venta suelta. En un consumo de reserva es opcional: lo cobra ya. */
   @IsOptional()
   @ValidateNested()
   @Type(() => SalePaymentInputDto)
