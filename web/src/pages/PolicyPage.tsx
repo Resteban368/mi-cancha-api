@@ -19,7 +19,7 @@ export function PolicyPage() {
             personales de quienes se registran para reservar canchas deportivas.
           </p>
           <h2 className="font-semibold text-fg">Responsable</h2>
-          <p>[Razón social, NIT, dirección y correo de contacto de Mi Cancha].</p>
+          <p>[Mi Cancha, Florencia, Caquetá, Colombia].</p>
           <h2 className="font-semibold text-fg">Datos que recolectamos</h2>
           <p>
             Nombre, correo electrónico, celular, número de cédula y, si los entregas, fecha de nacimiento y deporte
