@@ -50,6 +50,7 @@ function storedSale(overrides: Record<string, unknown> = {}) {
     createdAt: new Date(),
     items: [],
     payment: null,
+    reservation: null,
     ...overrides,
   };
 }

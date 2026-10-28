@@ -44,6 +44,7 @@ const OPEN_STATUSES: ReservationStatus[] = [
 export const saleInclude = {
   items: { orderBy: { productName: 'asc' } },
   payment: { select: { method: { select: { code: true } } } },
+  reservation: { select: { start: true, court: { select: { name: true } } } },
 } satisfies Prisma.SaleInclude;
 
 export type SaleWithItems = Prisma.SaleGetPayload<{
@@ -388,5 +389,7 @@ export function toSaleDto(s: SaleWithItems): SaleDto {
       subtotal: Number(i.subtotal),
     })),
     paymentMethod: s.payment?.method.code ?? null,
+    courtName: s.reservation?.court.name ?? null,
+    reservationStart: s.reservation?.start ?? null,
   };
 }
