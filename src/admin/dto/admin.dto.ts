@@ -115,6 +115,16 @@ export class CreateClientDto {
   planId: string;
 }
 
+export class UpdateModulesDto {
+  /** Activa o desactiva el módulo de Ventas (productos, consumos y caja). */
+  @IsBoolean()
+  sales: boolean;
+}
+
+export class ClientModulesDto {
+  sales: { enabled: boolean; enabledAt: Date | null };
+}
+
 export class UpdateSubscriptionDto {
   @IsOptional()
   @IsUUID()
@@ -309,6 +319,8 @@ export class ClientDetailDto {
   updatedAt: Date;
   owner: ClientOwnerDetailDto;
   subscription: ClientSubscriptionDto | null;
+  /** Módulos adicionales del negocio (los activa el super admin). */
+  modules: ClientModulesDto;
   courts: ClientCourtDto[];
   stats: ClientStatsDto;
   /** Las 10 reservas más recientes por fecha de juego. */

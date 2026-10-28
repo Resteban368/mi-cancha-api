@@ -72,7 +72,7 @@ describe('SalesService', () => {
         { provide: PrismaService, useValue: prisma },
         {
           provide: BusinessesService,
-          useValue: { requireBusinessId: vi.fn().mockResolvedValue('biz-1') },
+          useValue: { requireSalesModule: vi.fn().mockResolvedValue('biz-1') },
         },
         { provide: CatalogsService, useValue: catalogs },
         {

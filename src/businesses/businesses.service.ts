@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CatalogsService } from '../catalogs/catalogs.service.js';
@@ -112,6 +113,28 @@ export class BusinessesService {
     });
 
     return this.toDto(business);
+  }
+
+  /**
+   * Id del negocio si tiene activo el módulo de Ventas; si no, 403 con
+   * `code: MODULE_DISABLED` (lo activa el super admin).
+   */
+  async requireSalesModule(ownerId: string): Promise<string> {
+    const business = await this.prisma.business.findUnique({
+      where: { ownerId },
+      select: { id: true, salesModuleEnabled: true },
+    });
+    if (!business) throw notCreatedYet();
+    if (!business.salesModuleEnabled) {
+      throw new ForbiddenException({
+        statusCode: 403,
+        error: 'Forbidden',
+        code: 'MODULE_DISABLED',
+        message:
+          'El módulo de Ventas no está activo para tu negocio. Pídelo a Mi Cancha.',
+      });
+    }
+    return business.id;
   }
 
   /** Id del negocio del administrador; lanza 404 si aún no lo ha creado. */

@@ -1,4 +1,8 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import {
@@ -59,6 +63,28 @@ describe('BusinessesService', () => {
     );
     await expect(service.requireBusinessId('owner-1')).rejects.toThrow(
       NotFoundException,
+    );
+  });
+
+  it('el módulo de Ventas solo se usa si el super admin lo activó', async () => {
+    prisma.business.findUnique.mockResolvedValueOnce({
+      id: 'biz-1',
+      salesModuleEnabled: false,
+    });
+    const error = await service
+      .requireSalesModule('owner-1')
+      .catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ForbiddenException);
+    expect((error as ForbiddenException).getResponse()).toMatchObject({
+      code: 'MODULE_DISABLED',
+    });
+
+    prisma.business.findUnique.mockResolvedValueOnce({
+      id: 'biz-1',
+      salesModuleEnabled: true,
+    });
+    await expect(service.requireSalesModule('owner-1')).resolves.toBe(
+      'biz-1',
     );
   });
 

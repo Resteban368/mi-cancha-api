@@ -28,7 +28,7 @@ export class CashService {
   ) {}
 
   async current(ownerId: string, now = new Date()): Promise<CashCurrentDto> {
-    const businessId = await this.businesses.requireBusinessId(ownerId);
+    const businessId = await this.businesses.requireSalesModule(ownerId);
     const [open, lastClosed] = await Promise.all([
       this.prisma.cashSession.findFirst({
         where: { businessId, closedAt: null },
@@ -47,7 +47,7 @@ export class CashService {
   }
 
   async open(ownerId: string, dto: OpenCashDto): Promise<CashSessionDto> {
-    const businessId = await this.businesses.requireBusinessId(ownerId);
+    const businessId = await this.businesses.requireSalesModule(ownerId);
     const name = await this.userName(ownerId);
     const open = await this.prisma.cashSession.findFirst({
       where: { businessId, closedAt: null },
@@ -68,7 +68,7 @@ export class CashService {
   }
 
   async close(ownerId: string, dto: CloseCashDto): Promise<CashSessionDto> {
-    const businessId = await this.businesses.requireBusinessId(ownerId);
+    const businessId = await this.businesses.requireSalesModule(ownerId);
     const name = await this.userName(ownerId);
     const open = await this.prisma.cashSession.findFirst({
       where: { businessId, closedAt: null },
@@ -103,7 +103,7 @@ export class CashService {
     ownerId: string,
     query: CashSessionsQueryDto,
   ): Promise<Page<CashSessionDto>> {
-    const businessId = await this.businesses.requireBusinessId(ownerId);
+    const businessId = await this.businesses.requireSalesModule(ownerId);
     const where = { businessId, closedAt: { not: null } };
     const [items, total] = await Promise.all([
       this.prisma.cashSession.findMany({

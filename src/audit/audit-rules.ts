@@ -39,6 +39,7 @@ export const AUDIT_RULES: Record<string, AuditRule> = {
   'PUT /admin/clients/:id/image': admin('client.image_set', 'Business'),
   'DELETE /admin/clients/:id/image': admin('client.image_removed', 'Business'),
   'PATCH /admin/clients/:id/subscription': admin('client.subscription_updated', 'Business'),
+  'PATCH /admin/clients/:id/modules': admin('client.modules_updated', 'Business'),
   'PATCH /admin/clients/:id/online-booking': admin('client.online_booking_updated', 'Business'),
   'PATCH /admin/clients/:id/courts/:courtId': admin('court.updated', 'Court', 'courtId'),
   'POST /admin/clients/:id/reservations': admin('reservation.created', 'Business'),

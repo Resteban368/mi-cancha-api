@@ -6,6 +6,7 @@ import { ClientCover } from '../components/ClientCover';
 import { DeleteClientModal, EditBusinessModal, EditOwnerModal } from '../components/ClientEditDialogs';
 import { ClientCustomers } from '../components/ClientCustomers';
 import { ClientLocationMap } from '../components/ClientLocationMap';
+import { ClientModules } from '../components/ClientModules';
 import { ClientOnlineBooking } from '../components/ClientOnlineBooking';
 import { NewReservationModal } from '../components/NewReservation';
 import { CancelReservationModal, RefundsCard } from '../components/ReservationCancel';
@@ -229,6 +230,8 @@ function ClientDetailView({
         activeCourts={activeCourts}
         onChanged={onChanged}
       />
+
+      <ClientModules client={data} onChanged={onChanged} />
 
       <ClientOnlineBooking clientId={data.id} />
 

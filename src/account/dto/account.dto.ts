@@ -37,8 +37,21 @@ export class SubscriptionDto {
   nextPlanName: string | null;
 }
 
+export class SalesModuleDto {
+  enabled: boolean;
+  /** Cuándo lo activó el super admin; null si nunca. */
+  enabledAt: Date | null;
+}
+
+export class BusinessModulesDto {
+  /** Ventas: productos, consumos en reservas, ventas sueltas y caja. */
+  sales: SalesModuleDto;
+}
+
 export class BusinessAccountDto {
   admin: AdminProfileDto;
+  /** Módulos adicionales que el super admin activa por negocio. */
+  modules: BusinessModulesDto;
   /** null si el negocio aún no tiene plan. */
   subscription: SubscriptionDto | null;
 }

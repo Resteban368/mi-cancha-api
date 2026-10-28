@@ -70,7 +70,7 @@ export class SalesService {
     ownerId: string,
     query: ProductsQueryDto,
   ): Promise<ProductDto[]> {
-    const businessId = await this.businesses.requireBusinessId(ownerId);
+    const businessId = await this.businesses.requireSalesModule(ownerId);
     const products = await this.prisma.product.findMany({
       where: {
         businessId,
@@ -107,7 +107,7 @@ export class SalesService {
     ownerId: string,
     dto: CreateProductDto,
   ): Promise<ProductDto> {
-    const businessId = await this.businesses.requireBusinessId(ownerId);
+    const businessId = await this.businesses.requireSalesModule(ownerId);
     const count = await this.prisma.product.count({ where: { businessId } });
     if (count >= MAX_PRODUCTS) {
       throw new ConflictException(
@@ -131,7 +131,7 @@ export class SalesService {
     id: string,
     dto: UpdateProductDto,
   ): Promise<ProductDto> {
-    const businessId = await this.businesses.requireBusinessId(ownerId);
+    const businessId = await this.businesses.requireSalesModule(ownerId);
     const current = await this.prisma.product.findFirst({
       where: { id, businessId },
       select: { id: true },
@@ -173,7 +173,7 @@ export class SalesService {
   // ---------- Ventas ----------
 
   async listSales(ownerId: string, query: SalesQueryDto): Promise<SaleDto[]> {
-    const businessId = await this.businesses.requireBusinessId(ownerId);
+    const businessId = await this.businesses.requireSalesModule(ownerId);
     const range = query.date ? dayRange(query.date, this.utcOffset) : null;
     const sales = await this.prisma.sale.findMany({
       where: {
@@ -198,7 +198,7 @@ export class SalesService {
     dto: CreateSaleDto,
     actorId: string,
   ): Promise<SaleDto> {
-    const businessId = await this.businesses.requireBusinessId(ownerId);
+    const businessId = await this.businesses.requireSalesModule(ownerId);
     if (!dto.reservationId && !dto.payment) {
       throw new BadRequestException(
         'Una venta suelta necesita el método de pago',
@@ -311,7 +311,7 @@ export class SalesService {
     id: string,
     dto: VoidSaleDto,
   ): Promise<SaleDto> {
-    const businessId = await this.businesses.requireBusinessId(ownerId);
+    const businessId = await this.businesses.requireSalesModule(ownerId);
     const sale = await this.prisma.$transaction(async (tx) => {
       // updateMany con el estado en el filtro evita anular dos veces en paralelo.
       const { count } = await tx.sale.updateMany({

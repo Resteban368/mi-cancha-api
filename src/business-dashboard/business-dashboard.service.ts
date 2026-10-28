@@ -70,6 +70,7 @@ export class BusinessDashboardService {
       previousSales,
       topProducts,
       salesDays,
+      business,
     ] = await Promise.all([
       this.reservationCounts(businessId, current, filter),
       this.reservationCounts(businessId, previous, filter),
@@ -111,6 +112,10 @@ export class BusinessDashboardService {
       this.salesSummary(businessId, previous, filter),
       this.topProducts(businessId, current, filter),
       this.salesByDay(businessId, current, filter),
+      this.prisma.business.findUnique({
+        where: { id: businessId },
+        select: { salesModuleEnabled: true },
+      }),
     ]);
 
     // Ocupación: horas reservadas sobre las horas abiertas de las canchas activas.
@@ -204,6 +209,7 @@ export class BusinessDashboardService {
         pct: pct(m.amount, collected),
       })),
       bySport: sports.map((s) => ({ ...s, booked: round2(s.booked) })),
+      salesEnabled: business?.salesModuleEnabled ?? false,
       sales: {
         total: trend(round2(sales.total), round2(previousSales.total)),
         walkIn: round2(sales.walkIn),

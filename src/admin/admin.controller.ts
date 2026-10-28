@@ -84,6 +84,7 @@ import {
   UpdateClientDto,
   UpdateClientOwnerDto,
   UpdatePlanDto,
+  UpdateModulesDto,
   UpdateSubscriptionDto,
   UserPageDto,
   UsersQueryDto,
@@ -461,6 +462,17 @@ export class AdminController {
   })
   createClient(@Body() dto: CreateClientDto): Promise<ClientDto> {
     return this.clientsService.create(dto);
+  }
+
+  @Patch('clients/:id/modules')
+  @ApiOperation({
+    summary: 'Activar o desactivar módulos del cliente (Ventas y caja)',
+  })
+  updateModules(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateModulesDto,
+  ): Promise<ClientDetailDto> {
+    return this.clientsService.updateModules(id, dto);
   }
 
   @Patch('clients/:id/subscription')

@@ -148,6 +148,8 @@ export interface ClientDetail {
     trialDaysLeft: number | null;
     trialExpired: boolean;
   } | null;
+  /** Módulos adicionales del negocio (los activa el super admin). */
+  modules: { sales: { enabled: boolean; enabledAt: string | null } };
   courts: {
     id: string;
     name: string;

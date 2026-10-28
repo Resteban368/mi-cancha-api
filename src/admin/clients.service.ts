@@ -38,6 +38,7 @@ import {
   CreateClientDto,
   UpdateClientDto,
   UpdateClientOwnerDto,
+  UpdateModulesDto,
   UpdateSubscriptionDto,
 } from './dto/admin.dto.js';
 
@@ -220,6 +221,12 @@ export class ClientsService {
       }),
       latitude: business.latitude,
       longitude: business.longitude,
+      modules: {
+        sales: {
+          enabled: business.salesModuleEnabled,
+          enabledAt: business.salesModuleEnabledAt,
+        },
+      },
       amenities: business.amenities,
       createdAt: business.createdAt,
       updatedAt: business.updatedAt,
@@ -327,6 +334,22 @@ export class ClientsService {
   }
 
   /** Cambia el plan o activa/suspende la suscripción del cliente. */
+  /** Activa o desactiva módulos del negocio y devuelve la ficha. */
+  async updateModules(
+    businessId: string,
+    dto: UpdateModulesDto,
+  ): Promise<ClientDetailDto> {
+    await this.requireClient(businessId);
+    await this.prisma.business.update({
+      where: { id: businessId },
+      data: {
+        salesModuleEnabled: dto.sales,
+        salesModuleEnabledAt: dto.sales ? new Date() : null,
+      },
+    });
+    return this.findOne(businessId);
+  }
+
   async updateSubscription(
     businessId: string,
     dto: UpdateSubscriptionDto,

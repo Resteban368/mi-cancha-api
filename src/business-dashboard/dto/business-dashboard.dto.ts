@@ -213,4 +213,6 @@ export class BusinessDashboardDto {
   bySport: SportStatDto[];
   /** Con filtro de deporte o cancha solo cuentan los consumos de esas canchas. */
   sales: DashboardSalesDto;
+  /** Si el negocio tiene el módulo de Ventas (si no, la app oculta `sales`). */
+  salesEnabled: boolean;
 }

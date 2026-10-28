@@ -64,6 +64,12 @@ export class AccountService {
         verified: user.verified,
       },
       subscription: subscriptionDto,
+      modules: {
+        sales: {
+          enabled: user.business?.salesModuleEnabled ?? false,
+          enabledAt: user.business?.salesModuleEnabledAt ?? null,
+        },
+      },
     };
   }
 }

@@ -164,6 +164,9 @@ model Business {
   slug                 String?   @unique
   /// Si el link público acepta reservas de jugadores.
   onlineBookingEnabled Boolean   @default(true)
+  /// Módulo de Ventas (productos, consumos, ventas sueltas y caja). Lo activa el super admin.
+  salesModuleEnabled   Boolean   @default(false)
+  salesModuleEnabledAt DateTime?
   /// Ciudad (municipio de Colombia); de ella sale el departamento. Obligatoria al crear el negocio
   /// (los anteriores a este campo quedan en null hasta que la completen).
   cityId               String?

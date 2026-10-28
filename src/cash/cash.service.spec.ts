@@ -46,7 +46,7 @@ describe('CashService', () => {
     service = new CashService(
       prisma as unknown as PrismaService,
       {
-        requireBusinessId: vi.fn().mockResolvedValue('biz-1'),
+        requireSalesModule: vi.fn().mockResolvedValue('biz-1'),
       } as unknown as BusinessesService,
     );
   });

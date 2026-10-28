@@ -28,6 +28,7 @@ export const AUDIT_ACTIONS: AuditActionInfo[] = [
   admin('client.image_set', 'Foto del cliente cambiada'),
   admin('client.image_removed', 'Foto del cliente eliminada'),
   admin('client.subscription_updated', 'Plan o estado del cliente cambiado'),
+  admin('client.modules_updated', 'Módulos del cliente cambiados'),
   admin('client.online_booking_updated', 'Link de reservas del cliente cambiado'),
   admin('court.updated', 'Cancha editada'),
   admin('reservation.created', 'Reserva creada por el admin'),
