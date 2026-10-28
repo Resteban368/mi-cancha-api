@@ -233,6 +233,23 @@ llegaron por la web y aún no la registran (el negocio siempre la pide)."
     Int quantity
     Decimal subtotal
   }
+  CashSession {
+    String id PK
+    String businessId FK
+    Decimal openingCash "Efectivo con que se abrió la caja."
+    String openingNote "opcional"
+    DateTime openedAt
+    String openedById "opcional · Quién la abrió y quién la cerró (sin llave foránea: el dato sobrevive si se borra la cuenta)."
+    String openedByName "opcional"
+    DateTime closedAt "opcional"
+    String closedById "opcional"
+    String closedByName "opcional"
+    Decimal expectedCash "opcional · Al cerrar: base + pagos aprobados en efectivo del turno."
+    Decimal countedCash "opcional · Efectivo contado al cerrar."
+    Decimal difference "opcional · countedCash - expectedCash (negativo = faltante)."
+    String closingNote "opcional"
+    Json summary "opcional · Pagos aprobados del turno por método al cerrar: [{ code, name, count, amount }]."
+  }
   Amenity {
     String id PK
     String code UK "Código estable que usan la API y la app (p. ej. PARQUEADERO)."
@@ -383,6 +400,7 @@ como sin plan activo (solo consulta) hasta que se le asigne uno."
   Reservation |o--o{ Sale : "sales"
   Sale ||--o{ SaleItem : "items"
   Product |o--o{ SaleItem : "saleItems"
+  Business ||--o{ CashSession : "cashSessions"
   Amenity }o--o{ Business : "AmenityToBusiness"
   Business ||--o| Subscription : "subscription"
   Plan ||--o{ Subscription : "subscriptions"
@@ -429,6 +447,7 @@ La sede deportiva de un cliente. Cada administrador de negocio tiene exactamente
 - **ReservationGroup**: Tiene cero o muchos ReservationGroup (campo reservationGroups). Cada ReservationGroup apunta a este Business.
 - **Product**: Tiene cero o muchos Product (campo products). Cada Product apunta a este Business.
 - **Sale**: Tiene cero o muchos Sale (campo sales). Cada Sale apunta a este Business.
+- **CashSession**: Tiene cero o muchos CashSession (campo cashSessions). Cada CashSession apunta a este Business.
 
 ### Department
 
@@ -571,6 +590,13 @@ Línea de una venta. Guarda nombre y precio del producto al momento de vender.
 
 - **Sale**: Pertenece siempre a un Sale mediante saleId; un Sale puede tener varios SaleItem. Si se borra el Sale, se borran también sus SaleItem.
 - **Product**: Puede pertenecer a un Product mediante productId; un Product puede tener varios SaleItem. Si se borra el Product, el SaleItem se conserva sin Product.
+
+### CashSession
+
+Turno de caja: se abre con una base de efectivo y se cierra contando el efectivo real.
+Solo una abierta por negocio (índice único parcial en la migración).
+
+- **Business**: Pertenece siempre a un Business mediante businessId; un Business puede tener varios CashSession. Si se borra el Business, se borran también sus CashSession.
 
 ### Amenity
 
