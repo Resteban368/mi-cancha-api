@@ -14,6 +14,7 @@ import { CatalogsService } from '../catalogs/catalogs.service.js';
 import {
   PaymentConcept,
   PaymentStatus,
+  ProductCategory,
   ReservationStatus,
   SaleStatus,
 } from '../generated/prisma/enums.js';
@@ -267,6 +268,56 @@ describe('SalesService', () => {
   });
 
   describe('productos', () => {
+    const stored = (id: string, name: string) => ({
+      id,
+      name,
+      category: ProductCategory.OTRO,
+      price: 1_000,
+      isActive: true,
+    });
+
+    it('popular: más vendidos primero y, a igual venta, por nombre', async () => {
+      prisma.product.findMany.mockResolvedValue([
+        stored('p-a', 'Agua'),
+        stored('p-b', 'Balón'),
+        stored('p-g', 'Gatorade'),
+      ]);
+      prisma.saleItem.groupBy.mockResolvedValue([
+        { productId: 'p-g', _sum: { quantity: 24 } },
+        { productId: 'p-b', _sum: { quantity: 2 } },
+      ]);
+
+      const result = await service.listProducts('owner-1', {
+        sort: 'popular',
+      });
+
+      expect(result.map((p) => [p.name, p.sold])).toEqual([
+        ['Gatorade', 24],
+        ['Balón', 2],
+        ['Agua', 0],
+      ]);
+      const { where } = prisma.saleItem.groupBy.mock.calls[0][0];
+      expect(where.sale.status).toBe(SaleStatus.ACTIVE);
+    });
+
+    it('guarda la categoría al crear', async () => {
+      prisma.product.count.mockResolvedValue(0);
+      prisma.product.findFirst.mockResolvedValue(null);
+      prisma.product.create.mockImplementation(({ data }) => ({
+        id: 'p-1',
+        isActive: true,
+        ...data,
+      }));
+
+      const result = await service.createProduct('owner-1', {
+        name: 'Agua',
+        price: 2_500,
+        category: ProductCategory.AGUA,
+      });
+
+      expect(result).toMatchObject({ category: ProductCategory.AGUA, sold: 0 });
+    });
+
     it('no repite nombres sin importar mayúsculas', async () => {
       prisma.product.count.mockResolvedValue(3);
       prisma.product.findFirst.mockResolvedValue({ id: 'p-water' });

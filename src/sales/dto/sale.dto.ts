@@ -4,6 +4,8 @@ import {
   ArrayMaxSize,
   ArrayMinSize,
   IsBoolean,
+  IsEnum,
+  IsIn,
   IsInt,
   IsNumber,
   IsOptional,
@@ -17,13 +19,16 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { CATALOG_CODE_PATTERN } from '../../catalogs/dto/catalog.dto.js';
-import { SaleStatus } from '../../generated/prisma/enums.js';
+import { ProductCategory, SaleStatus } from '../../generated/prisma/enums.js';
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 /** Productos por negocio (el catálogo se manda completo a la app). */
 export const MAX_PRODUCTS = 200;
 export const MAX_SALE_ITEMS = 30;
 export const MAX_QUANTITY = 999;
+/** Días hacia atrás que cuentan para "más vendidos". */
+export const POPULAR_DAYS = 30;
+export const PRODUCT_SORTS = ['name', 'popular'] as const;
 
 const trim = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.trim() : value;
@@ -34,6 +39,12 @@ export class ProductsQueryDto {
   @Transform(({ value }) => value === true || value === 'true')
   @IsBoolean()
   includeInactive?: boolean;
+
+  /** name (por defecto) o popular: más vendidos en los últimos 30 días primero. */
+  @ApiProperty({ enum: PRODUCT_SORTS, required: false })
+  @IsOptional()
+  @IsIn(PRODUCT_SORTS)
+  sort?: (typeof PRODUCT_SORTS)[number];
 }
 
 export class CreateProductDto {
@@ -43,6 +54,12 @@ export class CreateProductDto {
   @MinLength(2)
   @MaxLength(60)
   name: string;
+
+  /** Por defecto OTRO. */
+  @ApiProperty({ enum: ProductCategory, required: false })
+  @IsOptional()
+  @IsEnum(ProductCategory)
+  category?: ProductCategory;
 
   /** Precio por unidad. @example 2500 */
   @IsNumber({ maxDecimalPlaces: 2 })
@@ -59,6 +76,11 @@ export class UpdateProductDto {
   @MaxLength(60)
   name?: string;
 
+  @ApiProperty({ enum: ProductCategory, required: false })
+  @IsOptional()
+  @IsEnum(ProductCategory)
+  category?: ProductCategory;
+
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
@@ -73,8 +95,12 @@ export class UpdateProductDto {
 export class ProductDto {
   id: string;
   name: string;
+  @ApiProperty({ enum: ProductCategory })
+  category: ProductCategory;
   price: number;
   isActive: boolean;
+  /** Unidades vendidas en los últimos 30 días (sin anuladas). */
+  sold: number;
 }
 
 export class SaleItemInputDto {

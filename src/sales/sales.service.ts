@@ -12,6 +12,7 @@ import type { Prisma } from '../generated/prisma/client.js';
 import {
   PaymentConcept,
   PaymentStatus,
+  type ProductCategory,
   ReservationStatus,
   SaleStatus,
 } from '../generated/prisma/enums.js';
@@ -21,6 +22,7 @@ import {
   CreateSaleDto,
   MAX_PRODUCTS,
   MAX_QUANTITY,
+  POPULAR_DAYS,
   ProductDto,
   ProductsQueryDto,
   SaleDto,
@@ -76,7 +78,28 @@ export class SalesService {
       orderBy: { name: 'asc' },
       take: MAX_PRODUCTS,
     });
-    return products.map(toProductDto);
+    const sold = await this.soldUnits(products.map((p) => p.id));
+    const dtos = products.map((p) => toProductDto(p, sold.get(p.id)));
+    // sort es estable: a igual venta queda el orden por nombre.
+    if (query.sort === 'popular') dtos.sort((a, b) => b.sold - a.sold);
+    return dtos;
+  }
+
+  /** Unidades vendidas por producto en los últimos POPULAR_DAYS días. */
+  private async soldUnits(productIds: string[]): Promise<Map<string, number>> {
+    if (!productIds.length) return new Map();
+    const since = new Date(Date.now() - POPULAR_DAYS * 24 * 60 * 60 * 1000);
+    const rows = await this.prisma.saleItem.groupBy({
+      by: ['productId'],
+      where: {
+        productId: { in: productIds },
+        sale: { status: SaleStatus.ACTIVE, createdAt: { gte: since } },
+      },
+      _sum: { quantity: true },
+    });
+    return new Map(
+      rows.map((r) => [r.productId!, r._sum.quantity ?? 0] as const),
+    );
   }
 
   async createProduct(
@@ -92,7 +115,12 @@ export class SalesService {
     }
     await this.assertNameFree(businessId, dto.name);
     const product = await this.prisma.product.create({
-      data: { businessId, name: dto.name, price: dto.price },
+      data: {
+        businessId,
+        name: dto.name,
+        category: dto.category,
+        price: dto.price,
+      },
     });
     return toProductDto(product);
   }
@@ -112,9 +140,15 @@ export class SalesService {
       await this.assertNameFree(businessId, dto.name, id);
     const product = await this.prisma.product.update({
       where: { id },
-      data: { name: dto.name, price: dto.price, isActive: dto.isActive },
+      data: {
+        name: dto.name,
+        category: dto.category,
+        price: dto.price,
+        isActive: dto.isActive,
+      },
     });
-    return toProductDto(product);
+    const sold = await this.soldUnits([id]);
+    return toProductDto(product, sold.get(id));
   }
 
   private async assertNameFree(
@@ -317,17 +351,23 @@ function round2(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
-function toProductDto(p: {
-  id: string;
-  name: string;
-  price: Prisma.Decimal | number;
-  isActive: boolean;
-}): ProductDto {
+function toProductDto(
+  p: {
+    id: string;
+    name: string;
+    category: ProductCategory;
+    price: Prisma.Decimal | number;
+    isActive: boolean;
+  },
+  sold = 0,
+): ProductDto {
   return {
     id: p.id,
     name: p.name,
+    category: p.category,
     price: Number(p.price),
     isActive: p.isActive,
+    sold,
   };
 }
 
