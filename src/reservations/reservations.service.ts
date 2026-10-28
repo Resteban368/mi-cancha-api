@@ -30,16 +30,22 @@ import {
   toCustomerDto,
 } from '../customers/customers.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
-import { Prisma, type SlotHold, type User } from '../generated/prisma/client.js';
+import {
+  Prisma,
+  type SlotHold,
+  type User,
+} from '../generated/prisma/client.js';
 import {
   CourtPhotoSlot,
   PaymentConcept,
   PaymentStatus,
   ReservationSource,
   ReservationStatus,
+  SaleStatus,
   type Sport,
 } from '../generated/prisma/enums.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { saleInclude, toSaleDto } from '../sales/sales.service.js';
 import {
   AvailabilityDto,
   CancelReservationDto,
@@ -77,7 +83,11 @@ export interface WebBookingRules {
 type Range = { start: Date; end: Date };
 type Claimed = { court: CourtWithDetails; first: Slot; last: Slot };
 /** Turnos que el jugador elige en la web: 1 a 3 canchas en la misma franja. */
-export type WebSlotsInput = { courtIds: string[]; start: string; slots: number };
+export type WebSlotsInput = {
+  courtIds: string[];
+  start: string;
+  slots: number;
+};
 type Prices = { subtotal: number; discount: number; totalPrice: number };
 
 export const reservationInclude = {
@@ -88,6 +98,7 @@ export const reservationInclude = {
     include: { method: { select: { code: true } } },
     orderBy: { receivedAt: 'asc' },
   },
+  sales: { include: saleInclude, orderBy: { createdAt: 'asc' } },
   group: {
     include: {
       reservations: {
@@ -95,6 +106,7 @@ export const reservationInclude = {
           id: true,
           courtId: true,
           totalPrice: true,
+          consumptionsTotal: true,
           court: { select: { name: true } },
           payments: { select: { status: true, amount: true } },
         },
@@ -653,67 +665,64 @@ export class ReservationsService {
     rules: WebBookingRules,
     now = new Date(),
   ): Promise<ReservationDto> {
-    const reservation = await this.webTransaction(
-      async (tx) => {
-        const claimed = await this.claimWebSlots(
-          tx,
-          businessId,
-          player.id,
-          input,
-          rules,
-          now,
-        );
+    const reservation = await this.webTransaction(async (tx) => {
+      const claimed = await this.claimWebSlots(
+        tx,
+        businessId,
+        player.id,
+        input,
+        rules,
+        now,
+      );
 
-        const customer = await this.customers.resolveForPlayer(
-          tx,
+      const customer = await this.customers.resolveForPlayer(
+        tx,
+        businessId,
+        player,
+      );
+      const day = dayRange(
+        localDate(claimed[0].first.start, this.utcOffset),
+        this.utcOffset,
+      );
+      // Una reserva de varias canchas cuenta como una.
+      const sameDay = await tx.reservation.findMany({
+        where: {
           businessId,
-          player,
+          customerId: customer.id,
+          status: { not: ReservationStatus.CANCELLED },
+          start: { gte: day.from, lt: day.to },
+        },
+        select: { id: true, groupId: true },
+      });
+      const reservationsToday = new Set(sameDay.map((r) => r.groupId ?? r.id))
+        .size;
+      if (reservationsToday >= rules.maxReservationsPerDay) {
+        throw new ConflictException(
+          `Puedes tener máximo ${rules.maxReservationsPerDay} reservas por día en esta sede`,
         );
-        const day = dayRange(
-          localDate(claimed[0].first.start, this.utcOffset),
-          this.utcOffset,
-        );
-        // Una reserva de varias canchas cuenta como una.
-        const sameDay = await tx.reservation.findMany({
-          where: {
-            businessId,
-            customerId: customer.id,
-            status: { not: ReservationStatus.CANCELLED },
-            start: { gte: day.from, lt: day.to },
-          },
-          select: { id: true, groupId: true },
-        });
-        const reservationsToday = new Set(
-          sameDay.map((r) => r.groupId ?? r.id),
-        ).size;
-        if (reservationsToday >= rules.maxReservationsPerDay) {
-          throw new ConflictException(
-            `Puedes tener máximo ${rules.maxReservationsPerDay} reservas por día en esta sede`,
-          );
-        }
+      }
 
-        const created = await this.createReservations(
-          tx,
-          businessId,
-          claimed,
-          this.groupPrices(claimed, 0),
-          {
-            customerId: customer.id,
-            playerId: player.id,
-            source: ReservationSource.WEB,
-            customerName: customer.name,
-            phone: customer.phone,
-            contactNote: input.notes?.trim() || null,
-          },
-          null,
-        );
-        // El apartado ya cumplió: el turno queda reservado.
-        await tx.slotHold.deleteMany({
-          where: { businessId, playerId: player.id },
-        });
-        return created;
-      },
-    );
+      const created = await this.createReservations(
+        tx,
+        businessId,
+        claimed,
+        this.groupPrices(claimed, 0),
+        {
+          customerId: customer.id,
+          playerId: player.id,
+          source: ReservationSource.WEB,
+          customerName: customer.name,
+          phone: customer.phone,
+          contactNote: input.notes?.trim() || null,
+        },
+        null,
+      );
+      // El apartado ya cumplió: el turno queda reservado.
+      await tx.slotHold.deleteMany({
+        where: { businessId, playerId: player.id },
+      });
+      return created;
+    });
     await this.notifications.notifyNewReservation({
       ...reservation,
       courtCount: reservation.group?.reservations.length,
@@ -960,9 +969,20 @@ export class ReservationsService {
         }
       }
 
+      // Sus consumos se anulan con ella (sus pagos ya quedaron devueltos arriba).
+      await tx.sale.updateMany({
+        where: { reservationId: current.id, status: SaleStatus.ACTIVE },
+        data: {
+          status: SaleStatus.VOIDED,
+          voidReason: `Reserva cancelada: ${reason}`,
+          voidedAt: new Date(),
+        },
+      });
+
       await tx.reservation.update({
         where: { id: current.id },
         data: {
+          consumptionsTotal: 0,
           status: ReservationStatus.CANCELLED,
           cancellationReason: reason,
           cancelledAt: new Date(),
@@ -1255,6 +1275,7 @@ function round2(value: number): number {
 
 export function toReservationDto(r: ReservationWithRelations): ReservationDto {
   const totalPrice = Number(r.totalPrice);
+  const consumptionsTotal = Number(r.consumptionsTotal);
   const amountPaid = round2(
     r.payments
       .filter((p) => p.status === PaymentStatus.APPROVED)
@@ -1277,9 +1298,11 @@ export function toReservationDto(r: ReservationWithRelations): ReservationDto {
     subtotal: Number(r.subtotal),
     discount: Number(r.discount),
     totalPrice,
+    consumptionsTotal,
     currency: r.court.currency,
     amountPaid,
-    balance: round2(totalPrice - amountPaid),
+    balance: round2(totalPrice + consumptionsTotal - amountPaid),
+    consumptions: r.sales.map(toSaleDto),
     payments: r.payments.map((p) => ({
       id: p.id,
       amount: Number(p.amount),
@@ -1304,6 +1327,9 @@ function toGroupDto(
   const totalPrice = round2(
     group.reservations.reduce((sum, m) => sum + Number(m.totalPrice), 0),
   );
+  const consumptionsTotal = round2(
+    group.reservations.reduce((sum, m) => sum + Number(m.consumptionsTotal), 0),
+  );
   const amountPaid = round2(
     group.reservations
       .flatMap((m) => m.payments)
@@ -1318,7 +1344,8 @@ function toGroupDto(
       courtName: m.court.name,
     })),
     totalPrice,
+    consumptionsTotal,
     amountPaid,
-    balance: round2(totalPrice - amountPaid),
+    balance: round2(totalPrice + consumptionsTotal - amountPaid),
   };
 }

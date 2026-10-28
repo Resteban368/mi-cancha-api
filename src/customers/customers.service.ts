@@ -618,6 +618,7 @@ function toMetricsInput(r: {
   status: ReservationStatus;
   start: Date;
   totalPrice: Prisma.Decimal | number;
+  consumptionsTotal?: Prisma.Decimal | number;
   court: { name: string; sport: Sport };
   payments: { amount: Prisma.Decimal | number; status: PaymentStatus }[];
 }): ReservationForMetrics {
@@ -626,7 +627,8 @@ function toMetricsInput(r: {
     groupId: r.groupId,
     status: r.status,
     start: r.start,
-    totalPrice: Number(r.totalPrice),
+    // El saldo del cliente incluye los consumos cargados a la reserva.
+    totalPrice: Number(r.totalPrice) + Number(r.consumptionsTotal ?? 0),
     courtName: r.court.name,
     sport: r.court.sport,
     payments: r.payments.map((p) => ({

@@ -72,7 +72,8 @@ function metricsCte(p: ListParams): Prisma.Sql {
         r."customerId",
         MIN(r."status"::text) AS status,
         MIN(r."start") AS start,
-        SUM(r."totalPrice") AS total,
+        -- Cancha y consumos: el saldo los incluye a ambos.
+        SUM(r."totalPrice" + r."consumptionsTotal") AS total,
         SUM(COALESCE(paid.amount, 0)) AS paid
       FROM "Reservation" r
       LEFT JOIN paid ON paid."reservationId" = r."id"

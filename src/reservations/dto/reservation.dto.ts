@@ -1,3 +1,4 @@
+import { SaleDto } from '../../sales/dto/sale.dto.js';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
@@ -341,8 +342,11 @@ export class ReservationGroupDto {
   courts: ReservationGroupCourtDto[];
   /** Suma de las canchas del grupo, con el descuento. */
   totalPrice: number;
+  /** Consumos activos de todas las canchas del grupo. */
+  consumptionsTotal: number;
   /** Pagos aprobados del grupo (se registran en la primera reserva). */
   amountPaid: number;
+  /** totalPrice + consumptionsTotal - amountPaid. */
   balance: number;
 }
 
@@ -369,10 +373,15 @@ export class ReservationDto {
   totalPrice: number;
   /** Código ISO 4217, p. ej. COP. */
   currency: string;
+  /** Suma de las ventas activas cargadas a la reserva (bebidas, snacks…). */
+  consumptionsTotal: number;
   /** Suma de los pagos aprobados. */
   amountPaid: number;
-  /** totalPrice - amountPaid. */
+  /** totalPrice + consumptionsTotal - amountPaid. */
   balance: number;
+  /** Ventas cargadas a la reserva (también las anuladas), de la más antigua a la más nueva. */
+  @ApiProperty({ type: [SaleDto] })
+  consumptions: SaleDto[];
   @ApiProperty({ type: [ReservationPaymentDto] })
   payments: ReservationPaymentDto[];
   @ApiProperty({ enum: ReservationStatus })

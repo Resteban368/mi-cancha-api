@@ -193,6 +193,7 @@ export const PAYMENT_CONCEPT_LABELS: Record<string, string> = {
   ANTICIPO: 'Anticipo',
   SALDO: 'Saldo',
   TOTAL: 'Total',
+  VENTA: 'Venta',
 };
 
 export const PROVIDER_LABELS: Record<string, string> = {
