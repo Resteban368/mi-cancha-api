@@ -107,6 +107,8 @@ describe('BusinessDashboardService', () => {
       booked: 800_000,
       discounts: 10_000,
       pendingBalance: 300_000,
+      consumptions: 160_000,
+      pendingConsumptions: 40_000,
     });
     prisma.$queryRaw.mockImplementation(
       ({ sql, values }: { sql: string; values: unknown[] }) => {
@@ -170,6 +172,21 @@ describe('BusinessDashboardService', () => {
           ]);
         if (sql.includes('"Refund"'))
           return Promise.resolve([{ count: 1, amount: 50_000 }]);
+        if (sql.includes('"Product" pr'))
+          return Promise.resolve([
+            { productId: 'p-1', name: 'Gatorade', units: 24, amount: 120_000 },
+            { productId: null, name: 'Agua', units: 10, amount: 25_000 },
+          ]);
+        if (sql.includes('to_char'))
+          return Promise.resolve([
+            { date: '2026-10-14', walkIn: 15_000, consumptions: 130_000 },
+          ]);
+        if (sql.includes('"walkIn"'))
+          return Promise.resolve([
+            previous
+              ? { count: 2, units: 8, total: 100_000, walkIn: 20_000 }
+              : { count: 5, units: 34, total: 145_000, walkIn: 15_000 },
+          ]);
         return Promise.resolve([]);
       },
     );
@@ -239,6 +256,34 @@ describe('BusinessDashboardService', () => {
       count: 3,
       amount: 300_000,
       pct: 75,
+    });
+    expect(result.sales).toMatchObject({
+      total: { value: 145_000, previous: 100_000, changePct: 45 },
+      walkIn: 15_000,
+      consumptions: 130_000,
+      count: 5,
+      units: 34,
+      // 160.000 en consumos ÷ 8 reservas confirmadas y jugadas.
+      averageConsumption: 20_000,
+      pendingConsumptions: 40_000,
+    });
+    expect(result.sales.topProducts[0]).toEqual({
+      productId: 'p-1',
+      name: 'Gatorade',
+      units: 24,
+      amount: 120_000,
+    });
+    // Los 7 días del período, con ceros donde no hubo ventas.
+    expect(result.sales.byDay).toHaveLength(7);
+    expect(result.sales.byDay[0]).toEqual({
+      date: '2026-10-09',
+      walkIn: 0,
+      consumptions: 0,
+    });
+    expect(result.sales.byDay[5]).toEqual({
+      date: '2026-10-14',
+      walkIn: 15_000,
+      consumptions: 130_000,
     });
     expect(prisma.court.findMany.mock.calls[0][0].where).toEqual({
       businessId: 'biz-1',
