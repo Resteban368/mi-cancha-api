@@ -1,13 +1,18 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
+  IsBoolean,
   IsNumber,
   IsOptional,
   IsString,
+  IsUUID,
+  Matches,
   Max,
   MaxLength,
   Min,
+  MinLength,
 } from 'class-validator';
+import { CATALOG_CODE_PATTERN } from '../../catalogs/dto/catalog.dto.js';
 import { PageQueryDto } from '../../common/dto/page.dto.js';
 
 const trim = ({ value }: { value: unknown }) =>
@@ -51,6 +56,131 @@ export class CashMethodDto {
   amount: number;
 }
 
+// ---------- Proveedores ----------
+
+export class SuppliersQueryDto {
+  /** true = también los desactivados (para administrarlos). */
+  @IsOptional()
+  @Transform(({ value }) => value === true || value === 'true')
+  @IsBoolean()
+  includeInactive?: boolean;
+}
+
+export class CreateSupplierDto {
+  /** @example Distribuidora Postobón */
+  @Transform(trim)
+  @IsString()
+  @MinLength(2)
+  @MaxLength(80)
+  name: string;
+
+  /** NIT o cédula. @example 900123456-7 */
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  @MaxLength(30)
+  documentId?: string;
+
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  @MaxLength(30)
+  phone?: string;
+
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  @MaxLength(300)
+  notes?: string;
+}
+
+export class UpdateSupplierDto {
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  @MinLength(2)
+  @MaxLength(80)
+  name?: string;
+
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  @MaxLength(30)
+  documentId?: string;
+
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  @MaxLength(30)
+  phone?: string;
+
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  @MaxLength(300)
+  notes?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+}
+
+export class SupplierDto {
+  id: string;
+  name: string;
+  documentId: string | null;
+  phone: string | null;
+  notes: string | null;
+  isActive: boolean;
+}
+
+// ---------- Pagos a proveedores ----------
+
+export class CreateCashExpenseDto {
+  @IsUUID()
+  supplierId: string;
+
+  /** @example 120000 */
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0.01)
+  @Max(1_000_000_000)
+  amount: number;
+
+  /** Código del catálogo de métodos de pago. Si es EFECTIVO sale de la caja. @example EFECTIVO */
+  @Matches(CATALOG_CODE_PATTERN, { message: 'method no es un código válido' })
+  method: string;
+
+  /** Qué se pagó. @example Pedido de bebidas */
+  @Transform(trim)
+  @IsString()
+  @MinLength(2)
+  @MaxLength(200)
+  concept: string;
+}
+
+export class VoidCashExpenseDto {
+  @Transform(trim)
+  @IsString()
+  @MinLength(3)
+  @MaxLength(300)
+  reason: string;
+}
+
+export class CashExpenseDto {
+  id: string;
+  supplierId: string | null;
+  supplierName: string;
+  amount: number;
+  /** Código del método de pago. */
+  method: string;
+  methodName: string;
+  concept: string;
+  createdAt: Date;
+  createdByName: string | null;
+  voidedAt: Date | null;
+  voidReason: string | null;
+}
+
 export class CashSessionDto {
   id: string;
   openingCash: number;
@@ -60,7 +190,7 @@ export class CashSessionDto {
   closedAt: Date | null;
   closedByName: string | null;
   closingNote: string | null;
-  /** Base + pagos aprobados en efectivo del turno (al cerrar o hasta ahora). */
+  /** Base + cobros en efectivo − pagos a proveedores en efectivo (al cerrar o hasta ahora). */
   expectedCash: number;
   /** null mientras está abierta. */
   countedCash: number | null;
@@ -71,6 +201,13 @@ export class CashSessionDto {
   methods: CashMethodDto[];
   /** Suma de todos los métodos. */
   collected: number;
+  /** Pagos a proveedores del turno (también los anulados), más recientes primero. */
+  @ApiProperty({ type: [CashExpenseDto] })
+  expenses: CashExpenseDto[];
+  /** Pagos a proveedores sin anular, de cualquier método. */
+  expensesTotal: number;
+  /** De ellos, los pagados en efectivo: se restan del efectivo esperado. */
+  cashExpensesTotal: number;
 }
 
 export class CashCurrentDto {

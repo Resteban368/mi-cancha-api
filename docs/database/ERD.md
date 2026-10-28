@@ -252,6 +252,32 @@ llegaron por la web y aún no la registran (el negocio siempre la pide)."
     String closingNote "opcional"
     Json summary "opcional · Pagos aprobados del turno por método al cerrar: [{ code, name, count, amount }]."
   }
+  Supplier {
+    String id PK
+    String businessId FK
+    String name
+    String documentId "opcional · NIT o cédula."
+    String phone "opcional"
+    String notes "opcional"
+    Boolean isActive
+    DateTime createdAt
+    DateTime updatedAt
+  }
+  CashExpense {
+    String id PK
+    String businessId FK
+    String sessionId FK
+    String supplierId FK "opcional"
+    String supplierName "Nombre del proveedor al momento del pago."
+    Decimal amount
+    String methodId FK
+    String concept "Qué se pagó (p. ej. 'Pedido de bebidas')."
+    String createdById "opcional"
+    String createdByName "opcional"
+    DateTime createdAt
+    DateTime voidedAt "opcional"
+    String voidReason "opcional"
+  }
   Amenity {
     String id PK
     String code UK "Código estable que usan la API y la app (p. ej. PARQUEADERO)."
@@ -403,6 +429,11 @@ como sin plan activo (solo consulta) hasta que se le asigne uno."
   Sale ||--o{ SaleItem : "items"
   Product |o--o{ SaleItem : "saleItems"
   Business ||--o{ CashSession : "cashSessions"
+  Business ||--o{ Supplier : "suppliers"
+  Business ||--o{ CashExpense : "cashExpenses"
+  CashSession ||--o{ CashExpense : "expenses"
+  Supplier |o--o{ CashExpense : "expenses"
+  PaymentMethod ||--o{ CashExpense : "cashExpenses"
   Amenity }o--o{ Business : "AmenityToBusiness"
   Business ||--o| Subscription : "subscription"
   Plan ||--o{ Subscription : "subscriptions"
@@ -450,6 +481,8 @@ La sede deportiva de un cliente. Cada administrador de negocio tiene exactamente
 - **Product**: Tiene cero o muchos Product (campo products). Cada Product apunta a este Business.
 - **Sale**: Tiene cero o muchos Sale (campo sales). Cada Sale apunta a este Business.
 - **CashSession**: Tiene cero o muchos CashSession (campo cashSessions). Cada CashSession apunta a este Business.
+- **Supplier**: Tiene cero o muchos Supplier (campo suppliers). Cada Supplier apunta a este Business.
+- **CashExpense**: Tiene cero o muchos CashExpense (campo cashExpenses). Cada CashExpense apunta a este Business.
 
 ### Department
 
@@ -599,6 +632,24 @@ Turno de caja: se abre con una base de efectivo y se cierra contando el efectivo
 Solo una abierta por negocio (índice único parcial en la migración).
 
 - **Business**: Pertenece siempre a un Business mediante businessId; un Business puede tener varios CashSession. Si se borra el Business, se borran también sus CashSession.
+- **CashExpense**: Tiene cero o muchos CashExpense (campo expenses). Cada CashExpense apunta a este CashSession.
+
+### Supplier
+
+Proveedor del negocio (bebidas, hielo, aseo…). No se borra: se desactiva.
+
+- **Business**: Pertenece siempre a un Business mediante businessId; un Business puede tener varios Supplier. Si se borra el Business, se borran también sus Supplier.
+- **CashExpense**: Tiene cero o muchos CashExpense (campo expenses). Cada CashExpense apunta a este Supplier.
+
+### CashExpense
+
+Pago a un proveedor hecho durante un turno de caja. Si es en efectivo, se
+descuenta del efectivo esperado al cerrar. Se anula (no se borra) mientras la caja está abierta.
+
+- **Business**: Pertenece siempre a un Business mediante businessId; un Business puede tener varios CashExpense. Si se borra el Business, se borran también sus CashExpense.
+- **CashSession**: Pertenece siempre a un CashSession mediante sessionId; un CashSession puede tener varios CashExpense. Si se borra el CashSession, se borran también sus CashExpense.
+- **Supplier**: Puede pertenecer a un Supplier mediante supplierId; un Supplier puede tener varios CashExpense. Si se borra el Supplier, el CashExpense se conserva sin Supplier.
+- **PaymentMethod**: Pertenece siempre a un PaymentMethod mediante methodId; un PaymentMethod puede tener varios CashExpense. No se puede borrar un PaymentMethod mientras tenga CashExpense.
 
 ### Amenity
 
@@ -617,6 +668,7 @@ Catálogo editable desde el panel: superficie o tipo de grama de una cancha.
 Catálogo editable desde el panel: medios con los que se recibe un pago.
 
 - **Payment**: Tiene cero o muchos Payment (campo payments). Cada Payment apunta a este PaymentMethod.
+- **CashExpense**: Tiene cero o muchos CashExpense (campo cashExpenses). Cada CashExpense apunta a este PaymentMethod.
 
 ### Plan
 
@@ -702,3 +754,4 @@ Imagen que acompaña a un aviso. El archivo vive en el almacenamiento (Koofr); a
 - Customer: (businessId, documentId)
 - Customer: (businessId, userId)
 - Product: (businessId, name)
+- Supplier: (businessId, name)

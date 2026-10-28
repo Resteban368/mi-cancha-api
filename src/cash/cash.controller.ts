@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { AuthPayload } from '../common/auth/auth-payload.js';
 import { CurrentUser } from '../common/auth/current-user.decorator.js';
@@ -8,10 +17,17 @@ import { UserRole } from '../generated/prisma/enums.js';
 import { CashService } from './cash.service.js';
 import {
   CashCurrentDto,
+  CashExpenseDto,
   CashSessionDto,
   CashSessionsQueryDto,
   CloseCashDto,
+  CreateCashExpenseDto,
+  CreateSupplierDto,
   OpenCashDto,
+  SupplierDto,
+  SuppliersQueryDto,
+  UpdateSupplierDto,
+  VoidCashExpenseDto,
 } from './dto/cash.dto.js';
 
 @ApiTags('business / cash')
@@ -54,5 +70,60 @@ export class CashController {
     @Query() query: CashSessionsQueryDto,
   ): Promise<Page<CashSessionDto>> {
     return this.cashService.history(user.sub, query);
+  }
+
+  @Post('expenses')
+  @ApiOperation({ summary: 'Pago a un proveedor en la caja abierta' })
+  addExpense(
+    @CurrentUser() user: AuthPayload,
+    @Body() dto: CreateCashExpenseDto,
+  ): Promise<CashExpenseDto> {
+    return this.cashService.addExpense(user.sub, dto);
+  }
+
+  @Post('expenses/:id/void')
+  @ApiOperation({ summary: 'Anular un pago a proveedor (caja abierta)' })
+  voidExpense(
+    @CurrentUser() user: AuthPayload,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: VoidCashExpenseDto,
+  ): Promise<CashExpenseDto> {
+    return this.cashService.voidExpense(user.sub, id, dto);
+  }
+}
+
+@ApiTags('business / suppliers')
+@ApiBearerAuth()
+@Roles([UserRole.ADMIN_NEGOCIO])
+@Controller('business/suppliers')
+export class SuppliersController {
+  constructor(private readonly cashService: CashService) {}
+
+  @Get()
+  @ApiOperation({ summary: 'Proveedores del negocio (activos o todos)' })
+  findAll(
+    @CurrentUser() user: AuthPayload,
+    @Query() query: SuppliersQueryDto,
+  ): Promise<SupplierDto[]> {
+    return this.cashService.listSuppliers(user.sub, query);
+  }
+
+  @Post()
+  @ApiOperation({ summary: 'Registrar un proveedor' })
+  create(
+    @CurrentUser() user: AuthPayload,
+    @Body() dto: CreateSupplierDto,
+  ): Promise<SupplierDto> {
+    return this.cashService.createSupplier(user.sub, dto);
+  }
+
+  @Patch(':id')
+  @ApiOperation({ summary: 'Editar o activar/desactivar un proveedor' })
+  update(
+    @CurrentUser() user: AuthPayload,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateSupplierDto,
+  ): Promise<SupplierDto> {
+    return this.cashService.updateSupplier(user.sub, id, dto);
   }
 }
