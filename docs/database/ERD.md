@@ -252,6 +252,19 @@ llegaron por la web y aún no la registran (el negocio siempre la pide)."
     String closingNote "opcional"
     Json summary "opcional · Pagos aprobados del turno por método al cerrar: [{ code, name, count, amount }]."
   }
+  CashMovement {
+    String id PK
+    String businessId FK
+    String sessionId FK
+    CashMovementType type
+    Decimal amount
+    String reason "Por qué (p. ej. 'Consignación Bancolombia', 'Monedas para cambio')."
+    String createdById "opcional"
+    String createdByName "opcional"
+    DateTime createdAt
+    DateTime voidedAt "opcional"
+    String voidReason "opcional"
+  }
   Supplier {
     String id PK
     String businessId FK
@@ -429,6 +442,8 @@ como sin plan activo (solo consulta) hasta que se le asigne uno."
   Sale ||--o{ SaleItem : "items"
   Product |o--o{ SaleItem : "saleItems"
   Business ||--o{ CashSession : "cashSessions"
+  Business ||--o{ CashMovement : "cashMovements"
+  CashSession ||--o{ CashMovement : "movements"
   Business ||--o{ Supplier : "suppliers"
   Business ||--o{ CashExpense : "cashExpenses"
   CashSession ||--o{ CashExpense : "expenses"
@@ -483,6 +498,7 @@ La sede deportiva de un cliente. Cada administrador de negocio tiene exactamente
 - **CashSession**: Tiene cero o muchos CashSession (campo cashSessions). Cada CashSession apunta a este Business.
 - **Supplier**: Tiene cero o muchos Supplier (campo suppliers). Cada Supplier apunta a este Business.
 - **CashExpense**: Tiene cero o muchos CashExpense (campo cashExpenses). Cada CashExpense apunta a este Business.
+- **CashMovement**: Tiene cero o muchos CashMovement (campo cashMovements). Cada CashMovement apunta a este Business.
 
 ### Department
 
@@ -633,6 +649,15 @@ Solo una abierta por negocio (índice único parcial en la migración).
 
 - **Business**: Pertenece siempre a un Business mediante businessId; un Business puede tener varios CashSession. Si se borra el Business, se borran también sus CashSession.
 - **CashExpense**: Tiene cero o muchos CashExpense (campo expenses). Cada CashExpense apunta a este CashSession.
+- **CashMovement**: Tiene cero o muchos CashMovement (campo movements). Cada CashMovement apunta a este CashSession.
+
+### CashMovement
+
+Ingreso o retiro manual de efectivo durante un turno de caja. Suma o resta
+al efectivo esperado. Se anula (no se borra) mientras la caja está abierta.
+
+- **Business**: Pertenece siempre a un Business mediante businessId; un Business puede tener varios CashMovement. Si se borra el Business, se borran también sus CashMovement.
+- **CashSession**: Pertenece siempre a un CashSession mediante sessionId; un CashSession puede tener varios CashMovement. Si se borra el CashSession, se borran también sus CashMovement.
 
 ### Supplier
 
@@ -740,6 +765,7 @@ Imagen que acompaña a un aviso. El archivo vive en el almacenamiento (Koofr); a
 | `ProductCategory` | `AGUA`, `BEBIDA`, `HIDRATANTE`, `CERVEZA`, `SNACK`, `COMIDA`, `ALQUILER`, `OTRO` |
 | `SaleStatus` | `ACTIVE`, `VOIDED` |
 | `PaymentStatus` | `PENDING`, `APPROVED`, `REJECTED`, `REFUNDED` |
+| `CashMovementType` | `INGRESO`, `RETIRO` |
 | `AuditCategory` | `ADMIN`, `SECURITY` |
 | `NotificationType` | `NEW_RESERVATION`, `ADMIN_BROADCAST` |
 

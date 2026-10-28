@@ -21,7 +21,9 @@ import {
   CashSessionDto,
   CashSessionsQueryDto,
   CloseCashDto,
+  CashMovementDto,
   CreateCashExpenseDto,
+  CreateCashMovementDto,
   CreateSupplierDto,
   OpenCashDto,
   SupplierDto,
@@ -79,6 +81,27 @@ export class CashController {
     @Body() dto: CreateCashExpenseDto,
   ): Promise<CashExpenseDto> {
     return this.cashService.addExpense(user.sub, dto);
+  }
+
+  @Post('movements')
+  @ApiOperation({
+    summary: 'Ingreso o retiro manual de efectivo en la caja abierta',
+  })
+  addMovement(
+    @CurrentUser() user: AuthPayload,
+    @Body() dto: CreateCashMovementDto,
+  ): Promise<CashMovementDto> {
+    return this.cashService.addMovement(user.sub, dto);
+  }
+
+  @Post('movements/:id/void')
+  @ApiOperation({ summary: 'Anular un ingreso o retiro (caja abierta)' })
+  voidMovement(
+    @CurrentUser() user: AuthPayload,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: VoidCashExpenseDto,
+  ): Promise<CashMovementDto> {
+    return this.cashService.voidMovement(user.sub, id, dto);
   }
 
   @Post('expenses/:id/void')

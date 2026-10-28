@@ -6,6 +6,7 @@ import {
 import type { BusinessesService } from '../businesses/businesses.service.js';
 import type { CatalogsService } from '../catalogs/catalogs.service.js';
 import type { PrismaService } from '../prisma/prisma.service.js';
+import { CashMovementType } from '../generated/prisma/enums.js';
 import { CashService, expectedCash } from './cash.service.js';
 
 const openedAt = new Date('2026-10-28T13:00:00Z');
@@ -28,6 +29,8 @@ function session(overrides: Record<string, unknown> = {}) {
     closingNote: null,
     summary: null,
     expenses: [],
+    movements: [],
+    business: { name: 'El Golazo' },
     ...overrides,
   };
 }
@@ -151,6 +154,71 @@ describe('CashService', () => {
       createdByName: 'Esteban',
     });
     expect(result.supplierName).toBe('Hielo Polar');
+  });
+
+  const movement = (overrides: Record<string, unknown> = {}) => ({
+    id: 'mv-1',
+    type: CashMovementType.RETIRO,
+    amount: 100_000,
+    reason: 'Consignación',
+    createdAt: openedAt,
+    createdByName: 'Esteban',
+    voidedAt: null,
+    voidReason: null,
+    ...overrides,
+  });
+
+  it('los ingresos suman y los retiros restan al efectivo esperado', async () => {
+    prisma.cashSession.findFirst
+      .mockResolvedValueOnce(
+        session({
+          movements: [
+            movement(),
+            movement({
+              id: 'mv-2',
+              type: CashMovementType.INGRESO,
+              amount: 20_000,
+            }),
+            movement({ id: 'mv-3', amount: 999_000, voidedAt: openedAt }),
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(null);
+
+    const result = await service.current('owner-1');
+
+    // 50.000 + 192.500 + 20.000 − 100.000
+    expect(result.session).toMatchObject({
+      expectedCash: 162_500,
+      cashInTotal: 20_000,
+      cashOutTotal: 100_000,
+      businessName: 'El Golazo',
+    });
+    expect(result.session?.movements).toHaveLength(3);
+  });
+
+  it('un retiro exige la caja abierta', async () => {
+    prisma.cashSession.findFirst.mockResolvedValueOnce(null);
+    await expect(
+      service.addMovement('owner-1', {
+        type: CashMovementType.RETIRO,
+        amount: 10_000,
+        reason: 'Consignación',
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+
+    prisma.cashSession.findFirst.mockResolvedValueOnce({ id: 'cs-1' });
+    prisma.cashMovement.create.mockImplementation(({ data }) => movement(data));
+    const result = await service.addMovement('owner-1', {
+      type: CashMovementType.RETIRO,
+      amount: 10_000,
+      reason: 'Consignación',
+    });
+    expect(prisma.cashMovement.create.mock.calls[0][0].data).toMatchObject({
+      sessionId: 'cs-1',
+      createdByName: 'Esteban',
+    });
+    expect(result.amount).toBe(10_000);
   });
 
   it('no se anula un pago de una caja ya cerrada', async () => {

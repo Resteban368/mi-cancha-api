@@ -2,6 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
   IsBoolean,
+  IsEnum,
   IsNumber,
   IsOptional,
   IsString,
@@ -13,6 +14,7 @@ import {
   MinLength,
 } from 'class-validator';
 import { CATALOG_CODE_PATTERN } from '../../catalogs/dto/catalog.dto.js';
+import { CashMovementType } from '../../generated/prisma/enums.js';
 import { PageQueryDto } from '../../common/dto/page.dto.js';
 
 const trim = ({ value }: { value: unknown }) =>
@@ -166,6 +168,38 @@ export class VoidCashExpenseDto {
   reason: string;
 }
 
+export class CreateCashMovementDto {
+  /** INGRESO = se agrega efectivo; RETIRO = se saca efectivo. */
+  @ApiProperty({ enum: CashMovementType })
+  @IsEnum(CashMovementType)
+  type: CashMovementType;
+
+  /** @example 50000 */
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0.01)
+  @Max(1_000_000_000)
+  amount: number;
+
+  /** @example Consignación Bancolombia */
+  @Transform(trim)
+  @IsString()
+  @MinLength(2)
+  @MaxLength(200)
+  reason: string;
+}
+
+export class CashMovementDto {
+  id: string;
+  @ApiProperty({ enum: CashMovementType })
+  type: CashMovementType;
+  amount: number;
+  reason: string;
+  createdAt: Date;
+  createdByName: string | null;
+  voidedAt: Date | null;
+  voidReason: string | null;
+}
+
 export class CashExpenseDto {
   id: string;
   supplierId: string | null;
@@ -190,7 +224,7 @@ export class CashSessionDto {
   closedAt: Date | null;
   closedByName: string | null;
   closingNote: string | null;
-  /** Base + cobros en efectivo − pagos a proveedores en efectivo (al cerrar o hasta ahora). */
+  /** Base + cobros en efectivo + ingresos − pagos a proveedores en efectivo − retiros (al cerrar o hasta ahora). */
   expectedCash: number;
   /** null mientras está abierta. */
   countedCash: number | null;
@@ -208,6 +242,15 @@ export class CashSessionDto {
   expensesTotal: number;
   /** De ellos, los pagados en efectivo: se restan del efectivo esperado. */
   cashExpensesTotal: number;
+  /** Ingresos y retiros manuales de efectivo (también los anulados), más recientes primero. */
+  @ApiProperty({ type: [CashMovementDto] })
+  movements: CashMovementDto[];
+  /** Ingresos manuales sin anular (suman al esperado). */
+  cashInTotal: number;
+  /** Retiros sin anular (restan al esperado). */
+  cashOutTotal: number;
+  /** Nombre del negocio (para el comprobante). */
+  businessName: string;
 }
 
 export class CashCurrentDto {
