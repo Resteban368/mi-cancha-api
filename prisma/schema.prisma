@@ -183,6 +183,7 @@ model Business {
   reservationGroups ReservationGroup[]
   products          Product[]
   sales             Sale[]
+  cashSessions      CashSession[]
 
   @@index([cityId])
 }
@@ -548,6 +549,35 @@ model SaleItem {
 
   @@index([saleId])
   @@index([productId])
+}
+
+/// Turno de caja: se abre con una base de efectivo y se cierra contando el efectivo real.
+/// Solo una abierta por negocio (índice único parcial en la migración).
+model CashSession {
+  id           String    @id @default(uuid())
+  businessId   String
+  business     Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  /// Efectivo con que se abrió la caja.
+  openingCash  Decimal   @db.Decimal(12, 2)
+  openingNote  String?
+  openedAt     DateTime  @default(now())
+  /// Quién la abrió y quién la cerró (sin llave foránea: el dato sobrevive si se borra la cuenta).
+  openedById   String?
+  openedByName String?
+  closedAt     DateTime?
+  closedById   String?
+  closedByName String?
+  /// Al cerrar: base + pagos aprobados en efectivo del turno.
+  expectedCash Decimal?  @db.Decimal(12, 2)
+  /// Efectivo contado al cerrar.
+  countedCash  Decimal?  @db.Decimal(12, 2)
+  /// countedCash - expectedCash (negativo = faltante).
+  difference   Decimal?  @db.Decimal(12, 2)
+  closingNote  String?
+  /// Pagos aprobados del turno por método al cerrar: [{ code, name, count, amount }].
+  summary      Json?
+
+  @@index([businessId, openedAt])
 }
 
 /// Catálogo editable desde el panel: servicios que ofrece un negocio.

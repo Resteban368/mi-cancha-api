@@ -67,6 +67,7 @@ export function createPrismaMock() {
     product: modelMock(),
     sale: modelMock(),
     saleItem: modelMock(),
+    cashSession: modelMock(),
     $queryRaw: vi.fn(),
     $transaction: vi.fn(),
   };
