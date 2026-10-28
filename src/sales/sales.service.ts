@@ -189,7 +189,8 @@ export class SalesService {
 
   /**
    * Consumo cargado a una reserva (suma a su saldo) o venta suelta, que se
-   * paga en el momento con un pago aprobado de concepto VENTA.
+   * paga en el momento con un pago aprobado de concepto VENTA. Un consumo
+   * con payment se cobra ya: el pago queda en la reserva y su saldo no cambia.
    */
   async createSale(
     ownerId: string,
@@ -197,11 +198,6 @@ export class SalesService {
     actorId: string,
   ): Promise<SaleDto> {
     const businessId = await this.businesses.requireBusinessId(ownerId);
-    if (dto.reservationId && dto.payment) {
-      throw new BadRequestException(
-        'Un consumo de reserva se paga con la reserva: no envíes payment',
-      );
-    }
     if (!dto.reservationId && !dto.payment) {
       throw new BadRequestException(
         'Una venta suelta necesita el método de pago',
@@ -285,6 +281,7 @@ export class SalesService {
           data: {
             businessId,
             saleId: created.id,
+            reservationId: dto.reservationId,
             customerName: customerName ?? WALK_IN_CUSTOMER,
             amount: total,
             methodId: method.id,
