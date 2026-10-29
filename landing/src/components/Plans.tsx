@@ -1,3 +1,4 @@
+import { Icon } from './Icon';
 import { Reveal } from './Reveal';
 import { CtaLink, SectionTitle } from './ui';
 import { whatsapp } from '../config';
@@ -69,6 +70,29 @@ export function Plans() {
               </article>
             </Reveal>
           ))}
+        </div>
+
+        <div className="mx-auto mt-8 flex max-w-3xl flex-col items-start gap-4 rounded-2xl border border-dashed border-accent/60 bg-surface p-6 sm:flex-row sm:items-center">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent-text">
+            <Icon name="carrito" />
+          </span>
+          <div className="flex-1">
+            <p className="font-extrabold">Módulo opcional: Ventas e inventario</p>
+            <p className="mt-1 text-sm text-fg-2">
+              Punto de venta, inventario, cuadre de caja y proveedores. Se suma a cualquier plan.{' '}
+              <a href="#ventas" className="font-semibold text-accent-text underline underline-offset-2">
+                Ver qué incluye
+              </a>
+            </p>
+          </div>
+          <a
+            href={whatsapp('Hola, quiero saber el precio del módulo de ventas e inventario de Mi Cancha.')}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-bold whitespace-nowrap text-accent-text"
+          >
+            Consultar precio →
+          </a>
         </div>
 
         <div className="mt-10 flex flex-col items-center gap-4 text-center">

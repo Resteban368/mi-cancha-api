@@ -9,6 +9,7 @@ import { Signup } from './components/Signup';
 // Sección de deportes oculta por ahora; para volver a mostrarla, descomenta esto y <Sports />.
 // import { Sports } from './components/Sports';
 import { Steps } from './components/Steps';
+import { Ventas } from './components/Ventas';
 
 export function App() {
   return (
@@ -20,6 +21,7 @@ export function App() {
         <Steps />
         <Audiences />
         <Features />
+        <Ventas />
         <Plans />
         <Signup />
         <Faq />

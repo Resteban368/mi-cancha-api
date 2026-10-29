@@ -34,6 +34,22 @@ export const PREGUNTAS = [
     r: 'En toda Colombia. Eliges departamento y ciudad al crear tu negocio, con la lista oficial del DANE.',
   },
   {
+    p: '¿Qué es el módulo de Ventas e inventario?',
+    r: 'Es un módulo opcional que se suma a cualquier plan: punto de venta para bebidas, snacks y alquileres, inventario en tiempo real, cuadre de caja por turno y directorio de proveedores, junto a tus reservas.',
+  },
+  {
+    p: '¿Puedo vender productos y servicios que no manejen stock?',
+    r: 'Sí. Puedes configurar productos con control de stock, como bebidas o snacks, y productos sin inventario, como el alquiler de petos o balones.',
+  },
+  {
+    p: '¿El sistema me avisa si hay diferencias en el dinero al cerrar la caja?',
+    r: 'Sí. Al cerrar el turno compara el efectivo esperado con el que declaras haber contado y te muestra si la caja cuadró o si hay un faltante o un sobrante.',
+  },
+  {
+    p: '¿Qué pasa si tengo que anular una venta?',
+    r: 'Al anular una venta, los productos vuelven al inventario y el saldo de la caja se ajusta automáticamente.',
+  },
+  {
     p: '¿Necesito instalar algo?',
     r: 'No. Todo funciona desde el navegador del celular o del computador, tanto para reservar como para administrar tu cancha.',
   },

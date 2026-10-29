@@ -55,6 +55,11 @@ export function PrivacidadPage() {
             deporte preferido, notas del negocio, reservas, asistencia, pagos y saldos.
           </li>
           <li>
+            <strong>Del módulo de Ventas e inventario,</strong> si el negocio lo usa: productos, ventas, consumos
+            cargados a las reservas, movimientos de inventario, aperturas y cierres de caja con su responsable, y los
+            datos de contacto de sus proveedores (nombre, teléfono y correo).
+          </li>
+          <li>
             <strong>Técnicos y de seguridad:</strong> los códigos de verificación que enviamos por mensaje de texto
             (guardados cifrados y vencen en minutos); un registro de las acciones de administración y seguridad, en el
             que guardamos una huella cifrada e irreversible de la dirección IP, no la IP; y, si activas las
