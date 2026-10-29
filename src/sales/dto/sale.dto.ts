@@ -241,4 +241,10 @@ export class SaleDto {
    * cobró con la reserva aunque no tenga pago propio.
    */
   reservationPaid: boolean;
+  /**
+   * De un consumo cargado al saldo, lo que falta por cobrar: lo pagado en la
+   * reserva cubre primero la cancha y luego los consumos en orden de carga.
+   * 0 en ventas sueltas, consumos cobrados en el momento o ya cubiertos.
+   */
+  reservationPending: number;
 }

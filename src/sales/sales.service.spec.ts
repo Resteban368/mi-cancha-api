@@ -394,71 +394,101 @@ describe('SalesService', () => {
 });
 
 describe('toSaleDto: consumo pagado con la reserva', () => {
-  const base = {
-    id: 'sale-1',
-    businessId: 'biz-1',
-    reservationId: 'res-1',
-    customerName: 'Juan',
-    total: 10_000,
-    note: null,
-    status: 'ACTIVE',
-    voidReason: null,
-    voidedAt: null,
-    createdById: null,
-    createdAt: new Date(),
-    items: [],
-    payment: null,
-  };
-  const reservation = (paid: number[], group: unknown = null) => ({
-    start: new Date(),
-    court: { name: 'Cancha 1' },
-    totalPrice: 80_000,
-    consumptionsTotal: 10_000,
-    payments: paid.map((amount) => ({ amount })),
-    group,
+  const at = (minute: number) => new Date(2026, 9, 29, 9, minute);
+  const sale = (id: string, total: number, minute: number) => ({
+    id,
+    total,
+    createdAt: at(minute),
   });
+  const beers = sale('s-cerveza', 50_000, 20);
+  const water = sale('s-agua', 7_000, 46);
 
-  it('con saldo pendiente sigue por cobrar', () => {
-    const dto = toSaleDto({
-      ...base,
-      reservation: reservation([40_000]),
+  /** Consumo de la reserva visto desde la venta [id]. */
+  function dto(
+    id: string,
+    member: { totalPrice: number; sales: unknown[]; payments: unknown[] },
+    group: unknown = null,
+    payment: unknown = null,
+  ) {
+    const own = (member.sales as { id: string; total: number }[]).find(
+      (s) => s.id === id,
+    );
+    return toSaleDto({
+      id,
+      businessId: 'biz-1',
+      reservationId: 'res-1',
+      customerName: 'Pepe',
+      total: own?.total ?? 7_000,
+      note: null,
+      status: 'ACTIVE',
+      voidReason: null,
+      voidedAt: null,
+      createdById: null,
+      createdAt: new Date(),
+      items: [],
+      payment,
+      reservation: {
+        start: new Date(),
+        court: { name: 'Cancha 2' },
+        ...member,
+        group,
+      },
     } as never);
-    expect(dto.reservationPaid).toBe(false);
-  });
+  }
 
-  it('cancha y consumos pagados: queda pagado', () => {
-    const dto = toSaleDto({
-      ...base,
-      reservation: reservation([40_000, 50_000]),
-    } as never);
-    expect(dto.reservationPaid).toBe(true);
-  });
-
-  it('en un grupo cuenta el saldo de todas las canchas', () => {
-    const other = { totalPrice: 80_000, consumptionsTotal: 0, payments: [] };
-    const self = {
-      totalPrice: 80_000,
-      consumptionsTotal: 10_000,
-      payments: [{ amount: 90_000 }],
+  it('cancha 60.000 + 50.000 pagados con 110.000; luego 7.000 más', () => {
+    const reservation = {
+      totalPrice: 60_000,
+      sales: [water, beers],
+      payments: [{ amount: 110_000 }],
     };
-    const pending = toSaleDto({
-      ...base,
-      reservation: reservation([90_000], { reservations: [self, other] }),
-    } as never);
-    expect(pending.reservationPaid).toBe(false);
-    const paid = toSaleDto({
-      ...base,
-      reservation: reservation([90_000], {
-        reservations: [self, { ...other, payments: [{ amount: 80_000 }] }],
-      }),
-    } as never);
-    expect(paid.reservationPaid).toBe(true);
+    expect(dto('s-cerveza', reservation)).toMatchObject({
+      reservationPaid: true,
+      reservationPending: 0,
+    });
+    expect(dto('s-agua', reservation)).toMatchObject({
+      reservationPaid: false,
+      reservationPending: 7_000,
+    });
   });
 
-  it('una venta suelta no es de reserva', () => {
+  it('un pago parcial cubre parte del consumo', () => {
+    const reservation = {
+      totalPrice: 60_000,
+      sales: [beers],
+      payments: [{ amount: 80_000 }],
+    };
+    expect(dto('s-cerveza', reservation)).toMatchObject({
+      reservationPaid: false,
+      reservationPending: 30_000,
+    });
+  });
+
+  it('si no alcanza ni para la cancha, el consumo sigue por cobrar', () => {
+    const reservation = {
+      totalPrice: 60_000,
+      sales: [beers],
+      payments: [{ amount: 40_000 }],
+    };
+    expect(dto('s-cerveza', reservation).reservationPending).toBe(50_000);
+  });
+
+  it('en un grupo reparte lo pagado de todas las canchas', () => {
+    const self = { totalPrice: 60_000, sales: [beers], payments: [] };
+    const other = {
+      totalPrice: 60_000,
+      sales: [],
+      payments: [{ amount: 170_000 }],
+    };
     expect(
-      toSaleDto({ ...base, reservationId: null, reservation: null } as never)
-        .reservationPaid,
-    ).toBe(false);
+      dto('s-cerveza', self, { reservations: [self, other] }),
+    ).toMatchObject({ reservationPaid: true, reservationPending: 0 });
+  });
+
+  it('un consumo cobrado en el momento no depende de la reserva', () => {
+    const reservation = { totalPrice: 60_000, sales: [], payments: [] };
+    expect(
+      dto('s-agua', reservation, null, { method: { code: 'EFECTIVO' } }),
+    ).toMatchObject({ reservationPaid: false, reservationPending: 0 });
   });
 });

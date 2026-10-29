@@ -42,12 +42,19 @@ const OPEN_STATUSES: ReservationStatus[] = [
   ReservationStatus.COMPLETED,
 ];
 
-/** Lo que hace falta de una reserva para saber si su saldo está en cero. */
+/**
+ * Lo que hace falta de una reserva para repartir lo pagado: la cancha, los
+ * consumos cargados al saldo (sin pago propio) y los pagos que no son de un
+ * consumo cobrado en el momento.
+ */
 const balanceSelect = {
   totalPrice: true,
-  consumptionsTotal: true,
+  sales: {
+    where: { status: SaleStatus.ACTIVE, payment: { is: null } },
+    select: { id: true, total: true, createdAt: true },
+  },
   payments: {
-    where: { status: PaymentStatus.APPROVED },
+    where: { status: PaymentStatus.APPROVED, saleId: null },
     select: { amount: true },
   },
 } satisfies Prisma.ReservationSelect;
@@ -463,30 +470,62 @@ export function toSaleDto(s: SaleWithItems): SaleDto {
     paymentMethod: s.payment?.method.code ?? null,
     courtName: s.reservation?.court.name ?? null,
     reservationStart: s.reservation?.start ?? null,
-    reservationPaid: s.reservation ? isSettled(s.reservation) : false,
+    ...reservationCharge(s),
   };
 }
 
 type BalanceParts = {
   totalPrice: Prisma.Decimal | number;
-  consumptionsTotal: Prisma.Decimal | number;
+  sales: {
+    id: string;
+    total: Prisma.Decimal | number;
+    createdAt: Date;
+  }[];
   payments: { amount: Prisma.Decimal | number }[];
 };
 
-/** Saldo en cero (o a favor) de la reserva, o de su grupo si tiene. */
-function isSettled(
-  reservation: BalanceParts & {
-    group: { reservations: BalanceParts[] } | null;
-  },
-): boolean {
+/**
+ * Cuánto falta por cobrar de un consumo cargado al saldo. Lo pagado en la
+ * reserva (o en su grupo de canchas) cubre primero la cancha y luego los
+ * consumos en el orden en que se cargaron.
+ */
+function reservationCharge(s: SaleWithItems): {
+  reservationPending: number;
+  reservationPaid: boolean;
+} {
+  const total = Number(s.total);
+  const reservation = s.reservation;
+  // Venta suelta o consumo cobrado en el momento: no depende de la reserva.
+  if (!reservation || s.payment) {
+    return { reservationPending: 0, reservationPaid: false };
+  }
   const members = reservation.group?.reservations ?? [reservation];
-  const balance = members.reduce(
+  let available = members.reduce(
     (sum, m) =>
       sum +
-      Number(m.totalPrice) +
-      Number(m.consumptionsTotal) -
-      m.payments.reduce((paid, p) => paid + Number(p.amount), 0),
+      m.payments.reduce((paid, p) => paid + Number(p.amount), 0) -
+      Number(m.totalPrice),
     0,
   );
-  return round2(balance) <= 0;
+  const charged = members
+    .flatMap((m) => m.sales)
+    .sort(
+      (a, b) =>
+        a.createdAt.getTime() - b.createdAt.getTime() ||
+        a.id.localeCompare(b.id),
+    );
+  for (const sale of charged) {
+    const amount = Number(sale.total);
+    const covered = Math.min(amount, Math.max(available, 0));
+    available -= amount;
+    if (sale.id === s.id) {
+      const pending = round2(amount - covered);
+      return { reservationPending: pending, reservationPaid: pending <= 0 };
+    }
+  }
+  // Anulada o fuera de la lista: no se cobra.
+  return {
+    reservationPending: s.status === SaleStatus.ACTIVE ? total : 0,
+    reservationPaid: false,
+  };
 }
