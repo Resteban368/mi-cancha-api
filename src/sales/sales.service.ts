@@ -42,10 +42,28 @@ const OPEN_STATUSES: ReservationStatus[] = [
   ReservationStatus.COMPLETED,
 ];
 
+/** Lo que hace falta de una reserva para saber si su saldo está en cero. */
+const balanceSelect = {
+  totalPrice: true,
+  consumptionsTotal: true,
+  payments: {
+    where: { status: PaymentStatus.APPROVED },
+    select: { amount: true },
+  },
+} satisfies Prisma.ReservationSelect;
+
 export const saleInclude = {
   items: { orderBy: { productName: 'asc' } },
   payment: { select: { method: { select: { code: true } } } },
-  reservation: { select: { start: true, court: { select: { name: true } } } },
+  reservation: {
+    select: {
+      start: true,
+      court: { select: { name: true } },
+      ...balanceSelect,
+      // Varias canchas reservadas juntas se pagan como una sola.
+      group: { select: { reservations: { select: balanceSelect } } },
+    },
+  },
 } satisfies Prisma.SaleInclude;
 
 export type SaleWithItems = Prisma.SaleGetPayload<{
@@ -445,5 +463,30 @@ export function toSaleDto(s: SaleWithItems): SaleDto {
     paymentMethod: s.payment?.method.code ?? null,
     courtName: s.reservation?.court.name ?? null,
     reservationStart: s.reservation?.start ?? null,
+    reservationPaid: s.reservation ? isSettled(s.reservation) : false,
   };
+}
+
+type BalanceParts = {
+  totalPrice: Prisma.Decimal | number;
+  consumptionsTotal: Prisma.Decimal | number;
+  payments: { amount: Prisma.Decimal | number }[];
+};
+
+/** Saldo en cero (o a favor) de la reserva, o de su grupo si tiene. */
+function isSettled(
+  reservation: BalanceParts & {
+    group: { reservations: BalanceParts[] } | null;
+  },
+): boolean {
+  const members = reservation.group?.reservations ?? [reservation];
+  const balance = members.reduce(
+    (sum, m) =>
+      sum +
+      Number(m.totalPrice) +
+      Number(m.consumptionsTotal) -
+      m.payments.reduce((paid, p) => paid + Number(p.amount), 0),
+    0,
+  );
+  return round2(balance) <= 0;
 }

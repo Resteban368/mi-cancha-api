@@ -236,4 +236,9 @@ export class SaleDto {
   /** Cancha e inicio de la reserva de un consumo. */
   courtName: string | null;
   reservationStart: Date | null;
+  /**
+   * Consumo cuya reserva ya está pagada por completo (saldo en cero): se
+   * cobró con la reserva aunque no tenga pago propio.
+   */
+  reservationPaid: boolean;
 }

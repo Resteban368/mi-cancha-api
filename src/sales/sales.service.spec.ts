@@ -19,7 +19,7 @@ import {
   SaleStatus,
 } from '../generated/prisma/enums.js';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { SalesService } from './sales.service.js';
+import { SalesService, toSaleDto } from './sales.service.js';
 
 const cash = {
   id: 'm-cash',
@@ -390,5 +390,75 @@ describe('SalesService', () => {
         service.createProduct('owner-1', { name: 'agua', price: 2_000 }),
       ).rejects.toBeInstanceOf(ConflictException);
     });
+  });
+});
+
+describe('toSaleDto: consumo pagado con la reserva', () => {
+  const base = {
+    id: 'sale-1',
+    businessId: 'biz-1',
+    reservationId: 'res-1',
+    customerName: 'Juan',
+    total: 10_000,
+    note: null,
+    status: 'ACTIVE',
+    voidReason: null,
+    voidedAt: null,
+    createdById: null,
+    createdAt: new Date(),
+    items: [],
+    payment: null,
+  };
+  const reservation = (paid: number[], group: unknown = null) => ({
+    start: new Date(),
+    court: { name: 'Cancha 1' },
+    totalPrice: 80_000,
+    consumptionsTotal: 10_000,
+    payments: paid.map((amount) => ({ amount })),
+    group,
+  });
+
+  it('con saldo pendiente sigue por cobrar', () => {
+    const dto = toSaleDto({
+      ...base,
+      reservation: reservation([40_000]),
+    } as never);
+    expect(dto.reservationPaid).toBe(false);
+  });
+
+  it('cancha y consumos pagados: queda pagado', () => {
+    const dto = toSaleDto({
+      ...base,
+      reservation: reservation([40_000, 50_000]),
+    } as never);
+    expect(dto.reservationPaid).toBe(true);
+  });
+
+  it('en un grupo cuenta el saldo de todas las canchas', () => {
+    const other = { totalPrice: 80_000, consumptionsTotal: 0, payments: [] };
+    const self = {
+      totalPrice: 80_000,
+      consumptionsTotal: 10_000,
+      payments: [{ amount: 90_000 }],
+    };
+    const pending = toSaleDto({
+      ...base,
+      reservation: reservation([90_000], { reservations: [self, other] }),
+    } as never);
+    expect(pending.reservationPaid).toBe(false);
+    const paid = toSaleDto({
+      ...base,
+      reservation: reservation([90_000], {
+        reservations: [self, { ...other, payments: [{ amount: 80_000 }] }],
+      }),
+    } as never);
+    expect(paid.reservationPaid).toBe(true);
+  });
+
+  it('una venta suelta no es de reserva', () => {
+    expect(
+      toSaleDto({ ...base, reservationId: null, reservation: null } as never)
+        .reservationPaid,
+    ).toBe(false);
   });
 });
