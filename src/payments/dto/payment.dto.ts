@@ -85,4 +85,11 @@ export class PaymentDto {
   note: string | null;
   rejectionReason: string | null;
   registeredByBusiness: boolean;
+  /**
+   * Parte del pago que fue para la cancha y parte para productos (consumos
+   * o venta suelta). En una reserva, lo pagado cubre primero la cancha y
+   * luego los consumos cargados al saldo. Suman `amount`.
+   */
+  courtAmount: number;
+  productsAmount: number;
 }

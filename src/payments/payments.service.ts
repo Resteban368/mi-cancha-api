@@ -6,13 +6,14 @@ import {
 import { BusinessesService } from '../businesses/businesses.service.js';
 import { CatalogsService } from '../catalogs/catalogs.service.js';
 import type { Prisma } from '../generated/prisma/client.js';
-import { PaymentStatus } from '../generated/prisma/enums.js';
+import { PaymentStatus, SaleStatus } from '../generated/prisma/enums.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
   CreatePaymentDto,
   PaymentDto,
   RejectPaymentDto,
 } from './dto/payment.dto.js';
+import { PaymentSplit, splitPayments } from './payment-split.js';
 
 const paymentInclude = {
   method: { select: { code: true } },
@@ -43,7 +44,87 @@ export class PaymentsService {
       include: paymentInclude,
       orderBy: { receivedAt: 'desc' },
     });
-    return payments.map(toPaymentDto);
+    const splits = await this.splits(businessId, payments);
+    return payments.map((p) => toPaymentDto(p, splits.get(p.id)));
+  }
+
+  /**
+   * Cuánto de cada pago fue para la cancha y cuánto para productos (ver
+   * splitPayments). Para repartir hace falta todo lo pagado en sus reservas,
+   * aunque no esté en la lista.
+   */
+  private async splits(
+    businessId: string,
+    payments: PaymentWithReservation[],
+  ): Promise<Map<string, PaymentSplit>> {
+    const ids = [...new Set(payments.flatMap((p) => p.reservationId ?? []))];
+    const groups = ids.length
+      ? await this.prisma.reservation.findMany({
+          where: { businessId, id: { in: ids }, groupId: { not: null } },
+          select: { groupId: true },
+        })
+      : [];
+    const groupIds = [...new Set(groups.map((g) => g.groupId!))];
+    const reservations = ids.length
+      ? await this.prisma.reservation.findMany({
+          where: {
+            businessId,
+            OR: [{ id: { in: ids } }, { groupId: { in: groupIds } }],
+          },
+          select: {
+            id: true,
+            groupId: true,
+            totalPrice: true,
+            sales: {
+              where: { status: SaleStatus.ACTIVE, payment: { is: null } },
+              select: { total: true },
+            },
+            payments: {
+              select: {
+                id: true,
+                amount: true,
+                status: true,
+                receivedAt: true,
+                reservationId: true,
+                saleId: true,
+              },
+            },
+          },
+        })
+      : [];
+    const all = new Map(
+      [...payments, ...reservations.flatMap((r) => r.payments)].map((p) => [
+        p.id,
+        {
+          id: p.id,
+          amount: Number(p.amount),
+          status: p.status,
+          receivedAt: p.receivedAt,
+          reservationId: p.reservationId,
+          saleId: p.saleId,
+        },
+      ]),
+    );
+    return splitPayments(
+      [...all.values()],
+      reservations.map((r) => ({
+        id: r.id,
+        groupId: r.groupId,
+        totalPrice: Number(r.totalPrice),
+        chargedConsumptions: r.sales.reduce(
+          (sum, s) => sum + Number(s.total),
+          0,
+        ),
+      })),
+    );
+  }
+
+  private async toDto(
+    businessId: string,
+    payment: PaymentWithReservation,
+  ): Promise<PaymentDto> {
+    const splits = await this.splits(businessId, [payment]);
+    return toPaymentDto(payment, splits.get(payment.id));
   }
 
   /** Pago registrado por el propio negocio: queda aprobado de inmediato. */
@@ -76,7 +157,7 @@ export class PaymentsService {
       },
       include: paymentInclude,
     });
-    return toPaymentDto(payment);
+    return this.toDto(businessId, payment);
   }
 
   approve(ownerId: string, paymentId: string): Promise<PaymentDto> {
@@ -115,11 +196,14 @@ export class PaymentsService {
     if (count === 0) {
       throw new ConflictException('El pago ya fue validado');
     }
-    return toPaymentDto(payment);
+    return this.toDto(businessId, payment);
   }
 }
 
-function toPaymentDto(p: PaymentWithReservation): PaymentDto {
+function toPaymentDto(
+  p: PaymentWithReservation,
+  split: PaymentSplit = { court: Number(p.amount), products: 0 },
+): PaymentDto {
   return {
     id: p.id,
     customerName: p.customerName,
@@ -135,5 +219,7 @@ function toPaymentDto(p: PaymentWithReservation): PaymentDto {
     note: p.note,
     rejectionReason: p.rejectionReason,
     registeredByBusiness: p.registeredByBusiness,
+    courtAmount: split.court,
+    productsAmount: split.products,
   };
 }
