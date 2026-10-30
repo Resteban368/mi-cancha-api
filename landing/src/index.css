@@ -78,6 +78,61 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Selector de canchas: el tramo verde llega justo al centro del control. */
+.rango-canchas {
+  --control: 24px;
+  --relleno: calc(var(--control) / 2 + var(--avance, 0) * (100% - var(--control)));
+  --pista: linear-gradient(
+    to right,
+    var(--accent) var(--relleno),
+    color-mix(in srgb, var(--fg-3) 40%, transparent) var(--relleno)
+  );
+  appearance: none;
+  width: 100%;
+  height: 28px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.rango-canchas::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--pista);
+}
+
+.rango-canchas::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--pista);
+}
+
+.rango-canchas::-webkit-slider-thumb {
+  appearance: none;
+  width: var(--control);
+  height: var(--control);
+  margin-top: -9px;
+  border: 4px solid var(--surface);
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 2px 6px rgba(11, 31, 40, 0.35);
+}
+
+.rango-canchas::-moz-range-thumb {
+  box-sizing: border-box;
+  width: var(--control);
+  height: var(--control);
+  border: 4px solid var(--surface);
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 2px 6px rgba(11, 31, 40, 0.35);
+}
+
+.rango-canchas:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: 8px;
+}
+
 /*
  * Revelado al hacer scroll. Solo con JavaScript (clase .js en <html>): sin él, o para un
  * buscador que no lo ejecuta, el contenido prerenderizado se ve directo.

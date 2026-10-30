@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { Icon } from './Icon';
 import { Reveal } from './Reveal';
 import { CtaLink, SectionTitle } from './ui';
@@ -32,30 +32,32 @@ export function Plans() {
         />
 
         <Reveal>
-          <article className="mt-14 overflow-hidden rounded-3xl border border-border bg-surface">
-            <div className="grid md:grid-cols-2">
+          <article className="mt-14 overflow-hidden rounded-3xl border border-border bg-surface shadow-[0_24px_60px_-36px_rgba(11,31,40,0.45)]">
+            <div className="grid md:grid-cols-[1.1fr_1fr]">
               <div className="flex flex-col p-7 sm:p-9">
-                <label htmlFor="canchas" className="text-sm font-bold">
-                  ¿Cuántas canchas tienes?
-                </label>
-                <div className="mt-4 flex items-center gap-4">
-                  <BotonCantidad
-                    etiqueta="Una cancha menos"
-                    disabled={canchas === 1}
-                    onClick={() => setCanchas(canchas - 1)}
-                  >
-                    −
-                  </BotonCantidad>
-                  <output htmlFor="canchas" className="min-w-12 text-center text-4xl font-extrabold tabular-nums">
-                    {canchas}
-                  </output>
-                  <BotonCantidad
-                    etiqueta="Una cancha más"
-                    disabled={canchas === MAX_CANCHAS}
-                    onClick={() => setCanchas(canchas + 1)}
-                  >
-                    +
-                  </BotonCantidad>
+                <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+                  <label htmlFor="canchas" className="text-base font-bold">
+                    ¿Cuántas canchas tienes?
+                  </label>
+                  <div className="flex items-center rounded-full border border-border">
+                    <BotonCantidad
+                      etiqueta="Una cancha menos"
+                      disabled={canchas === 1}
+                      onClick={() => setCanchas(canchas - 1)}
+                    >
+                      −
+                    </BotonCantidad>
+                    <output htmlFor="canchas" className="w-10 text-center text-xl font-extrabold tabular-nums">
+                      {canchas}
+                    </output>
+                    <BotonCantidad
+                      etiqueta="Una cancha más"
+                      disabled={canchas === MAX_CANCHAS}
+                      onClick={() => setCanchas(canchas + 1)}
+                    >
+                      +
+                    </BotonCantidad>
+                  </div>
                 </div>
                 <input
                   id="canchas"
@@ -64,23 +66,31 @@ export function Plans() {
                   max={MAX_CANCHAS}
                   value={canchas}
                   onChange={(e) => setCanchas(Number(e.target.value))}
-                  className="mt-6 w-full accent-accent"
+                  style={{ '--avance': (canchas - 1) / (MAX_CANCHAS - 1) } as CSSProperties}
+                  className="rango-canchas mt-6"
                 />
-                <div className="mt-1 flex justify-between text-xs text-fg-3" aria-hidden="true">
+                <div className="mt-1 flex justify-between text-xs font-semibold text-fg-3" aria-hidden="true">
                   <span>1</span>
                   <span>{MAX_CANCHAS}</span>
                 </div>
 
-                <p className="mt-8 text-4xl font-extrabold tracking-tight tabular-nums sm:text-5xl" aria-live="polite">
-                  {formatoPesos(precio)}
-                  <span className="ml-1 text-sm font-semibold tracking-normal text-fg-3">/mes</span>
-                </p>
-                <p className="mt-2 text-sm font-semibold text-fg-2">
-                  {textoCanchas}
-                  {canchas > 1 && ` · ${formatoPesos(precio / canchas)} por cancha`}
-                </p>
+                <div className="mt-8 border-t border-border pt-8" aria-live="polite">
+                  <p className="text-4xl font-extrabold tracking-tight whitespace-nowrap tabular-nums sm:text-5xl">
+                    {formatoPesos(precio)}
+                    <span className="ml-1.5 text-base font-semibold tracking-normal text-fg-3">/mes</span>
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-fg-2">
+                    {textoCanchas}
+                    {canchas > 1 && (
+                      <>
+                        {' · '}
+                        <span className="text-accent-text">{formatoPesos(precio / canchas)} por cancha</span>
+                      </>
+                    )}
+                  </p>
+                </div>
 
-                <div className="mt-8 flex flex-col gap-3 sm:flex-row md:mt-auto md:pt-8">
+                <div className="mt-8 grid gap-3 md:mt-auto md:pt-8 [&>*]:w-full">
                   <CtaLink href="#registro">Prueba gratis 15 días</CtaLink>
                   <CtaLink
                     href={whatsapp(`Hola, quiero contratar Mi Cancha para ${textoCanchas}.`)}
@@ -169,7 +179,7 @@ function BotonCantidad({
       aria-label={etiqueta}
       disabled={disabled}
       onClick={onClick}
-      className="h-11 w-11 rounded-full border border-border text-xl font-bold transition-colors hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-40"
+      className="h-11 w-11 rounded-full text-xl font-bold transition-colors hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:text-fg-3 disabled:opacity-50 disabled:hover:bg-transparent"
     >
       {children}
     </button>
