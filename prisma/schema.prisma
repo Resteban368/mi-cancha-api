@@ -760,13 +760,15 @@ model PaymentMethod {
 
 /// Plan de suscripción de Mi Cancha (Gratis, Básico, Pro): precio mensual y cuántas canchas permite.
 model Plan {
-  id           String @id @default(uuid())
-  name         String @unique
+  id             String  @id @default(uuid())
+  name           String  @unique
   /// Precio mensual en COP.
-  monthlyPrice Int
-  courtLimit   Int
+  monthlyPrice   Int
+  courtLimit     Int
+  /// El precio y el límite salen de las canchas contratadas en la suscripción, no de esta fila.
+  pricedByCourts Boolean @default(false)
   /// Lista de { title, detail }.
-  benefits     Json   @default("[]")
+  benefits       Json    @default("[]")
 
   subscriptions Subscription[]
 }
@@ -778,6 +780,8 @@ model Subscription {
   business    Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
   planId      String
   plan        Plan      @relation(fields: [planId], references: [id])
+  /// Canchas contratadas en un plan por canchas; null en los demás planes.
+  courts      Int?
   since       DateTime  @default(now())
   nextPayment DateTime
   isActive    Boolean   @default(true)

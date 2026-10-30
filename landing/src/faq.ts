@@ -19,7 +19,7 @@ export const PREGUNTAS = [
   },
   {
     p: '¿Cuánto cuesta el sistema de reservas para mi cancha?',
-    r: 'Depende de cuántas canchas tienes: Básico $69.000 al mes (1 cancha), Dúo $109.000 (2), Plus $159.000 (5) y Pro $209.000 (10).',
+    r: 'Hay un solo plan con todo incluido y el precio depende de cuántas canchas tienes: desde $79.000 al mes por 1 cancha, $117.000 por 3, $155.000 por 5, $235.000 por 10 y $345.000 por 20. Si tienes más de 20, escríbenos.',
   },
   {
     p: '¿Cómo se manejan los pagos de las reservas?',
@@ -35,7 +35,7 @@ export const PREGUNTAS = [
   },
   {
     p: '¿Qué es el módulo de Ventas e inventario?',
-    r: 'Es un módulo opcional que se suma a cualquier plan: punto de venta para bebidas, snacks y alquileres, inventario en tiempo real, cuadre de caja por turno y directorio de proveedores, junto a tus reservas.',
+    r: 'Es un módulo opcional que se suma a tu plan: punto de venta para bebidas, snacks y alquileres, inventario en tiempo real, cuadre de caja por turno y directorio de proveedores, junto a tus reservas.',
   },
   {
     p: '¿Puedo vender productos y servicios que no manejen stock?',

@@ -421,7 +421,9 @@ function SubscriptionCard({
   const [busy, setBusy] = useState(false);
   const subscription = client.subscription;
 
-  async function update(body: { planId?: string; isActive?: boolean }) {
+  const currentPlan = plans.find((plan) => plan.id === subscription?.plan.id);
+
+  async function update(body: { planId?: string; courts?: number; isActive?: boolean }) {
     setBusy(true);
     try {
       await api(`/admin/clients/${client.id}/subscription`, { method: 'PATCH', body });
@@ -467,11 +469,28 @@ function SubscriptionCard({
             {!subscription && <option value="">Sin plan</option>}
             {plans.map((plan) => (
               <option key={plan.id} value={plan.id}>
-                {plan.name} · {formatCop(plan.monthlyPrice)}
+                {plan.pricedByCourts ? `${plan.name} · según canchas` : `${plan.name} · ${formatCop(plan.monthlyPrice)}`}
               </option>
             ))}
           </Select>
         </Detail>
+        {subscription?.plan.pricedByCourts && currentPlan && (
+          <Detail label="Canchas contratadas">
+            <Select
+              aria-label={`Canchas contratadas de ${client.name}`}
+              className="mt-1 h-9"
+              value={subscription.plan.courtLimit}
+              disabled={busy}
+              onChange={(e) => update({ courts: Number(e.target.value) })}
+            >
+              {currentPlan.courtPrices.map((row) => (
+                <option key={row.courts} value={row.courts}>
+                  {row.courts} · {formatCop(row.monthlyPrice)}/mes
+                </option>
+              ))}
+            </Select>
+          </Detail>
+        )}
         <Detail label="Canchas en uso">
           <span className="tabular">
             {activeCourts}

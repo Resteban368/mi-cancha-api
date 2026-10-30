@@ -343,12 +343,14 @@ llegaron por la web y aún no la registran (el negocio siempre la pide)."
     String name UK
     Int monthlyPrice "Precio mensual en COP."
     Int courtLimit
+    Boolean pricedByCourts "El precio y el límite salen de las canchas contratadas en la suscripción, no de esta fila."
     Json benefits "Lista de { title, detail }."
   }
   Subscription {
     String id PK
     String businessId FK, UK
     String planId FK
+    Int courts "opcional · Canchas contratadas en un plan por canchas; null en los demás planes."
     DateTime since
     DateTime nextPayment
     Boolean isActive

@@ -1,5 +1,6 @@
 import { ApiProperty, OmitType, PartialType } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
+import { MAX_PRICED_COURTS } from '../../common/plan-pricing.js';
 import {
   ArrayMaxSize,
   ArrayMinSize,
@@ -113,6 +114,13 @@ export class CreateClientDto {
 
   @IsUUID()
   planId: string;
+
+  /** Canchas contratadas, solo en un plan por canchas (1 si no se indica). @example 3 */
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(MAX_PRICED_COURTS)
+  courts?: number;
 }
 
 export class UpdateModulesDto {
@@ -129,6 +137,13 @@ export class UpdateSubscriptionDto {
   @IsOptional()
   @IsUUID()
   planId?: string;
+
+  /** Canchas contratadas, solo en un plan por canchas. @example 3 */
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(MAX_PRICED_COURTS)
+  courts?: number;
 
   @IsOptional()
   @IsBoolean()
@@ -149,7 +164,14 @@ export class ClientDto {
     email: string | null;
     phone: string | null;
   };
-  plan: { id: string; name: string; monthlyPrice: number } | null;
+  /** Precio y límite ya calculados con las canchas contratadas. */
+  plan: {
+    id: string;
+    name: string;
+    monthlyPrice: number;
+    courtLimit: number;
+    pricedByCourts: boolean;
+  } | null;
   /** false si el cliente está suspendido (aparte de si su prueba venció: ver trialExpired). */
   subscriptionActive: boolean;
   nextPayment: Date | null;
@@ -241,7 +263,14 @@ export class ClientOwnerDetailDto {
 }
 
 export class ClientSubscriptionDto {
-  plan: { id: string; name: string; monthlyPrice: number; courtLimit: number };
+  /** Precio y límite ya calculados con las canchas contratadas. */
+  plan: {
+    id: string;
+    name: string;
+    monthlyPrice: number;
+    courtLimit: number;
+    pricedByCourts: boolean;
+  };
   since: Date;
   nextPayment: Date;
   isActive: boolean;
@@ -432,6 +461,10 @@ export class UpdatePlanDto extends PartialType(CreatePlanDto) {}
 
 export class PlanDto extends OmitType(CreatePlanDto, [] as const) {
   id: string;
+  /** El precio depende de las canchas contratadas: no se editan precio ni límite. */
+  pricedByCourts: boolean;
+  /** Tabla de precios de un plan por canchas; vacía en los demás. */
+  courtPrices: { courts: number; monthlyPrice: number }[];
   /** Negocios suscritos a este plan. */
   subscriptions: number;
 }

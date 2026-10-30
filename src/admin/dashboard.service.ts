@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { UserRole } from '../generated/prisma/enums.js';
+import { subscriptionTerms } from '../common/plan-pricing.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { DashboardDto, MonthlySignupsDto } from './dto/admin.dto.js';
 
@@ -37,7 +38,16 @@ export class DashboardService {
       }),
       this.prisma.subscription.findMany({
         where: { isActive: true },
-        select: { plan: { select: { monthlyPrice: true } } },
+        select: {
+          courts: true,
+          plan: {
+            select: {
+              monthlyPrice: true,
+              courtLimit: true,
+              pricedByCourts: true,
+            },
+          },
+        },
       }),
       this.prisma.plan.findMany({
         orderBy: { monthlyPrice: 'asc' },
@@ -73,7 +83,7 @@ export class DashboardService {
       activeCourts,
       reservationsLast30Days: recentReservations,
       monthlyRecurringRevenue: activeSubscriptions.reduce(
-        (sum, s) => sum + s.plan.monthlyPrice,
+        (sum, s) => sum + subscriptionTerms(s).monthlyPrice,
         0,
       ),
       clientsByPlan: plans.map((p) => ({

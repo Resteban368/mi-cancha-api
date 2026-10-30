@@ -8,11 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import bcrypt from 'bcryptjs';
 import { Page, pageArgs, PageQueryDto } from '../common/dto/page.dto.js';
 import { publicApiUrl } from '../common/public-url.js';
-import {
-  TRIAL_DAYS,
-  TRIAL_PLAN_NAME,
-  trialStatusOf,
-} from '../common/trial.js';
+import { TRIAL_DAYS, TRIAL_PLAN_NAME, trialStatusOf } from '../common/trial.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import {
   PaymentStatus,
@@ -30,6 +26,10 @@ import {
   toBusinessPhotos,
 } from '../businesses/business-photos.js';
 import { REQUIRED_PHOTOS } from '../courts/courts.service.js';
+import {
+  MAX_PRICED_COURTS,
+  subscriptionTerms,
+} from '../common/plan-pricing.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { FileStorage } from '../storage/file-storage.js';
 import {
@@ -46,11 +46,19 @@ const BCRYPT_ROUNDS = 12;
 const SUBSCRIPTION_PERIOD_DAYS = 30;
 const RECENT_ITEMS = 10;
 
+const planSelect = {
+  id: true,
+  name: true,
+  monthlyPrice: true,
+  courtLimit: true,
+  pricedByCourts: true,
+} satisfies Prisma.PlanSelect;
+
 const clientInclude = {
   city: citySelect,
   owner: { select: { id: true, displayName: true, email: true, phone: true } },
   subscription: {
-    include: { plan: { select: { id: true, name: true, monthlyPrice: true } } },
+    include: { plan: { select: planSelect } },
   },
   _count: { select: { courts: { where: { isActive: true } } } },
 } satisfies Prisma.BusinessInclude;
@@ -78,9 +86,7 @@ const detailInclude = {
   profileImages: profileImagesSelect,
   subscription: {
     include: {
-      plan: {
-        select: { id: true, name: true, monthlyPrice: true, courtLimit: true },
-      },
+      plan: { select: planSelect },
     },
   },
   courts: {
@@ -239,7 +245,7 @@ export class ClientsService {
         createdAt: owner.createdAt,
       },
       subscription: subscription && {
-        plan: subscription.plan,
+        plan: { ...subscription.plan, ...subscriptionTerms(subscription) },
         since: subscription.since,
         nextPayment: subscription.nextPayment,
         isActive: subscription.isActive,
@@ -301,6 +307,7 @@ export class ClientsService {
     ]);
     if (existing) throw new ConflictException('El email ya está registrado');
     if (!plan) throw new NotFoundException('El plan no existe');
+    assertCourtsAllowed(plan, dto.courts);
     await requireCity(this.prisma, dto.cityId);
 
     const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
@@ -323,6 +330,7 @@ export class ClientsService {
         subscription: {
           create: {
             planId: plan.id,
+            courts: plan.pricedByCourts ? (dto.courts ?? 1) : null,
             ...periodFor(plan.name),
             autoBilling: plan.monthlyPrice > 0,
           },
@@ -364,11 +372,15 @@ export class ClientsService {
   ): Promise<ClientDto> {
     const business = await this.prisma.business.findUnique({
       where: { id: businessId },
-      include: { subscription: true },
+      include: {
+        subscription: { include: { plan: true } },
+        _count: { select: { courts: { where: { isActive: true } } } },
+      },
     });
     if (!business) throw new NotFoundException('El cliente no existe');
 
     let planPeriod: { nextPayment: Date; trialEndsAt: Date | null } | undefined;
+    let courts: number | null | undefined = dto.courts;
     if (dto.planId) {
       const plan = await this.prisma.plan.findUnique({
         where: { id: dto.planId },
@@ -376,12 +388,30 @@ export class ClientsService {
       if (!plan) throw new NotFoundException('El plan no existe');
       // Cambiar de plan reinicia el periodo: un plan de pago quita la prueba y «Prueba» la reinicia.
       planPeriod = periodFor(plan.name);
+      assertCourtsAllowed(plan, dto.courts);
+      courts = plan.pricedByCourts
+        ? (dto.courts ??
+          business.subscription?.courts ??
+          courtsForActive(business._count.courts))
+        : null;
+    } else if (dto.courts !== undefined) {
+      if (!business.subscription) {
+        throw new ConflictException(
+          'El cliente no tiene plan: indica planId para asignarle uno',
+        );
+      }
+      assertCourtsAllowed(business.subscription.plan, dto.courts);
     }
 
     if (business.subscription) {
       await this.prisma.subscription.update({
         where: { businessId },
-        data: { planId: dto.planId, isActive: dto.isActive, ...planPeriod },
+        data: {
+          planId: dto.planId,
+          courts,
+          isActive: dto.isActive,
+          ...planPeriod,
+        },
       });
     } else {
       if (!dto.planId) {
@@ -393,6 +423,7 @@ export class ClientsService {
         data: {
           businessId,
           planId: dto.planId,
+          courts,
           isActive: dto.isActive ?? true,
           ...(planPeriod ?? periodFor(undefined)),
         },
@@ -451,7 +482,8 @@ export class ClientsService {
     if (!business) throw new NotFoundException('El cliente no existe');
 
     const email = dto.email?.toLowerCase();
-    const phone = dto.phone === undefined ? undefined : dto.phone.trim() || null;
+    const phone =
+      dto.phone === undefined ? undefined : dto.phone.trim() || null;
     if (email) {
       const taken = await this.prisma.user.findUnique({ where: { email } });
       if (taken && taken.id !== business.ownerId) {
@@ -525,6 +557,23 @@ export class ClientsService {
   }
 }
 
+/** Solo un plan por canchas admite indicar cuántas se contratan. */
+function assertCourtsAllowed(
+  plan: { name: string; pricedByCourts: boolean },
+  courts: number | undefined,
+): void {
+  if (courts !== undefined && !plan.pricedByCourts) {
+    throw new ConflictException(
+      `El plan ${plan.name} no se contrata por cantidad de canchas`,
+    );
+  }
+}
+
+/** Canchas a contratar por defecto: las que el negocio ya tiene activas, dentro de la tabla. */
+function courtsForActive(activeCourts: number): number {
+  return Math.min(Math.max(activeCourts, 1), MAX_PRICED_COURTS);
+}
+
 /** Próximo cobro y fin de prueba para un plan recién asignado. */
 function periodFor(planName: string | undefined): {
   nextPayment: Date;
@@ -558,7 +607,9 @@ function toClientDto(b: ClientRecord): ClientDto {
       email: b.owner.email,
       phone: b.owner.phone,
     },
-    plan: b.subscription?.plan ?? null,
+    plan: b.subscription
+      ? { ...b.subscription.plan, ...subscriptionTerms(b.subscription) }
+      : null,
     subscriptionActive: b.subscription?.isActive ?? false,
     nextPayment: b.subscription?.nextPayment ?? null,
     ...trialStatusOf(b.subscription),

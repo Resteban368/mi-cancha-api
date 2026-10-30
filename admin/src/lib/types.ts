@@ -46,7 +46,7 @@ export interface Client {
   city: CityRef | null;
   createdAt: string;
   owner: { id: string; fullName: string; email: string | null; phone: string | null };
-  plan: { id: string; name: string; monthlyPrice: number } | null;
+  plan: { id: string; name: string; monthlyPrice: number; courtLimit: number; pricedByCourts: boolean } | null;
   subscriptionActive: boolean;
   nextPayment: string | null;
   /** Fin de la prueba gratuita; null si el plan es de pago. */
@@ -139,7 +139,7 @@ export interface ClientDetail {
     createdAt: string;
   };
   subscription: {
-    plan: { id: string; name: string; monthlyPrice: number; courtLimit: number };
+    plan: { id: string; name: string; monthlyPrice: number; courtLimit: number; pricedByCourts: boolean };
     since: string;
     nextPayment: string;
     isActive: boolean;
@@ -211,6 +211,9 @@ export interface Plan {
   name: string;
   monthlyPrice: number;
   courtLimit: number;
+  /** El precio depende de las canchas contratadas; ver courtPrices. */
+  pricedByCourts: boolean;
+  courtPrices: { courts: number; monthlyPrice: number }[];
   benefits: PlanBenefit[];
   subscriptions: number;
 }

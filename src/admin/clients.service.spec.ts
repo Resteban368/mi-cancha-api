@@ -157,6 +157,72 @@ describe('ClientsService', () => {
     ).rejects.toThrow(ConflictException);
   });
 
+  describe('plan por canchas', () => {
+    const mainPlan = {
+      id: 'plan-main',
+      name: 'Mi Cancha',
+      monthlyPrice: 79_000,
+      courtLimit: 20,
+      pricedByCourts: true,
+    };
+    const updatedClient = {
+      ...storedClient,
+      subscription: {
+        ...storedClient.subscription,
+        courts: 3,
+        plan: mainPlan,
+      },
+    };
+
+    it('al asignarlo contrata por defecto las canchas activas', async () => {
+      prisma.business.findUnique.mockResolvedValue({
+        id: 'biz-1',
+        subscription: { courts: null, plan: { pricedByCourts: false } },
+        _count: { courts: 4 },
+      });
+      prisma.plan.findUnique.mockResolvedValue(mainPlan);
+      prisma.business.findUniqueOrThrow.mockResolvedValue(updatedClient);
+
+      await service.updateSubscription('biz-1', { planId: 'plan-main' });
+
+      expect(prisma.subscription.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ planId: 'plan-main', courts: 4 }),
+        }),
+      );
+    });
+
+    it('devuelve el precio y el límite de las canchas contratadas', async () => {
+      prisma.business.findUnique.mockResolvedValue({
+        id: 'biz-1',
+        subscription: { courts: 2, plan: mainPlan },
+        _count: { courts: 2 },
+      });
+      prisma.business.findUniqueOrThrow.mockResolvedValue(updatedClient);
+
+      const result = await service.updateSubscription('biz-1', { courts: 3 });
+
+      expect(result.plan).toMatchObject({
+        monthlyPrice: 117_000,
+        courtLimit: 3,
+      });
+    });
+
+    it('rechaza indicar canchas en otro plan', async () => {
+      prisma.business.findUnique.mockResolvedValue({
+        id: 'biz-1',
+        subscription: {
+          courts: null,
+          plan: { name: 'Prueba', pricedByCourts: false },
+        },
+        _count: { courts: 1 },
+      });
+      await expect(
+        service.updateSubscription('biz-1', { courts: 3 }),
+      ).rejects.toThrow(ConflictException);
+    });
+  });
+
   describe('findOne', () => {
     const now = new Date('2026-10-14T12:00:00Z');
 
@@ -302,7 +368,11 @@ describe('ClientsService', () => {
       });
       expect(prisma.user.update).toHaveBeenCalledWith({
         where: { id: 'owner-1' },
-        data: { displayName: 'Ana Pérez', email: 'ana@golazo.co', phone: '3001234567' },
+        data: {
+          displayName: 'Ana Pérez',
+          email: 'ana@golazo.co',
+          phone: '3001234567',
+        },
       });
     });
 
@@ -329,9 +399,9 @@ describe('ClientsService', () => {
 
     it('lanza 404 si el cliente no existe', async () => {
       prisma.business.findUnique.mockResolvedValue(null);
-      await expect(service.updateOwner('x', { fullName: 'Ana' })).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.updateOwner('x', { fullName: 'Ana' }),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -349,7 +419,9 @@ describe('ClientsService', () => {
       expect(prisma.reservation.deleteMany).toHaveBeenCalledWith({
         where: { businessId: 'biz-1' },
       });
-      expect(prisma.user.delete).toHaveBeenCalledWith({ where: { id: 'owner-1' } });
+      expect(prisma.user.delete).toHaveBeenCalledWith({
+        where: { id: 'owner-1' },
+      });
       expect(storage.delete).toHaveBeenCalledWith('biz/cover.jpg');
       expect(storage.delete).toHaveBeenCalledWith('courts/c1/main.jpg');
     });
