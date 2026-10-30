@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { Plan } from '../generated/prisma/client.js';
+import { courtPriceTable } from '../common/plan-pricing.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
   CreatePlanDto,
@@ -58,6 +59,9 @@ export class PlansService {
       include: { _count: { select: { subscriptions: true } } },
     });
     if (!plan) throw new NotFoundException('El plan no existe');
+    if (plan.pricedByCourts) {
+      throw new ConflictException('El plan principal no se puede eliminar');
+    }
     if (plan._count.subscriptions > 0) {
       throw new ConflictException(
         `No se puede eliminar: ${plan._count.subscriptions} cliente(s) usan este plan`,
@@ -85,6 +89,8 @@ function toPlanDto(plan: PlanWithCount): PlanDto {
     name: plan.name,
     monthlyPrice: plan.monthlyPrice,
     courtLimit: plan.courtLimit,
+    pricedByCourts: plan.pricedByCourts,
+    courtPrices: plan.pricedByCourts ? courtPriceTable() : [],
     benefits,
     subscriptions: plan._count.subscriptions,
   };

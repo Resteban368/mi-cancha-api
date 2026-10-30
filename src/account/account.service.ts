@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { isSubscriptionUsable, trialStatusOf } from '../common/trial.js';
 import { UserRole } from '../generated/prisma/enums.js';
+import { subscriptionTerms } from '../common/plan-pricing.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
   BusinessAccountDto,
@@ -35,12 +36,13 @@ export class AccountService {
     const subscription = user.business?.subscription;
     let subscriptionDto: SubscriptionDto | null = null;
     if (user.business && subscription) {
+      const terms = subscriptionTerms(subscription);
       subscriptionDto = {
         planName: subscription.plan.name,
-        monthlyPrice: subscription.plan.monthlyPrice,
+        monthlyPrice: terms.monthlyPrice,
         since: subscription.since,
         nextPayment: subscription.nextPayment,
-        courtLimit: subscription.plan.courtLimit,
+        courtLimit: terms.courtLimit,
         courtsInUse: user.business._count.courts,
         benefits: parseBenefits(subscription.plan.benefits),
         isActive: isSubscriptionUsable(subscription),

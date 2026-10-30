@@ -75,10 +75,12 @@ export function PlansPage() {
                 <span className="tabular text-3xl font-semibold tracking-tight">
                   {plan.monthlyPrice === 0 ? 'Gratis' : formatCop(plan.monthlyPrice)}
                 </span>
+                {plan.pricedByCourts && <span className="text-sm text-fg-3"> desde</span>}
                 {plan.monthlyPrice > 0 && <span className="text-sm text-fg-3"> /mes</span>}
               </p>
               <p className="mt-1 text-sm text-fg-2">
-                Hasta {plan.courtLimit} {plan.courtLimit === 1 ? 'cancha activa' : 'canchas activas'}
+                {plan.pricedByCourts ? 'Precio según canchas contratadas, hasta ' : 'Hasta '}
+                {plan.courtLimit} {plan.courtLimit === 1 ? 'cancha activa' : 'canchas activas'}
               </p>
               <ul className="mt-4 flex flex-1 flex-col gap-2 border-t border-border pt-4 text-sm">
                 {plan.benefits.length === 0 && <li className="text-fg-3">Sin beneficios descritos</li>}
@@ -94,6 +96,19 @@ export function PlansPage() {
                   </li>
                 ))}
               </ul>
+              {plan.pricedByCourts && (
+                <details className="mt-4 border-t border-border pt-4 text-sm">
+                  <summary className="cursor-pointer font-medium">Tabla de precios</summary>
+                  <ul className="tabular mt-2 flex flex-col gap-1 text-fg-2">
+                    {plan.courtPrices.map((row) => (
+                      <li key={row.courts} className="flex justify-between">
+                        <span>{row.courts === 1 ? '1 cancha' : `${row.courts} canchas`}</span>
+                        <span>{formatCop(row.monthlyPrice)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
               <div className="mt-5 flex gap-2">
                 <Button size="sm" onClick={() => setEditing(plan)}>
                   Editar
@@ -101,8 +116,14 @@ export function PlansPage() {
                 <Button
                   size="sm"
                   variant="ghost"
-                  disabled={plan.subscriptions > 0}
-                  title={plan.subscriptions > 0 ? 'Tiene clientes: cámbialos de plan antes de eliminarlo' : undefined}
+                  disabled={plan.pricedByCourts || plan.subscriptions > 0}
+                  title={
+                    plan.pricedByCourts
+                      ? 'Es el plan principal'
+                      : plan.subscriptions > 0
+                        ? 'Tiene clientes: cámbialos de plan antes de eliminarlo'
+                        : undefined
+                  }
                   onClick={() => setDeleting(plan)}
                 >
                   Eliminar
@@ -170,8 +191,10 @@ function PlanModal({
     setError(undefined);
     const body = {
       name: name.trim(),
-      monthlyPrice: Number(monthlyPrice),
-      courtLimit: Number(courtLimit),
+      // En el plan por canchas, precio y límite salen de la tabla.
+      ...(plan?.pricedByCourts
+        ? {}
+        : { monthlyPrice: Number(monthlyPrice), courtLimit: Number(courtLimit) }),
       benefits: benefits
         .map((b) => ({ title: b.title.trim(), detail: b.detail.trim() }))
         .filter((b) => b.title),
@@ -209,16 +232,20 @@ function PlanModal({
           <Field label="Nombre">
             {(id) => <Input id={id} required minLength={2} maxLength={40} value={name} onChange={(e) => setName(e.target.value)} />}
           </Field>
-          <Field label="Precio mensual (COP)" hint="0 = plan gratuito">
-            {(id) => (
-              <Input id={id} type="number" required min={0} step={1000} inputMode="numeric" value={monthlyPrice} onChange={(e) => setMonthlyPrice(e.target.value)} />
-            )}
-          </Field>
-          <Field label="Canchas activas">
-            {(id) => (
-              <Input id={id} type="number" required min={1} max={500} inputMode="numeric" value={courtLimit} onChange={(e) => setCourtLimit(e.target.value)} />
-            )}
-          </Field>
+          {!plan?.pricedByCourts && (
+            <>
+              <Field label="Precio mensual (COP)" hint="0 = plan gratuito">
+                {(id) => (
+                  <Input id={id} type="number" required min={0} step={1000} inputMode="numeric" value={monthlyPrice} onChange={(e) => setMonthlyPrice(e.target.value)} />
+                )}
+              </Field>
+              <Field label="Canchas activas">
+                {(id) => (
+                  <Input id={id} type="number" required min={1} max={500} inputMode="numeric" value={courtLimit} onChange={(e) => setCourtLimit(e.target.value)} />
+                )}
+              </Field>
+            </>
+          )}
         </div>
 
         <div>

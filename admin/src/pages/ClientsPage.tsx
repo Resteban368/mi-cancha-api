@@ -158,7 +158,11 @@ export function ClientsPage() {
                           {!client.plan && <option value="">Sin plan</option>}
                           {plans.data?.map((plan) => (
                             <option key={plan.id} value={plan.id}>
-                              {plan.name} · {formatCop(plan.monthlyPrice)}
+                              {plan.pricedByCourts && client.plan?.id === plan.id
+                                ? `${plan.name} · ${client.plan.courtLimit} cancha(s) · ${formatCop(client.plan.monthlyPrice)}`
+                                : plan.pricedByCourts
+                                  ? `${plan.name} · según canchas`
+                                  : `${plan.name} · ${formatCop(plan.monthlyPrice)}`}
                             </option>
                           ))}
                         </Select>
@@ -234,6 +238,7 @@ const EMPTY_FORM = {
   neighborhood: '',
   cityId: '',
   planId: '',
+  courts: '1',
 };
 
 function generatePassword(): string {
@@ -258,6 +263,7 @@ function CreateClientModal({
   const [saving, setSaving] = useState(false);
   const set = (key: keyof typeof EMPTY_FORM) => (value: string) =>
     setForm((f) => ({ ...f, [key]: value }));
+  const selectedPlan = plans.find((plan) => plan.id === form.planId) ?? plans[0];
 
   function close() {
     setForm(EMPTY_FORM);
@@ -277,6 +283,7 @@ function CreateClientModal({
           email: form.email.trim(),
           phone: form.phone.trim() || undefined,
           planId: form.planId || plans[0]?.id,
+          courts: selectedPlan?.pricedByCourts ? Number(form.courts) : undefined,
         },
       });
       setForm(EMPTY_FORM);
@@ -340,12 +347,27 @@ function CreateClientModal({
               <Select id={id} required value={form.planId || plans[0]?.id || ''} onChange={(e) => set('planId')(e.target.value)}>
                 {plans.map((plan) => (
                   <option key={plan.id} value={plan.id}>
-                    {plan.name} · {formatCop(plan.monthlyPrice)}/mes · {plan.courtLimit} cancha(s)
+                    {plan.pricedByCourts
+                      ? `${plan.name} · según canchas`
+                      : `${plan.name} · ${formatCop(plan.monthlyPrice)}/mes · ${plan.courtLimit} cancha(s)`}
                   </option>
                 ))}
               </Select>
             )}
           </Field>
+          {selectedPlan?.pricedByCourts && (
+            <Field label="Canchas contratadas">
+              {(id) => (
+                <Select id={id} required value={form.courts} onChange={(e) => set('courts')(e.target.value)}>
+                  {selectedPlan.courtPrices.map((row) => (
+                    <option key={row.courts} value={row.courts}>
+                      {row.courts} cancha(s) · {formatCop(row.monthlyPrice)}/mes
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </Field>
+          )}
           <Field label="Dirección">
             {(id) => <Input id={id} required minLength={3} value={form.address} onChange={(e) => set('address')(e.target.value)} />}
           </Field>

@@ -53,7 +53,7 @@ export function Hero() {
               Ver una página de reservas
             </CtaLink>
           </div>
-          <p className="mt-6 text-sm text-fg-3">Para jugadores, siempre gratis · Planes desde $69.000 al mes</p>
+          <p className="mt-6 text-sm text-fg-3">Para jugadores, siempre gratis · Desde $79.000 al mes</p>
         </div>
 
         <div className="relative mx-auto w-full max-w-lg">

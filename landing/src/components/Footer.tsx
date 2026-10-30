@@ -43,7 +43,7 @@ export function Footer() {
           <ul className="flex flex-wrap justify-center gap-x-6 gap-y-2 font-semibold">
             {[
               ['/#como', 'Cómo funciona'],
-              ['/#planes', 'Planes'],
+              ['/#planes', 'Precios'],
               ['/#preguntas', 'Preguntas'],
               ['/terminos/', 'Términos y condiciones'],
               [POLICY_URL, 'Política de privacidad'],

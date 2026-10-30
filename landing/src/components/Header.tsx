@@ -8,7 +8,7 @@ const LINKS = [
   { href: '#como', label: 'Cómo funciona' },
   { href: '#jugadores', label: 'Para jugadores' },
   { href: '#negocios', label: 'Para negocios' },
-  { href: '#planes', label: 'Planes' },
+  { href: '#planes', label: 'Precios' },
   { href: '#preguntas', label: 'Preguntas' },
 ];
 

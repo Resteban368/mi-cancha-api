@@ -85,7 +85,7 @@ const courtSurfaces = [
   },
   { code: 'ARENA', name: 'Arena', sports: [Sport.FUTBOL, Sport.VOLEIBOL] },
 ];
-const UTC_OFFSET =process.env.APP_UTC_OFFSET ?? '-05:00';
+const UTC_OFFSET = process.env.APP_UTC_OFFSET ?? '-05:00';
 
 const plans = [
   {
@@ -100,39 +100,15 @@ const plans = [
     ],
   },
   {
-    name: 'Gratis',
-    monthlyPrice: 0,
-    courtLimit: 1,
-    benefits: [
-      { title: 'Agenda digital', detail: 'Gestiona las reservas de 1 cancha' },
-    ],
-  },
-  {
-    name: 'Básico',
-    monthlyPrice: 89_000,
-    courtLimit: 3,
-    benefits: [
-      { title: 'Hasta 3 canchas', detail: 'Ideal para complejos pequeños' },
-      {
-        title: 'Validación de pagos',
-        detail: 'Nequi, Daviplata y Bancolombia QR',
-      },
-    ],
-  },
-  {
-    name: 'Pro',
-    monthlyPrice: 179_000,
-    courtLimit: 8,
+    name: 'Mi Cancha',
+    monthlyPrice: 79_000,
+    courtLimit: 20,
+    pricedByCourts: true,
     benefits: [
       {
-        title: 'Hasta 8 canchas',
-        detail: 'Para complejos con varias disciplinas',
+        title: 'Todo el sistema incluido',
+        detail: 'El precio depende de las canchas contratadas',
       },
-      {
-        title: 'Validación de pagos',
-        detail: 'Nequi, Daviplata y Bancolombia QR',
-      },
-      { title: 'Reservas recurrentes', detail: 'Equipos fijos y torneos' },
     ],
   },
 ];
@@ -215,7 +191,9 @@ async function seedBase() {
 
 /** Negocio demo con canchas, reservas de hoy y pagos, más clientes y jugadores. */
 async function seedDemo() {
-  const pro = await prisma.plan.findUniqueOrThrow({ where: { name: 'Pro' } });
+  const mainPlan = await prisma.plan.findUniqueOrThrow({
+    where: { name: 'Mi Cancha' },
+  });
   const methodIds = Object.fromEntries(
     (await prisma.paymentMethod.findMany()).map((m) => [m.code, m.id]),
   );
@@ -259,10 +237,11 @@ async function seedDemo() {
 
   await prisma.subscription.upsert({
     where: { businessId: business.id },
-    update: { planId: pro.id, isActive: true },
+    update: { planId: mainPlan.id, courts: 8, isActive: true },
     create: {
       businessId: business.id,
-      planId: pro.id,
+      planId: mainPlan.id,
+      courts: 8,
       since: new Date('2026-03-01T00:00:00-05:00'),
       nextPayment: todayAt(0, 0, 18),
     },
@@ -510,15 +489,11 @@ async function seedDemo() {
     ],
   });
 
-  await seedDashboardDemo(pro.id);
+  await seedDashboardDemo(mainPlan.id);
 }
 
 /** Clientes y jugadores repartidos en los últimos meses, para ver el dashboard con datos. */
-async function seedDashboardDemo(proPlanId: string) {
-  const [free, basic] = await Promise.all([
-    prisma.plan.findUniqueOrThrow({ where: { name: 'Gratis' } }),
-    prisma.plan.findUniqueOrThrow({ where: { name: 'Básico' } }),
-  ]);
+async function seedDashboardDemo(mainPlanId: string) {
   const monthsAgo = (n: number) => {
     const d = new Date();
     d.setUTCMonth(d.getUTCMonth() - n);
@@ -532,7 +507,7 @@ async function seedDashboardDemo(proPlanId: string) {
       owner: 'Marcela Ruiz',
       name: 'Canchas del Norte',
       neighborhood: 'La Floresta',
-      planId: basic.id,
+      courts: 3,
       months: 4,
       active: true,
     },
@@ -541,7 +516,7 @@ async function seedDashboardDemo(proPlanId: string) {
       owner: 'Felipe Osorio',
       name: 'Pádel Club Florencia',
       neighborhood: 'El Centro',
-      planId: proPlanId,
+      courts: 8,
       months: 2,
       active: true,
     },
@@ -550,7 +525,7 @@ async function seedDashboardDemo(proPlanId: string) {
       owner: 'Jhon Cuéllar',
       name: 'La Bombonera',
       neighborhood: 'Los Pinos',
-      planId: free.id,
+      courts: 1,
       months: 1,
       active: true,
     },
@@ -559,7 +534,7 @@ async function seedDashboardDemo(proPlanId: string) {
       owner: 'Sandra Polanía',
       name: 'Multicanchas El Estadio',
       neighborhood: 'Juan XXIII',
-      planId: basic.id,
+      courts: 3,
       months: 0,
       active: false,
     },
@@ -589,7 +564,8 @@ async function seedDashboardDemo(proPlanId: string) {
         createdAt,
         subscription: {
           create: {
-            planId: c.planId,
+            planId: mainPlanId,
+            courts: c.courts,
             isActive: c.active,
             since: createdAt,
             nextPayment: todayAt(0, 0, 10),
