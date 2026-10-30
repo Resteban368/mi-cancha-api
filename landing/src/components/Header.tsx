@@ -18,20 +18,20 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-bg/80 backdrop-blur-md">
-      <nav className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-        <a href="#" aria-label="Mi Cancha, inicio">
-          <img src="/brand/logo-h-light.png" alt="Mi Cancha" width={220} height={40} className="h-10 w-auto dark:hidden" />
+      <nav className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+        <a href="#" aria-label="Mi Cancha, inicio" className="shrink-0">
+          <img src="/brand/logo-h-light.png" alt="Mi Cancha" width={176} height={32} className="h-8 w-auto dark:hidden" />
           <img
             src="/brand/logo-h-dark.png"
             alt=""
             aria-hidden="true"
-            width={220}
-            height={40}
-            className="hidden h-10 w-auto dark:block"
+            width={176}
+            height={32}
+            className="hidden h-8 w-auto dark:block"
           />
         </a>
 
-        <ul className="hidden items-center gap-6 text-sm font-semibold text-fg-2 xl:flex">
+        <ul className="hidden items-center gap-4 text-sm font-semibold whitespace-nowrap text-fg-2 xl:flex">
           {LINKS.map((l) => (
             <li key={l.href}>
               <a href={l.href} className="whitespace-nowrap hover:text-fg">
