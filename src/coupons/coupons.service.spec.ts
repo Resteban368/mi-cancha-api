@@ -269,3 +269,57 @@ describe('CouponsService: vistas del jugador', () => {
     expect(rows[0]).not.toHaveProperty('redeemedCount');
   });
 });
+
+describe('CouponsService.remove', () => {
+  let service: CouponsService;
+  let prisma: PrismaMock;
+
+  beforeEach(async () => {
+    prisma = createPrismaMock();
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        CouponsService,
+        { provide: PrismaService, useValue: prisma },
+        {
+          provide: ConfigService,
+          useValue: { getOrThrow: () => '-05:00', get: () => undefined },
+        },
+      ],
+    }).compile();
+    service = moduleRef.get(CouponsService);
+    prisma.coupon.findFirst.mockResolvedValue({
+      id: 'c-1',
+      imagePath: 'coupons/c-1/a.jpg',
+    });
+  });
+
+  it('borra un cupón sin bonos y devuelve su imagen', async () => {
+    prisma.couponCard.count.mockResolvedValue(0);
+    await expect(service.remove('b-1', 'c-1')).resolves.toBe(
+      'coupons/c-1/a.jpg',
+    );
+    expect(prisma.couponCard.count).toHaveBeenCalledWith({
+      where: {
+        couponId: 'c-1',
+        status: { in: [CouponCardStatus.EARNED, CouponCardStatus.REDEEMED] },
+      },
+    });
+    expect(prisma.coupon.delete).toHaveBeenCalledWith({ where: { id: 'c-1' } });
+  });
+
+  it('con bonos ganados o redimidos no lo borra', async () => {
+    prisma.couponCard.count.mockResolvedValue(1);
+    await expect(service.remove('b-1', 'c-1')).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+    expect(prisma.coupon.delete).not.toHaveBeenCalled();
+  });
+
+  it('no borra cupones de otro negocio', async () => {
+    prisma.coupon.findFirst.mockResolvedValue(null);
+    await expect(service.remove('b-2', 'c-1')).rejects.toThrow(
+      'El cupón no existe',
+    );
+    expect(prisma.coupon.delete).not.toHaveBeenCalled();
+  });
+});

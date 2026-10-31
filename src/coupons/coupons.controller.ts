@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Header,
+  HttpCode,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -125,6 +126,22 @@ export class CouponsController {
       id,
       dto,
     );
+  }
+
+  @Delete('coupons/:id')
+  @HttpCode(204)
+  @ApiOperation({
+    summary: 'Borrar un cupón sin bonos ganados ni redimidos',
+  })
+  async remove(
+    @CurrentUser() user: AuthPayload,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<void> {
+    const imagePath = await this.coupons.remove(
+      await this.businesses.requireBusinessId(user.sub),
+      id,
+    );
+    if (imagePath) await this.images.deleteQuietly(imagePath);
   }
 
   @Put('coupons/:id/image')

@@ -128,6 +128,28 @@ export class CouponsService {
     return toCouponDto(coupon, this.origin);
   }
 
+  /**
+   * Borra el cupón con el avance de sus clientes. Si ya hay bonos ganados o
+   * redimidos no se borra, para no quitarle el premio a nadie ni perder el
+   * historial: se desactiva. Devuelve la imagen que queda sin uso.
+   */
+  async remove(businessId: string, id: string): Promise<string | null> {
+    const coupon = await this.requireCoupon(businessId, id);
+    const bonuses = await this.prisma.couponCard.count({
+      where: {
+        couponId: id,
+        status: { in: [CouponCardStatus.EARNED, CouponCardStatus.REDEEMED] },
+      },
+    });
+    if (bonuses > 0) {
+      throw new ConflictException(
+        'Este cupón ya tiene bonos ganados o redimidos: no se puede borrar. Desactívalo para que no sume más reservas.',
+      );
+    }
+    await this.prisma.coupon.delete({ where: { id } });
+    return coupon.imagePath;
+  }
+
   async findOne(businessId: string, id: string): Promise<CouponDto> {
     return toCouponDto(await this.requireCoupon(businessId, id), this.origin);
   }

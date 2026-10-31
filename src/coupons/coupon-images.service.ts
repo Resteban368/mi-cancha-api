@@ -79,7 +79,7 @@ export class CouponImagesService {
   }
 
   /** Un archivo huérfano en el almacenamiento no debe tumbar la petición. */
-  private async deleteQuietly(path: string): Promise<void> {
+  async deleteQuietly(path: string): Promise<void> {
     try {
       await this.storage.delete(path);
     } catch (error) {
