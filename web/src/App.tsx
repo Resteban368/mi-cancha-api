@@ -4,6 +4,7 @@ import { ProfilePage } from './pages/ProfilePage';
 import { BusinessPage } from './pages/BusinessPage';
 import { DirectoryPage } from './pages/DirectoryPage';
 import { MyBookingsPage } from './pages/MyBookingsPage';
+import { MyCouponsPage } from './pages/MyCouponsPage';
 import { MyReservationsPage } from './pages/MyReservationsPage';
 import { MySitesPage } from './pages/MySitesPage';
 import { PolicyPage } from './pages/PolicyPage';
@@ -48,6 +49,7 @@ function AppRoutes() {
       <Route path="bienvenida" element={<WelcomePage />} />
       <Route path="perfil" element={<ProfilePage />} />
       <Route path="reservas" element={<MyBookingsPage />} />
+      <Route path="cupones" element={<MyCouponsPage />} />
       <Route path="mis-sedes" element={<MySitesPage />} />
       <Route path=":slug" element={<BusinessPage />} />
       <Route path=":slug/mis-reservas" element={<MyReservationsPage />} />

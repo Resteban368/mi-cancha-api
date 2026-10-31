@@ -45,6 +45,10 @@ import {
   type Sport,
 } from '../generated/prisma/enums.js';
 import { restoreStockForSales } from '../inventory/stock.js';
+import {
+  restoreRedeemedCoupon,
+  syncCouponStamps,
+} from '../coupons/coupon-stamps.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { saleInclude, toSaleDto } from '../sales/sales.service.js';
 import {
@@ -191,15 +195,18 @@ export class ReservationsService {
         'Una reserva cancelada no se puede modificar',
       );
     }
-    // En un grupo, el estado aplica a todas sus canchas.
-    await this.prisma.reservation.updateMany({
-      where: reservation.groupId
-        ? {
-            groupId: reservation.groupId,
-            status: { not: ReservationStatus.CANCELLED },
-          }
-        : { id: reservation.id },
-      data: { status: dto.status },
+    await this.prisma.$transaction(async (tx) => {
+      // En un grupo, el estado aplica a todas sus canchas.
+      await tx.reservation.updateMany({
+        where: reservation.groupId
+          ? {
+              groupId: reservation.groupId,
+              status: { not: ReservationStatus.CANCELLED },
+            }
+          : { id: reservation.id },
+        data: { status: dto.status },
+      });
+      await syncCouponStamps(tx, businessId, reservation.id);
     });
     return toReservationDto(await this.findOwned(businessId, reservation.id));
   }
@@ -925,6 +932,7 @@ export class ReservationsService {
       for (const member of members) {
         await this.cancelOne(tx, businessId, member, reason, actorId);
       }
+      await restoreRedeemedCoupon(tx, current.groupId ?? current.id);
       return tx.reservation.findUniqueOrThrow({
         where: { id: current.id },
         include: reservationInclude,

@@ -17,6 +17,7 @@ import {
   SaleStatus,
 } from '../generated/prisma/enums.js';
 import { restoreStockForSales, takeStockForSale } from '../inventory/stock.js';
+import { syncCouponStamps } from '../coupons/coupon-stamps.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
   CreateProductDto,
@@ -350,6 +351,10 @@ export class SalesService {
         });
       }
 
+      if (dto.reservationId) {
+        await syncCouponStamps(tx, businessId, dto.reservationId);
+      }
+
       return tx.sale.findUniqueOrThrow({
         where: { id: created.id },
         include: saleInclude,
@@ -401,6 +406,9 @@ export class SalesService {
         saleIds: [current.id],
         actor: { id: ownerId, name: null },
       });
+      if (current.reservationId) {
+        await syncCouponStamps(tx, businessId, current.reservationId);
+      }
       return current;
     });
     return toSaleDto(sale);

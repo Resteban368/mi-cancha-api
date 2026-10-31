@@ -38,6 +38,9 @@ export const PinIcon = icon(
     <circle cx="12" cy="9.5" r="2.5" />
   </>,
 );
+const TicketIcon = icon(
+  <path d="M3 9a2 2 0 0 0 0 6v3a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1v-3a2 2 0 0 1 0-4V6a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v3Zm11-4v2m0 4v2m0 4v2" />,
+);
 const StoreIcon = icon(
   <>
     <path d="M4 9 5.5 4h13L20 9" />
@@ -95,6 +98,12 @@ export function PitchHeader() {
                 Mis reservas
               </Link>
               <Link
+                to="/cupones"
+                className="hidden whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-semibold tracking-wide text-fg-2 transition hover:text-fg sm:block"
+              >
+                Mis cupones
+              </Link>
+              <Link
                 to="/mis-sedes"
                 className="whitespace-nowrap rounded-lg border border-accent/20 bg-accent/10 px-3 py-1.5 text-xs font-semibold tracking-wide text-accent-text transition active:scale-95"
               >
@@ -143,7 +152,7 @@ export function PitchBottomNav() {
       aria-label="Principal"
       className="fixed inset-x-0 bottom-0 z-40 border-t border-hairline bg-bg/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-md sm:hidden"
     >
-      <div className={`mx-auto grid max-w-md px-2 ${player ? 'grid-cols-4' : 'grid-cols-2'}`}>
+      <div className={`mx-auto grid max-w-md px-2 ${player ? 'grid-cols-5' : 'grid-cols-2'}`}>
         <NavLink to="/" end className={tab}>
           {({ isActive }) => (
             <>
@@ -158,6 +167,10 @@ export function PitchBottomNav() {
             <NavLink to="/reservas" className={tab}>
               <CalendarIcon className="size-5" />
               Mis reservas
+            </NavLink>
+            <NavLink to="/cupones" className={tab}>
+              <TicketIcon className="size-5" />
+              Cupones
             </NavLink>
             <NavLink to="/mis-sedes" className={tab}>
               <StoreIcon className="size-5" />

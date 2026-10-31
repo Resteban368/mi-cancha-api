@@ -519,6 +519,7 @@ export const RESERVED_SLUGS = [
   'bienvenida',
   'map',
   'mis-sedes',
+  'cupones',
   'politica-de-datos',
 ];
 

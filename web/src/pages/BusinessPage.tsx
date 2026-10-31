@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
+import { BusinessCoupons } from '../components/Coupons';
 import { CourtDetails } from '../components/CourtDetails';
 import { PhotoLightbox } from '../components/PhotoLightbox';
 import { ShimmerImage } from '../components/ShimmerImage';
@@ -113,7 +114,10 @@ export function BusinessPage() {
             <Skeleton className="h-64 rounded-2xl" />
           </>
         ) : business.data.bookingAvailable ? (
-          <Booking business={business.data} />
+          <>
+            <Booking business={business.data} />
+            <BusinessCoupons slug={slug} />
+          </>
         ) : (
           <Alert tone="warn">{UNAVAILABLE_MESSAGES[business.data.unavailableReason ?? 'DISABLED']}</Alert>
         )}

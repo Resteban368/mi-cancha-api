@@ -426,6 +426,46 @@ como sin plan activo (solo consulta) hasta que se le asigne uno."
     Int sizeBytes
     DateTime createdAt
   }
+  Coupon {
+    String id PK
+    String businessId FK
+    String name
+    Int requiredReservations
+    CouponRewardType rewardType
+    Int percent "opcional · Solo en PERCENT: de 1 a 100."
+    String rewardDescription "Texto del premio que ven el negocio y el jugador."
+    DateTime expiresAt "opcional · Desde esta fecha no suma reservas ni se puede redimir; null = no vence."
+    Int maxRedemptions "opcional · Tope de bonos a redimir entre todos los clientes; null = ilimitado."
+    Int redeemedCount
+    Boolean isActive "Inactivo: no suma reservas nuevas, pero los bonos ya ganados se pueden redimir."
+    DateTime createdAt
+    DateTime updatedAt
+  }
+  CouponCard {
+    String id PK
+    String couponId FK
+    String customerId FK
+    Int cycle
+    CouponCardStatus status
+    DateTime earnedAt "opcional"
+    DateTime redeemedAt "opcional"
+    String redemptionKey UK "opcional · groupId de la reserva, o su id si es de una sola cancha: una reserva admite un solo bono."
+    Int redeemedCourts "opcional"
+    Decimal redeemedAmount "opcional"
+    DateTime createdAt
+  }
+  CouponStamp {
+    String id PK
+    String couponId FK
+    String cardId FK
+    String reservationKey "groupId de la reserva, o su id si es de una sola cancha: un grupo suma una sola vez."
+    String reservationId FK "opcional"
+    Int courts
+    String[] courtNames
+    Decimal amount
+    DateTime playedAt
+    DateTime createdAt
+  }
   User ||--o| Business : "business"
   City |o--o{ Business : "businesses"
   Department ||--o{ City : "cities"
@@ -480,6 +520,12 @@ como sin plan activo (solo consulta) hasta que se le asigne uno."
   User ||--o{ Notification : "notifications"
   NotificationBroadcast |o--o{ Notification : "notifications"
   NotificationImage |o--o{ Notification : "notifications"
+  Business ||--o{ Coupon : "coupons"
+  Coupon ||--o{ CouponCard : "cards"
+  Customer ||--o{ CouponCard : "couponCards"
+  Coupon ||--o{ CouponStamp : "stamps"
+  CouponCard ||--o{ CouponStamp : "stamps"
+  Reservation |o--o{ CouponStamp : "couponStamps"
 ```
 
 **Leyenda:** PK llave primaria · FK llave foránea · UK única · `||` exactamente uno · `|o` cero o uno · `o{` cero o muchos · `}o--o{` muchos a muchos.
@@ -523,6 +569,7 @@ La sede deportiva de un cliente. Cada administrador de negocio tiene exactamente
 - **CashExpense**: Tiene cero o muchos CashExpense (campo cashExpenses). Cada CashExpense apunta a este Business.
 - **CashMovement**: Tiene cero o muchos CashMovement (campo cashMovements). Cada CashMovement apunta a este Business.
 - **StockMovement**: Tiene cero o muchos StockMovement (campo stockMovements). Cada StockMovement apunta a este Business.
+- **Coupon**: Tiene cero o muchos Coupon (campo coupons). Cada Coupon apunta a este Business.
 
 ### Department
 
@@ -600,6 +647,7 @@ Un turno reservado en una cancha. La crea el negocio desde la app (o un jugador,
 - **Payment**: Tiene cero o muchos Payment (campo payments). Cada Payment apunta a este Reservation.
 - **Refund**: Tiene cero o muchos Refund (campo refunds). Cada Refund apunta a este Reservation.
 - **Sale**: Tiene cero o muchos Sale (campo sales). Cada Sale apunta a este Reservation.
+- **CouponStamp**: Tiene cero o muchos CouponStamp (campo couponStamps). Cada CouponStamp apunta a este Reservation.
 
 ### ReservationGroup
 
@@ -620,6 +668,7 @@ guarda: se calcula con sus reservas.
 - **User**: Puede pertenecer a un User mediante userId; un User puede tener varios Customer. Si se borra el User, el Customer se conserva sin User.
 - **Reservation**: Tiene cero o muchos Reservation (campo reservations). Cada Reservation apunta a este Customer.
 - **Refund**: Tiene cero o muchos Refund (campo refunds). Cada Refund apunta a este Customer.
+- **CouponCard**: Tiene cero o muchos CouponCard (campo couponCards). Cada CouponCard apunta a este Customer.
 
 ### Refund
 
@@ -785,6 +834,30 @@ Imagen que acompaña a un aviso. El archivo vive en el almacenamiento (Koofr); a
 - **NotificationBroadcast**: Tiene cero o muchos NotificationBroadcast (campo broadcasts). Cada NotificationBroadcast apunta a este NotificationImage.
 - **Notification**: Tiene cero o muchos Notification (campo notifications). Cada Notification apunta a este NotificationImage.
 
+### Coupon
+
+Cupón de fidelidad que crea el negocio: cada N reservas jugadas y pagadas se gana un bono.
+
+- **Business**: Pertenece siempre a un Business mediante businessId; un Business puede tener varios Coupon. Si se borra el Business, se borran también sus Coupon.
+- **CouponCard**: Tiene cero o muchos CouponCard (campo cards). Cada CouponCard apunta a este Coupon.
+- **CouponStamp**: Tiene cero o muchos CouponStamp (campo stamps). Cada CouponStamp apunta a este Coupon.
+
+### CouponCard
+
+Tarjeta de un cliente en un cupón. Al redimirse, la siguiente reserva abre otra (cycle + 1).
+
+- **Coupon**: Pertenece siempre a un Coupon mediante couponId; un Coupon puede tener varios CouponCard. Si se borra el Coupon, se borran también sus CouponCard.
+- **Customer**: Pertenece siempre a un Customer mediante customerId; un Customer puede tener varios CouponCard. Si se borra el Customer, se borran también sus CouponCard.
+- **CouponStamp**: Tiene cero o muchos CouponStamp (campo stamps). Cada CouponStamp apunta a este CouponCard.
+
+### CouponStamp
+
+Una reserva jugada y pagada en una tarjeta, con sus datos para ver el historial al redimir.
+
+- **Coupon**: Pertenece siempre a un Coupon mediante couponId; un Coupon puede tener varios CouponStamp. Si se borra el Coupon, se borran también sus CouponStamp.
+- **CouponCard**: Pertenece siempre a un CouponCard mediante cardId; un CouponCard puede tener varios CouponStamp. Si se borra el CouponCard, se borran también sus CouponStamp.
+- **Reservation**: Puede pertenecer a un Reservation mediante reservationId; un Reservation puede tener varios CouponStamp. Si se borra el Reservation, el CouponStamp se conserva sin Reservation.
+
 ## Enums
 
 | Enum | Valores |
@@ -803,6 +876,8 @@ Imagen que acompaña a un aviso. El archivo vive en el almacenamiento (Koofr); a
 | `StockMovementType` | `ENTRADA`, `AJUSTE`, `VENTA`, `ANULACION` |
 | `AuditCategory` | `ADMIN`, `SECURITY` |
 | `NotificationType` | `NEW_RESERVATION`, `ADMIN_BROADCAST` |
+| `CouponRewardType` | `FREE_COURT`, `PERCENT` |
+| `CouponCardStatus` | `IN_PROGRESS`, `EARNED`, `REDEEMED` |
 
 ## Únicos compuestos
 
@@ -816,3 +891,5 @@ Imagen que acompaña a un aviso. El archivo vive en el almacenamiento (Koofr); a
 - Customer: (businessId, userId)
 - Product: (businessId, name)
 - Supplier: (businessId, name)
+- CouponCard: (couponId, customerId, cycle)
+- CouponStamp: (couponId, reservationKey)

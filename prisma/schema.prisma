@@ -191,6 +191,7 @@ model Business {
   cashExpenses      CashExpense[]
   cashMovements     CashMovement[]
   stockMovements    StockMovement[]
+  coupons           Coupon[]
 
   @@index([cityId])
 }
@@ -388,9 +389,10 @@ model Reservation {
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
 
-  payments Payment[]
-  refunds  Refund[]
-  sales    Sale[]
+  payments     Payment[]
+  refunds      Refund[]
+  sales        Sale[]
+  couponStamps CouponStamp[]
 
   @@index([businessId, start])
   @@index([customerId, status])
@@ -436,6 +438,7 @@ model Customer {
 
   reservations Reservation[]
   refunds      Refund[]
+  couponCards  CouponCard[]
 
   @@unique([businessId, phone])
   @@unique([businessId, documentId])
@@ -934,4 +937,91 @@ model NotificationImage {
 
   broadcasts    NotificationBroadcast[]
   notifications Notification[]
+}
+
+enum CouponRewardType {
+  /// Un turno gratis por cada cancha que el negocio decida regalar al redimir.
+  FREE_COURT
+  /// Porcentaje de descuento sobre el valor de la cancha.
+  PERCENT
+}
+
+enum CouponCardStatus {
+  IN_PROGRESS
+  /// Bono ganado sin usar: mientras tanto esa tarjeta no suma más reservas.
+  EARNED
+  REDEEMED
+}
+
+/// Cupón de fidelidad que crea el negocio: cada N reservas jugadas y pagadas se gana un bono.
+model Coupon {
+  id                   String           @id @default(uuid())
+  businessId           String
+  business             Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name                 String
+  requiredReservations Int
+  rewardType           CouponRewardType
+  /// Solo en PERCENT: de 1 a 100.
+  percent              Int?
+  /// Texto del premio que ven el negocio y el jugador.
+  rewardDescription    String
+  /// Desde esta fecha no suma reservas ni se puede redimir; null = no vence.
+  expiresAt            DateTime?
+  /// Tope de bonos a redimir entre todos los clientes; null = ilimitado.
+  maxRedemptions       Int?
+  redeemedCount        Int              @default(0)
+  /// Inactivo: no suma reservas nuevas, pero los bonos ya ganados se pueden redimir.
+  isActive             Boolean          @default(true)
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  cards  CouponCard[]
+  stamps CouponStamp[]
+
+  @@index([businessId, isActive])
+}
+
+/// Tarjeta de un cliente en un cupón. Al redimirse, la siguiente reserva abre otra (cycle + 1).
+model CouponCard {
+  id             String           @id @default(uuid())
+  couponId       String
+  coupon         Coupon           @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  customerId     String
+  customer       Customer         @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  cycle          Int              @default(1)
+  status         CouponCardStatus @default(IN_PROGRESS)
+  earnedAt       DateTime?
+  redeemedAt     DateTime?
+  /// groupId de la reserva, o su id si es de una sola cancha: una reserva admite un solo bono.
+  redemptionKey  String?          @unique
+  redeemedCourts Int?
+  redeemedAmount Decimal?         @db.Decimal(12, 2)
+  createdAt      DateTime         @default(now())
+
+  stamps CouponStamp[]
+
+  @@unique([couponId, customerId, cycle])
+  @@index([customerId, status])
+}
+
+/// Una reserva jugada y pagada en una tarjeta, con sus datos para ver el historial al redimir.
+model CouponStamp {
+  id             String       @id @default(uuid())
+  couponId       String
+  coupon         Coupon       @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  cardId         String
+  card           CouponCard   @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  /// groupId de la reserva, o su id si es de una sola cancha: un grupo suma una sola vez.
+  reservationKey String
+  reservationId  String?
+  reservation    Reservation? @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+  courts         Int
+  courtNames     String[]
+  amount         Decimal      @db.Decimal(12, 2)
+  playedAt       DateTime
+  createdAt      DateTime     @default(now())
+
+  @@unique([couponId, reservationKey])
+  @@index([cardId])
+  @@index([reservationKey])
 }

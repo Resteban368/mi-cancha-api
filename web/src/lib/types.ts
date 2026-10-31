@@ -223,3 +223,26 @@ export interface PlayerStats {
   byMonth: { month: string; played: number }[];
   next: { start: string; end: string; businessName: string; businessSlug: string; courtName: string } | null;
 }
+
+/** Cupón que ofrece una sede. */
+export interface PublicCoupon {
+  id: string;
+  name: string;
+  requiredReservations: number;
+  rewardDescription: string;
+  expiresAt: string | null;
+}
+
+/** Mi tarjeta en un cupón de una sede. */
+export interface PlayerCoupon {
+  couponId: string;
+  businessName: string;
+  businessSlug: string | null;
+  name: string;
+  rewardDescription: string;
+  status: 'IN_PROGRESS' | 'EARNED';
+  completed: number;
+  required: number;
+  remaining: number;
+  expiresAt: string | null;
+}

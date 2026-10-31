@@ -7,6 +7,7 @@ import { BusinessesService } from '../businesses/businesses.service.js';
 import { CatalogsService } from '../catalogs/catalogs.service.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import { PaymentStatus, SaleStatus } from '../generated/prisma/enums.js';
+import { syncCouponStamps } from '../coupons/coupon-stamps.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
   CreatePaymentDto,
@@ -142,20 +143,26 @@ export class PaymentsService {
     // La referencia es opcional: se guarda si el método la pide y la envían.
     const reference = dto.reference?.trim() || null;
 
-    const payment = await this.prisma.payment.create({
-      data: {
-        businessId,
-        reservationId: dto.reservationId,
-        customerName: dto.customerName,
-        amount: dto.amount,
-        methodId: method.id,
-        concept: dto.concept,
-        reference: method.requiresReference ? reference : null,
-        note: dto.note,
-        status: PaymentStatus.APPROVED,
-        registeredByBusiness: true,
-      },
-      include: paymentInclude,
+    const payment = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.payment.create({
+        data: {
+          businessId,
+          reservationId: dto.reservationId,
+          customerName: dto.customerName,
+          amount: dto.amount,
+          methodId: method.id,
+          concept: dto.concept,
+          reference: method.requiresReference ? reference : null,
+          note: dto.note,
+          status: PaymentStatus.APPROVED,
+          registeredByBusiness: true,
+        },
+        include: paymentInclude,
+      });
+      if (dto.reservationId) {
+        await syncCouponStamps(tx, businessId, dto.reservationId);
+      }
+      return created;
     });
     return this.toDto(businessId, payment);
   }
@@ -195,6 +202,12 @@ export class PaymentsService {
     if (!payment) throw new NotFoundException('El pago no existe');
     if (count === 0) {
       throw new ConflictException('El pago ya fue validado');
+    }
+    if (payment.status === PaymentStatus.APPROVED && payment.reservationId) {
+      const { reservationId } = payment;
+      await this.prisma.$transaction((tx) =>
+        syncCouponStamps(tx, businessId, reservationId),
+      );
     }
     return this.toDto(businessId, payment);
   }
