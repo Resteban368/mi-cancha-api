@@ -11,7 +11,6 @@ import {
   PitchBottomNav,
   PitchHeader,
   SearchIcon,
-  StarIcon,
   TuneIcon,
   VerifiedIcon,
 } from '../components/PitchChrome';
@@ -65,6 +64,7 @@ export function DirectoryPage() {
   const [term, setTerm] = useState('');
   const [sport, setSport] = useState<Sport | ''>('');
   const [amenity, setAmenity] = useState('');
+  const [onlyFavorites, setOnlyFavorites] = useState(false);
   const [city, setCity] = useState<SavedCity | null>(readCity);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [favorites, setFavorites] = useState<Set<string>>(readFavorites);
@@ -151,14 +151,20 @@ export function DirectoryPage() {
     });
   }
 
-  const hasFilters = Boolean(term || sport || amenity);
+  const hasFilters = Boolean(term || sport || amenity || onlyFavorites);
   const { businesses, total, page, loading, error } = listing;
+
+  const displayedBusinesses = useMemo(() => {
+    if (!onlyFavorites) return businesses;
+    return businesses.filter((b) => favorites.has(b.slug));
+  }, [businesses, onlyFavorites, favorites]);
 
   function clearFilters() {
     setSearch('');
     setTerm('');
     setSport('');
     setAmenity('');
+    setOnlyFavorites(false);
   }
 
   // Contadores por deporte en los resultados actuales
@@ -231,14 +237,17 @@ export function DirectoryPage() {
             </button>
           </div>
 
-          {/* Carrusel de Disciplinas Deportivas */}
+          {/* Carrusel de Disciplinas Deportivas y Favoritas */}
           <div className="space-y-2">
             <div className="flex items-center justify-between px-0.5 text-xs font-semibold text-fg-3">
               <span>Disciplinas deportivas</span>
-              {sport && (
+              {(sport || onlyFavorites) && (
                 <button
                   type="button"
-                  onClick={() => setSport('')}
+                  onClick={() => {
+                    setSport('');
+                    setOnlyFavorites(false);
+                  }}
                   className="font-bold text-accent-text transition hover:underline"
                 >
                   Ver todas
@@ -248,30 +257,63 @@ export function DirectoryPage() {
             <div
               className="no-scrollbar -mx-4 flex items-center gap-2 overflow-x-auto px-4 py-1"
               role="group"
-              aria-label="Deporte"
+              aria-label="Deporte y filtros rápidos"
             >
               <button
                 type="button"
-                aria-pressed={!sport}
-                onClick={() => setSport('')}
+                aria-pressed={!sport && !onlyFavorites}
+                onClick={() => {
+                  setSport('');
+                  setOnlyFavorites(false);
+                }}
                 className={
                   'flex shrink-0 items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition active:scale-95 ' +
-                  (!sport
+                  (!sport && !onlyFavorites
                     ? 'bg-accent text-accent-fg shadow-glow-accent'
                     : 'border border-hairline bg-surface text-fg-2 hover:border-fg-3')
                 }
               >
                 <span>Todos</span>
               </button>
+
+              {/* Botón Filtro Favoritas */}
+              <button
+                type="button"
+                aria-pressed={onlyFavorites}
+                onClick={() => setOnlyFavorites((prev) => !prev)}
+                className={
+                  'flex shrink-0 items-center gap-1.5 rounded-xl border px-3.5 py-2 text-xs font-semibold transition active:scale-95 ' +
+                  (onlyFavorites
+                    ? 'border-rose-500 bg-rose-500/15 text-rose-500 font-bold shadow-sm'
+                    : 'border-hairline bg-surface text-fg-2 hover:border-rose-400/40')
+                }
+              >
+                <HeartIcon filled={onlyFavorites} className={`size-3.5 ${onlyFavorites ? 'text-rose-500' : 'text-fg-3'}`} />
+                <span>Favoritas</span>
+                {favorites.size > 0 && (
+                  <span
+                    className={
+                      'rounded-full px-1.5 py-0.2 text-[10px] font-bold ' +
+                      (onlyFavorites ? 'bg-rose-500 text-white' : 'bg-surface-2 text-fg-3')
+                    }
+                  >
+                    {favorites.size}
+                  </span>
+                )}
+              </button>
+
               {(Object.keys(SPORT_LABELS) as Sport[]).map((code) => {
-                const isSelected = sport === code;
+                const isSelected = sport === code && !onlyFavorites;
                 const count = sportCounts[code];
                 return (
                   <button
                     key={code}
                     type="button"
                     aria-pressed={isSelected}
-                    onClick={() => setSport(code)}
+                    onClick={() => {
+                      setSport(code);
+                      setOnlyFavorites(false);
+                    }}
                     className={
                       'flex shrink-0 items-center gap-1.5 rounded-xl border px-3.5 py-2 text-xs font-semibold transition active:scale-95 ' +
                       (isSelected
@@ -365,8 +407,10 @@ export function DirectoryPage() {
           <div>
             Mostrando{' '}
             <strong className="font-extrabold text-fg">
-              {total} {total === 1 ? 'sede activa' : 'sedes activas'}
+              {displayedBusinesses.length}{' '}
+              {displayedBusinesses.length === 1 ? 'sede activa' : 'sedes activas'}
             </strong>
+            {onlyFavorites && ' (favoritas)'}
             {cityId && city ? ` en ${city.label}` : ''}
           </div>
           <div className="flex items-center gap-1 text-[11px] font-medium text-accent-text">
@@ -382,37 +426,51 @@ export function DirectoryPage() {
               <SkeletonCard key={i} />
             ))}
           </div>
-        ) : !error && businesses.length === 0 ? (
-          <Card className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="flex size-14 items-center justify-center rounded-2xl bg-surface-2 text-2xl mb-3 shadow-inner">
-              🔍
-            </div>
-            <p className="text-base font-bold text-fg">No encontramos sedes con esos filtros.</p>
-            <p className="mt-1 text-xs text-fg-3 max-w-xs">
-              Prueba cambiando la disciplina deportiva, el servicio o la ciudad seleccionada.
-            </p>
-            {hasFilters && (
-              <Button variant="secondary" className="mt-4" onClick={clearFilters}>
-                Limpiar filtros
+        ) : !error && displayedBusinesses.length === 0 ? (
+          onlyFavorites ? (
+            <Card className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="flex size-14 items-center justify-center rounded-2xl bg-rose-500/10 text-2xl mb-3 text-rose-500 shadow-inner">
+                <HeartIcon filled className="size-7 text-rose-500" />
+              </div>
+              <p className="text-base font-bold text-fg">No tienes sedes favoritas guardadas.</p>
+              <p className="mt-1 text-xs text-fg-3 max-w-xs">
+                Toca el corazón en cualquier sede para agregarla a tus favoritas y encontrarla fácilmente aquí.
+              </p>
+              <Button variant="secondary" className="mt-4" onClick={() => setOnlyFavorites(false)}>
+                Ver todas las sedes
               </Button>
-            )}
-          </Card>
+            </Card>
+          ) : (
+            <Card className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="flex size-14 items-center justify-center rounded-2xl bg-surface-2 text-2xl mb-3 shadow-inner">
+                🔍
+              </div>
+              <p className="text-base font-bold text-fg">No encontramos sedes con esos filtros.</p>
+              <p className="mt-1 text-xs text-fg-3 max-w-xs">
+                Prueba cambiando la disciplina deportiva, el servicio o la ciudad seleccionada.
+              </p>
+              {hasFilters && (
+                <Button variant="secondary" className="mt-4" onClick={clearFilters}>
+                  Limpiar filtros
+                </Button>
+              )}
+            </Card>
+          )
         ) : (
           <>
             <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {businesses.map((business, idx) => (
+              {displayedBusinesses.map((business) => (
                 <li key={business.slug}>
                   <BusinessCard
                     business={business}
                     member={memberSlugs.has(business.slug)}
                     favorite={favorites.has(business.slug)}
                     onToggleFavorite={() => toggleFavorite(business.slug)}
-                    index={idx}
                   />
                 </li>
               ))}
             </ul>
-            {businesses.length < total && (
+            {!onlyFavorites && businesses.length < total && (
               <div className="flex justify-center pt-2">
                 <Button variant="secondary" loading={loading} onClick={() => load(page + 1)}>
                   Ver más sedes
@@ -438,13 +496,11 @@ function BusinessCard({
   member,
   favorite,
   onToggleFavorite,
-  index,
 }: {
   business: DirectoryBusiness;
   member: boolean;
   favorite: boolean;
   onToggleFavorite: () => void;
-  index: number;
 }) {
   const {
     name,
@@ -465,10 +521,6 @@ function BusinessCard({
   const shownAmenities = amenities.slice(0, 3);
   const extraAmenities = amenities.length - shownAmenities.length;
   const courtsLabel = `${courtCount} ${courtCount === 1 ? 'cancha disponible' : 'canchas disponibles'}`;
-
-  // Calificación consistente basada en el índice para enriquecer la tarjeta
-  const ratingScore = index % 3 === 0 ? '4.9' : index % 2 === 0 ? '4.8' : '5.0';
-  const ratingCount = 28 + ((index * 37) % 110);
 
   return (
     <article className="group flex h-full flex-col overflow-hidden rounded-3xl border border-hairline bg-surface shadow-md dark:shadow-none transition-all hover:border-accent/50 hover:shadow-lg">
@@ -503,7 +555,8 @@ function BusinessCard({
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1 rounded-full bg-black/60 px-2.5 py-1 text-[10px] font-bold text-white backdrop-blur-md border border-white/20">
-                  <span>★ Sede verificada</span>
+                  <VerifiedIcon className="size-3 text-accent" />
+                  <span>Sede verificada</span>
                 </span>
               )}
               <span className="inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-md border border-white/20">
@@ -515,14 +568,20 @@ function BusinessCard({
             <button
               type="button"
               aria-label={favorite ? 'Quitar de favoritos' : 'Guardar en favoritos'}
+              aria-pressed={favorite}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 onToggleFavorite();
               }}
-              className="flex size-8 shrink-0 items-center justify-center rounded-full border border-white/20 bg-black/50 text-white backdrop-blur-md transition hover:text-rose-400 active:scale-90"
+              className={
+                'flex size-8 shrink-0 items-center justify-center rounded-full border backdrop-blur-md transition-all active:scale-90 ' +
+                (favorite
+                  ? 'border-rose-400 bg-rose-500 text-white shadow-lg shadow-rose-500/40 scale-105'
+                  : 'border-white/20 bg-black/50 text-white hover:text-rose-400 hover:bg-black/70 hover:scale-105')
+              }
             >
-              <HeartIcon filled={favorite} className={`size-4 ${favorite ? 'text-rose-500' : 'text-white'}`} />
+              <HeartIcon filled={favorite} className="size-4" />
             </button>
           </div>
 
@@ -545,29 +604,22 @@ function BusinessCard({
 
       {/* Contenido de la Tarjeta */}
       <div className="flex flex-1 flex-col gap-3 p-4">
-        {/* Título y Calificación */}
-        <div className="flex items-start justify-between gap-2">
-          <Link to={`/${slug}`} className="min-w-0 flex-1">
-            <h2 className="font-display text-base font-bold text-fg leading-snug group-hover:text-accent-text transition-colors line-clamp-1">
-              {name}
-            </h2>
-            <p className="mt-0.5 flex items-center gap-1 text-xs text-fg-3">
-              <PinIcon className="size-3.5 shrink-0 text-accent" />
-              <span className="truncate">
-                {city ? `${city.name} · ` : ''}
-                {neighborhood} · {address}
-                {distanceKm !== null && distanceKm !== undefined && (
-                  <span className="font-semibold text-accent-text"> ({distanceKm.toFixed(1)} km)</span>
-                )}
-              </span>
-            </p>
-          </Link>
-          <div className="flex shrink-0 items-center gap-1 rounded-xl border border-amber-500/20 bg-amber-500/10 px-2 py-1 text-xs font-extrabold text-amber-600 dark:text-amber-400">
-            <StarIcon filled className="size-3 text-amber-500" />
-            <span>{ratingScore}</span>
-            <span className="text-[10px] font-normal text-amber-600/80 dark:text-amber-300/80">({ratingCount})</span>
-          </div>
-        </div>
+        {/* Título y Ubicación */}
+        <Link to={`/${slug}`} className="min-w-0">
+          <h2 className="font-display text-base font-bold text-fg leading-snug group-hover:text-accent-text transition-colors line-clamp-1">
+            {name}
+          </h2>
+          <p className="mt-0.5 flex items-center gap-1 text-xs text-fg-3">
+            <PinIcon className="size-3.5 shrink-0 text-accent" />
+            <span className="truncate">
+              {city ? `${city.name} · ` : ''}
+              {neighborhood} · {address}
+              {distanceKm !== null && distanceKm !== undefined && (
+                <span className="font-semibold text-accent-text"> ({distanceKm.toFixed(1)} km)</span>
+              )}
+            </span>
+          </p>
+        </Link>
 
         {/* Banner de Fidelización / Beneficio */}
         <div className="flex items-center gap-1.5 rounded-xl border border-accent/25 bg-accent/10 px-2.5 py-1.5 text-[11px] font-bold text-accent-text shadow-sm">
@@ -637,12 +689,9 @@ function SkeletonCard() {
     <div className="flex h-full flex-col overflow-hidden rounded-3xl border border-hairline bg-surface shadow-sm">
       <Skeleton className="h-44 w-full rounded-none" />
       <div className="flex flex-1 flex-col gap-3 p-4">
-        <div className="flex items-start justify-between gap-2">
-          <div className="space-y-1.5 flex-1">
-            <Skeleton className="h-5 w-3/4 rounded-lg" />
-            <Skeleton className="h-3.5 w-1/2 rounded-md" />
-          </div>
-          <Skeleton className="size-8 rounded-xl" />
+        <div className="space-y-1.5">
+          <Skeleton className="h-5 w-3/4 rounded-lg" />
+          <Skeleton className="h-3.5 w-1/2 rounded-md" />
         </div>
         <Skeleton className="h-7 w-full rounded-xl" />
         <div className="flex gap-1.5">
