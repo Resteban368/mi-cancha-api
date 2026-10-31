@@ -178,50 +178,62 @@ export function DirectoryPage() {
     return counts;
   }, [businesses]);
 
+  // Solo los deportes que realmente existen en las canchas de las sedes
+  const availableSports = useMemo(() => {
+    return (Object.keys(SPORT_LABELS) as Sport[]).filter((code) => (sportCounts[code] ?? 0) > 0);
+  }, [sportCounts]);
+
+  // Si el deporte seleccionado ya no tiene sedes en esta búsqueda/ciudad, se limpia
+  useEffect(() => {
+    if (sport && !availableSports.includes(sport)) {
+      setSport('');
+    }
+  }, [sport, availableSports]);
+
   return (
     <>
       <PitchHeader cityLabel={city?.label ?? 'Todas las ciudades'} onCityClick={() => setDialogOpen(true)} />
-      <main className="mx-auto flex max-w-5xl flex-col gap-5 px-4 pb-28 pt-4 sm:pb-14">
+      <main className="mx-auto flex max-w-5xl flex-col gap-4 px-3.5 pb-28 pt-3 sm:gap-5 sm:px-4 sm:pb-14 sm:pt-4">
         {/* Cabecera Hero */}
-        <section className="space-y-1.5">
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-accent/25 bg-accent/10 px-3 py-1 text-[11px] font-bold tracking-wide text-accent-text uppercase shadow-sm">
+        <section className="space-y-1">
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-accent/25 bg-accent/10 px-2.5 py-0.5 text-[11px] font-bold tracking-wide text-accent-text uppercase shadow-sm">
             <span className="relative flex size-2">
               <span className="absolute inline-flex size-full animate-ping rounded-full bg-accent opacity-75" />
               <span className="relative inline-flex size-2 rounded-full bg-accent" />
             </span>
             Turnos en vivo · Hoy
           </div>
-          <h1 className="font-display text-2xl font-extrabold tracking-tight text-fg sm:text-3xl">
+          <h1 className="font-display text-xl sm:text-2xl font-extrabold tracking-tight text-fg">
             Reserva tu cancha
           </h1>
-          <p className="text-xs text-fg-3 sm:text-sm">
+          <p className="text-xs text-fg-3">
             Elige una sede para consultar disponibilidad y horarios en tiempo real
             {city?.label ? ` en ${city.label}.` : '.'}
           </p>
         </section>
 
         {/* Barra de Búsqueda y Filtros */}
-        <section className="flex flex-col gap-3" aria-label="Buscar y filtrar sedes">
+        <section className="flex flex-col gap-2.5" aria-label="Buscar y filtrar sedes">
           <div className="relative group">
             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-fg-3 group-focus-within:text-accent-text transition-colors">
-              <SearchIcon className="size-5" />
+              <SearchIcon className="size-4.5" />
             </div>
             <input
               type="text"
               inputMode="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar por sede, barrio o deporte..."
-              className="w-full rounded-2xl border border-hairline bg-surface-2 py-3 pl-11 pr-24 text-sm text-fg placeholder:text-fg-3 shadow-inner transition-all focus:border-accent focus:bg-surface focus:outline-none focus:ring-1 focus:ring-accent"
+              placeholder="Buscar sede, barrio o deporte..."
+              className="w-full rounded-2xl border border-hairline bg-surface-2 py-2.5 pl-10 pr-20 text-xs sm:text-sm text-fg placeholder:text-fg-3 shadow-inner transition-all focus:border-accent focus:bg-surface focus:outline-none focus:ring-1 focus:ring-accent"
             />
             {search ? (
               <button
                 type="button"
                 aria-label="Borrar búsqueda"
                 onClick={() => setSearch('')}
-                className="absolute right-12 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-lg text-fg-3 transition hover:text-fg"
+                className="absolute right-14 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-lg text-fg-3 transition hover:text-fg"
               >
-                <CloseIcon className="size-4" />
+                <CloseIcon className="size-3.5" />
               </button>
             ) : null}
             <button
@@ -238,7 +250,7 @@ export function DirectoryPage() {
           </div>
 
           {/* Carrusel de Disciplinas Deportivas y Favoritas */}
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <div className="flex items-center justify-between px-0.5 text-xs font-semibold text-fg-3">
               <span>Disciplinas deportivas</span>
               {(sport || onlyFavorites) && (
@@ -255,7 +267,7 @@ export function DirectoryPage() {
               )}
             </div>
             <div
-              className="no-scrollbar -mx-4 flex items-center gap-2 overflow-x-auto px-4 py-1"
+              className="no-scrollbar -mx-3.5 sm:-mx-4 flex items-center gap-2 overflow-x-auto px-3.5 sm:px-4 py-1"
               role="group"
               aria-label="Deporte y filtros rápidos"
             >
@@ -267,7 +279,7 @@ export function DirectoryPage() {
                   setOnlyFavorites(false);
                 }}
                 className={
-                  'flex shrink-0 items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition active:scale-95 ' +
+                  'flex shrink-0 items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition active:scale-95 ' +
                   (!sport && !onlyFavorites
                     ? 'bg-accent text-accent-fg shadow-glow-accent'
                     : 'border border-hairline bg-surface text-fg-2 hover:border-fg-3')
@@ -282,7 +294,7 @@ export function DirectoryPage() {
                 aria-pressed={onlyFavorites}
                 onClick={() => setOnlyFavorites((prev) => !prev)}
                 className={
-                  'flex shrink-0 items-center gap-1.5 rounded-xl border px-3.5 py-2 text-xs font-semibold transition active:scale-95 ' +
+                  'flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition active:scale-95 ' +
                   (onlyFavorites
                     ? 'border-rose-500 bg-rose-500/15 text-rose-500 font-bold shadow-sm'
                     : 'border-hairline bg-surface text-fg-2 hover:border-rose-400/40')
@@ -302,7 +314,8 @@ export function DirectoryPage() {
                 )}
               </button>
 
-              {(Object.keys(SPORT_LABELS) as Sport[]).map((code) => {
+              {/* Solo deportes disponibles en las sedes existentes */}
+              {availableSports.map((code) => {
                 const isSelected = sport === code && !onlyFavorites;
                 const count = sportCounts[code];
                 return (
@@ -315,7 +328,7 @@ export function DirectoryPage() {
                       setOnlyFavorites(false);
                     }}
                     className={
-                      'flex shrink-0 items-center gap-1.5 rounded-xl border px-3.5 py-2 text-xs font-semibold transition active:scale-95 ' +
+                      'flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition active:scale-95 ' +
                       (isSelected
                         ? 'border-accent bg-accent text-accent-fg shadow-glow-accent font-bold'
                         : 'border-hairline bg-surface text-fg-2 hover:border-accent/40')
@@ -343,17 +356,17 @@ export function DirectoryPage() {
             </div>
           </div>
 
-          {/* Filtros secundarios: Servicios y Ciudad */}
-          <div className="grid grid-cols-2 gap-2.5">
+          {/* Filtros secundarios: Servicios y Ciudad (diseño compacto en móvil) */}
+          <div className="grid grid-cols-2 gap-2">
             <label className="relative block">
               <span className="sr-only">Servicio o amenidad</span>
-              <div className="flex items-center justify-between rounded-xl border border-hairline bg-surface px-3.5 py-2.5 text-xs font-semibold text-fg-2 shadow-sm transition hover:border-accent/40">
+              <div className="flex items-center justify-between rounded-xl border border-hairline bg-surface px-3 py-2 text-xs font-semibold text-fg-2 shadow-sm transition hover:border-accent/40">
                 <div className="flex min-w-0 items-center gap-1.5 truncate">
                   <TuneIcon className="size-3.5 shrink-0 text-accent" />
                   <span className="truncate">
                     {amenity
                       ? amenities.data?.find((a) => a.code === amenity)?.name ?? 'Servicio'
-                      : 'Todos los servicios'}
+                      : 'Servicios'}
                   </span>
                 </div>
                 <ChevronDownIcon className="size-3.5 shrink-0 text-fg-3" />
@@ -378,7 +391,7 @@ export function DirectoryPage() {
               onClick={() => setDialogOpen(true)}
               aria-pressed={Boolean(cityId)}
               className={
-                'flex items-center justify-between rounded-xl border px-3.5 py-2.5 text-xs font-bold transition active:scale-95 shadow-sm ' +
+                'flex items-center justify-between rounded-xl border px-3 py-2 text-xs font-bold transition active:scale-95 shadow-sm ' +
                 (cityId
                   ? 'border-accent/40 bg-accent/15 text-accent-text hover:bg-accent/25'
                   : 'border-hairline bg-surface text-fg-2 hover:border-accent/40')
@@ -386,7 +399,7 @@ export function DirectoryPage() {
             >
               <div className="flex min-w-0 items-center gap-1.5 truncate">
                 <PinIcon className="size-3.5 shrink-0 text-accent" />
-                <span className="truncate">{city?.label ?? 'Elegir ciudad'}</span>
+                <span className="truncate">{city?.label ?? 'Ciudad'}</span>
               </div>
               <ChevronDownIcon className="size-3.5 shrink-0 text-fg-3" />
             </button>
