@@ -224,6 +224,19 @@ describe('CouponsService: vistas del jugador', () => {
     player([card(CouponCardStatus.IN_PROGRESS, 7)]);
     const [row] = await service.forPlayer('u-1', NOW);
     expect(row).toMatchObject({ completed: 7, required: 10, remaining: 3 });
+    expect(row.stamps).toHaveLength(7);
+    expect(row.stamps[0]).toEqual({ playedAt: NOW });
+  });
+
+  it('cuenta los bonos que ya usó el jugador', async () => {
+    prisma.couponCard.count.mockResolvedValue(4);
+    await expect(service.summaryForPlayer('u-1')).resolves.toEqual({
+      redeemed: 4,
+    });
+    expect(prisma.couponCard.count.mock.calls[0][0].where).toEqual({
+      status: CouponCardStatus.REDEEMED,
+      customer: { userId: 'u-1' },
+    });
   });
 
   it('un bono ganado no le deja reservas por llenar', async () => {

@@ -44,6 +44,7 @@ import {
   CreateCouponDto,
   CustomerCouponDto,
   PlayerCouponDto,
+  PlayerCouponSummaryDto,
   PublicCouponDto,
   RedeemCouponDto,
   UpdateCouponDto,
@@ -216,6 +217,12 @@ export class CouponsController {
 @Controller('player/coupons')
 export class PlayerCouponsController {
   constructor(private readonly coupons: CouponsService) {}
+
+  @Get('summary')
+  @ApiOperation({ summary: 'Cuántos bonos he usado en todas las sedes' })
+  summary(@CurrentUser() user: AuthPayload): Promise<PlayerCouponSummaryDto> {
+    return this.coupons.summaryForPlayer(user.sub);
+  }
 
   @Get()
   @ApiOperation({ summary: 'Mi avance en los cupones de cada negocio' })

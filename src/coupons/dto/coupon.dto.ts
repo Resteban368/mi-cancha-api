@@ -206,4 +206,11 @@ export class PlayerCouponDto {
   /** Reservas que faltan para ganar el bono; 0 si ya lo tiene. */
   remaining: number;
   expiresAt: Date | null;
+  /** Sellos de la tarjeta, del primero al último. */
+  stamps: { playedAt: Date }[];
+}
+
+export class PlayerCouponSummaryDto {
+  /** Bonos que el jugador ya usó, en todas las sedes. */
+  redeemed: number;
 }

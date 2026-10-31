@@ -205,3 +205,60 @@ h3,
     display: inline-block;
   }
 }
+
+/* Tarjetas de cupón: oscuras en ambos temas, como un pase físico que se voltea. */
+@theme {
+  --color-brand-dark: #081318;
+  --color-brand-surface: #0d1e24;
+  --color-brand-surface-light: #142931;
+  --color-brand-border: #1a3742;
+  --color-brand-lime: #ccff00;
+  --color-brand-neon: #00e599;
+  --color-brand-teal: #0f8b7a;
+}
+
+.flip-perspective {
+  perspective: 1200px;
+}
+
+.flip-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.65s cubic-bezier(0.4, 0.2, 0.2, 1);
+}
+
+.flip-inner.is-flipped {
+  transform: rotateY(180deg);
+}
+
+.flip-face {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 1.25rem;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+.flip-face-back {
+  transform: rotateY(180deg);
+}
+
+.bg-pitch-pattern {
+  background-image:
+    radial-gradient(circle at 50% 0%, rgba(0, 229, 153, 0.07) 0%, transparent 60%),
+    linear-gradient(to bottom, rgba(15, 139, 122, 0.05) 1px, transparent 1px),
+    linear-gradient(to right, rgba(15, 139, 122, 0.05) 1px, transparent 1px);
+  background-size:
+    100% 100%,
+    40px 40px,
+    40px 40px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flip-inner {
+    transition: none;
+  }
+}

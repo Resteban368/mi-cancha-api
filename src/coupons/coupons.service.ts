@@ -30,6 +30,7 @@ import {
   CreateCouponDto,
   CustomerCouponDto,
   PlayerCouponDto,
+  PlayerCouponSummaryDto,
   PublicCouponDto,
   RedeemCouponDto,
   UpdateCouponDto,
@@ -382,6 +383,16 @@ export class CouponsService {
     });
   }
 
+  async summaryForPlayer(userId: string): Promise<PlayerCouponSummaryDto> {
+    const redeemed = await this.prisma.couponCard.count({
+      where: {
+        status: CouponCardStatus.REDEEMED,
+        customer: { userId },
+      },
+    });
+    return { redeemed };
+  }
+
   /** Cupones que el negocio ofrece hoy: activos, vigentes y con cupo. */
   async publicForBusiness(
     slug: string,
@@ -461,6 +472,7 @@ export class CouponsService {
             required: row.required,
             remaining: earned ? 0 : Math.max(row.required - row.completed, 0),
             expiresAt: coupon.expiresAt,
+            stamps: row.stamps.map((s) => ({ playedAt: s.playedAt })),
           },
         ];
       });

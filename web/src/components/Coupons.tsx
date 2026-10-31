@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Link } from 'react-router';
 import { Card } from './ui';
 import { useSession } from '../lib/session';
 import type { PlayerCoupon, PublicCoupon } from '../lib/types';
@@ -140,34 +139,5 @@ export function BusinessCoupons({
     <div className="border-t border-border pt-3">{content}</div>
   ) : (
     <Card className="shadow-sm">{content}</Card>
-  );
-}
-
-/** Una tarjeta de "Mis cupones". */
-export function MyCouponCard({ card }: { card: PlayerCoupon }) {
-  return (
-    <article className="overflow-hidden rounded-2xl border border-border bg-surface shadow-sm">
-      <CouponImage url={card.imageUrl} />
-      <div className="p-4">
-        {card.businessSlug ? (
-          <Link
-            to={`/${card.businessSlug}`}
-            className="text-xs font-semibold text-accent-text hover:underline"
-          >
-            {card.businessName}
-          </Link>
-        ) : (
-          <p className="text-xs font-semibold text-fg-3">{card.businessName}</p>
-        )}
-        <h2 className="mt-0.5 text-base font-bold tracking-tight">
-          {card.name}
-        </h2>
-        <p className="mt-0.5 text-sm text-fg-2">{card.rewardDescription}</p>
-        <p className="mt-1 text-xs text-fg-3">{validUntil(card.expiresAt)}</p>
-        <div className="mt-3">
-          <CouponProgress card={card} />
-        </div>
-      </div>
-    </article>
   );
 }
