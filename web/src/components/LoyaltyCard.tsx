@@ -21,7 +21,7 @@ export function LoyaltyCard({ card }: { card: PlayerCoupon }) {
   const toggle = () => setFlipped((value) => !value);
 
   return (
-    <div className="flip-perspective h-[510px] w-full">
+    <div className="flip-perspective h-full w-full">
       <div className={`flip-inner cursor-pointer ${flipped ? 'is-flipped' : ''}`} onClick={toggle}>
         <div inert={flipped} className="flip-face">
           <Front card={card} onFlip={toggle} />
@@ -42,7 +42,7 @@ function Front({ card, onFlip }: { card: PlayerCoupon; onFlip: () => void }) {
 
   return (
     <div
-      className={`relative flex h-full flex-col justify-between rounded-[1.25rem] bg-gradient-to-b from-brand-surface to-[#0a181e] p-6 text-slate-100 shadow-lg shadow-black/40 ${
+      className={`relative flex h-full flex-col justify-between rounded-[1.25rem] bg-gradient-to-b from-brand-surface to-[#0a181e] p-4 text-slate-100 sm:p-6 shadow-lg shadow-black/40 ${
         near ? 'border-2 border-brand-neon/40' : 'border border-brand-border'
       }`}
     >
@@ -62,7 +62,7 @@ function Front({ card, onFlip }: { card: PlayerCoupon; onFlip: () => void }) {
           </span>
         )}
 
-        <div className="relative mt-4 flex h-36 w-full items-center justify-center overflow-hidden rounded-xl border border-brand-border/60 bg-gradient-to-tr from-brand-dark via-brand-surface-light to-[#122e3b]">
+        <div className="relative mt-3 flex h-24 w-full sm:mt-4 sm:h-36 items-center justify-center overflow-hidden rounded-xl border border-brand-border/60 bg-gradient-to-tr from-brand-dark via-brand-surface-light to-[#122e3b]">
           {card.imageUrl && !imageFailed ? (
             <img
               src={card.imageUrl}
@@ -74,21 +74,21 @@ function Front({ card, onFlip }: { card: PlayerCoupon; onFlip: () => void }) {
           ) : (
             <>
               <div className="absolute inset-0 bg-[radial-gradient(#00e599_1px,transparent_1px)] opacity-15 [background-size:16px_16px]" />
-              <div className="z-10 rounded-2xl border border-brand-neon/30 bg-brand-teal/30 p-3">
-                <TicketIcon className="size-9 text-brand-lime" />
+              <div className="relative rounded-2xl border border-brand-neon/30 bg-brand-teal/30 p-2 sm:p-3">
+                <TicketIcon className="size-7 text-brand-lime sm:size-9" />
               </div>
             </>
           )}
         </div>
 
-        <h2 className="mt-4 truncate text-2xl font-bold tracking-tight text-white">{card.name}</h2>
+        <h2 className="mt-3 truncate text-xl font-bold sm:mt-4 sm:text-2xl tracking-tight text-white">{card.name}</h2>
         <p className="mt-1 line-clamp-2 text-sm text-slate-300">{card.rewardDescription}</p>
         <p className="mt-2 text-xs font-medium text-brand-neon">
           {card.expiresAt ? `Válido hasta el ${expiryDate.format(new Date(card.expiresAt))}` : 'Sin vencimiento'}
         </p>
       </div>
 
-      <div className="relative mt-4 border-t border-brand-border/60 pt-3">
+      <div className="relative mt-3 border-t border-brand-border/60 pt-3 sm:mt-4">
         <div className="mb-2 flex items-center justify-between gap-3 text-xs font-bold">
           <span className={`flex items-center gap-1.5 ${near ? 'text-brand-lime' : 'text-slate-200'}`}>
             <BoltIcon className="size-3.5 shrink-0" />
@@ -111,10 +111,8 @@ function Front({ card, onFlip }: { card: PlayerCoupon; onFlip: () => void }) {
             style={{ width: `${percent}%` }}
           />
         </div>
-        <p className="mt-2 min-h-4 text-xs text-slate-300">
-          {earned ? 'Pídelo en la sede cuando vayas a pagar tu reserva.' : ''}
-        </p>
-        <div className="mt-1.5 flex items-center justify-between gap-2">
+        {earned && <p className="mt-2 text-xs text-slate-300">Pídelo en la sede cuando vayas a pagar tu reserva.</p>}
+        <div className="mt-2.5 flex items-center justify-between gap-2">
           <button
             type="button"
             onClick={(event) => {
@@ -138,8 +136,8 @@ function Back({ card, onFlip }: { card: PlayerCoupon; onFlip: () => void }) {
   const slots = Array.from({ length: card.required }, (_, i) => i);
 
   return (
-    <div className="flex h-full flex-col justify-between gap-3 rounded-[1.25rem] border-2 border-brand-lime bg-gradient-to-b from-[#0c222b] to-[#071318] p-5 text-slate-100 shadow-2xl sm:p-6">
-      <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex h-full flex-col justify-between gap-3 rounded-[1.25rem] border-2 border-brand-lime bg-gradient-to-b from-[#0c222b] to-[#071318] p-4 text-slate-100 shadow-2xl sm:p-6">
+      <div className="min-h-0">
         <div className="flex items-center justify-between gap-3 border-b border-brand-border pb-3">
           <div className="min-w-0">
             <span className="block text-xs font-bold uppercase tracking-wider text-brand-lime">Cartilla de sellos</span>
@@ -163,7 +161,7 @@ function Back({ card, onFlip }: { card: PlayerCoupon; onFlip: () => void }) {
           Se llena un sello por cada reserva jugada y pagada.
         </p>
         <ul
-          className={`grid min-h-0 flex-1 content-start overflow-y-auto pr-0.5 ${few ? 'grid-cols-3 gap-3' : 'grid-cols-5 gap-2 sm:gap-2.5'}`}
+          className={`grid max-h-52 content-start overflow-y-auto pr-0.5 ${few ? 'grid-cols-3 gap-3' : 'grid-cols-5 gap-1.5 sm:gap-2.5'}`}
           aria-label={`${card.completed} de ${card.required} sellos`}
         >
           {slots.map((i) => {

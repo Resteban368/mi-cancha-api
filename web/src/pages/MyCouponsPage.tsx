@@ -52,8 +52,8 @@ export function MyCouponsPage() {
         {coupons.error && <Alert>{coupons.error}</Alert>}
         {!coupons.data && !coupons.error && (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 lg:gap-8">
-            <Skeleton className="h-[510px] rounded-[1.25rem]" />
-            <Skeleton className="h-[510px] rounded-[1.25rem]" />
+            <Skeleton className="h-96 rounded-[1.25rem]" />
+            <Skeleton className="h-96 rounded-[1.25rem]" />
           </div>
         )}
         {coupons.data?.length === 0 && (
@@ -87,7 +87,7 @@ export function MyCouponsPage() {
             </div>
             <ul className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 lg:gap-8">
               {visible.map((card) => (
-                <li key={card.couponId}>
+                <li key={card.couponId} className="min-w-0">
                   <LoyaltyCard card={card} />
                 </li>
               ))}
