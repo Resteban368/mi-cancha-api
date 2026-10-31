@@ -4,7 +4,7 @@ import { BusinessCoupons } from '../components/Coupons';
 import { CourtDetails } from '../components/CourtDetails';
 import { PhotoLightbox } from '../components/PhotoLightbox';
 import { ShimmerImage } from '../components/ShimmerImage';
-import { BusinessHeader, ChevronRightIcon, CloseIcon, PinIcon } from '../components/PitchChrome';
+import { BusinessHeader, ChevronRightIcon, CloseIcon, PinIcon, AmenityIcon, VerifiedIcon } from '../components/PitchChrome';
 import { Alert, Button, Card, Dialog, inputClass, Skeleton } from '../components/ui';
 import { api, ApiError, errorMessage } from '../lib/api';
 import { accountPath, pendingBookingKey } from '../lib/next';
@@ -113,17 +113,149 @@ export function BusinessPage() {
             <Skeleton className="h-48 rounded-2xl" />
             <Skeleton className="h-64 rounded-2xl" />
           </>
-        ) : business.data.bookingAvailable ? (
-          <>
-            <Booking business={business.data} />
-            <BusinessCoupons slug={slug} />
-          </>
         ) : (
-          <Alert tone="warn">{UNAVAILABLE_MESSAGES[business.data.unavailableReason ?? 'DISABLED']}</Alert>
+          <>
+            <VenueHeroCard business={business.data} onInfo={() => setInfo(true)} />
+            {business.data.bookingAvailable ? (
+              <>
+                <Booking business={business.data} />
+                <BusinessCoupons slug={slug} />
+              </>
+            ) : (
+              <Alert tone="warn">{UNAVAILABLE_MESSAGES[business.data.unavailableReason ?? 'DISABLED']}</Alert>
+            )}
+          </>
         )}
       </main>
       {business.data && <VenueInfoDialog business={business.data} open={info} onClose={() => setInfo(false)} />}
     </>
+  );
+}
+
+/** Tarjeta destacada con la información principal de la sede: primera imagen, nombre, dirección y amenidades. */
+function VenueHeroCard({
+  business,
+  onInfo,
+}: {
+  business: PublicBusiness;
+  onInfo?: () => void;
+}) {
+  const photo = business.photos?.[0] || business.imageUrl;
+  const sports = business.sports ?? [];
+  const courtCount = business.courts?.length ?? 0;
+  const courtsLabel = `${courtCount} ${courtCount === 1 ? 'cancha disponible' : 'canchas disponibles'}`;
+
+  return (
+    <article className="overflow-hidden rounded-3xl border border-hairline bg-surface shadow-md dark:shadow-none transition-all">
+      {/* Primera Imagen / Portada de la Sede */}
+      <div className="relative h-44 sm:h-52 w-full overflow-hidden bg-surface-2 group">
+        {photo ? (
+          <ShimmerImage
+            src={photo}
+            alt={`Foto principal de ${business.name}`}
+            wrapperClassName="size-full"
+            className="size-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+        ) : (
+          <div className="flex size-full items-center justify-center bg-surface-2 text-5xl" aria-hidden>
+            🏟️
+          </div>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-bg/95 via-bg/30 to-transparent pointer-events-none" />
+
+        {/* Badges superiores sobre la imagen */}
+        <div className="absolute left-3 right-3 top-3 flex items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="inline-flex items-center gap-1 rounded-full bg-black/60 px-2.5 py-1 text-[10px] font-bold text-white backdrop-blur-md border border-white/20">
+              <VerifiedIcon className="size-3 text-accent" />
+              <span>Sede verificada</span>
+            </span>
+            {courtCount > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2.5 py-1 text-[10px] font-extrabold text-accent-fg shadow-sm">
+                <span>{courtsLabel}</span>
+              </span>
+            )}
+          </div>
+
+          {onInfo && (
+            <button
+              type="button"
+              onClick={onInfo}
+              className="flex items-center gap-1 rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-md border border-white/20 hover:bg-black/80 transition active:scale-95"
+            >
+              <span>+ Info sede</span>
+            </button>
+          )}
+        </div>
+
+        {/* Chips de Deportes sobre la imagen */}
+        {sports.length > 0 && (
+          <div className="absolute bottom-2.5 left-3 flex flex-wrap items-center gap-1.5">
+            {sports.map((code) => (
+              <span
+                key={code}
+                className="flex items-center gap-1 rounded-lg border border-hairline/60 bg-bg/85 px-2 py-0.5 text-[11px] font-medium text-fg backdrop-blur-md"
+              >
+                <span aria-hidden>{SPORT_EMOJI[code]}</span>
+                <span>{SPORT_LABELS[code]}</span>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Información del negocio: Nombre, Dirección y Amenidades */}
+      <div className="flex flex-col gap-2.5 p-4 sm:p-5">
+        <div className="flex flex-col gap-1">
+          <h1 className="font-display text-xl sm:text-2xl font-extrabold tracking-tight text-fg leading-tight">
+            {business.name}
+          </h1>
+          <div className="flex flex-wrap items-center gap-y-1 gap-x-3 text-xs text-fg-3">
+            <p className="flex items-center gap-1 text-fg-2">
+              <PinIcon className="size-3.5 shrink-0 text-accent" />
+              <span>
+                {business.neighborhood} · {business.address}
+              </span>
+            </p>
+            {business.mapsUrl && (
+              <a
+                href={business.mapsUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-0.5 font-semibold text-accent-text hover:underline"
+              >
+                <span>Ver en Maps</span>
+                <ChevronRightIcon className="size-3" />
+              </a>
+            )}
+          </div>
+        </div>
+
+        {/* Amenidades de la sede */}
+        {business.amenities && business.amenities.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[11px] text-fg-2">
+            {business.amenities.slice(0, 4).map((a) => (
+              <span
+                key={a.code}
+                className="flex items-center gap-1 rounded-lg border border-hairline bg-surface-2 px-2 py-0.5"
+              >
+                <AmenityIcon code={a.code} className="size-3 text-accent" />
+                <span>{a.name}</span>
+              </span>
+            ))}
+            {business.amenities.length > 4 && onInfo && (
+              <button
+                type="button"
+                onClick={onInfo}
+                className="rounded-lg border border-hairline bg-surface-2 px-1.5 py-0.5 font-bold text-fg-3 hover:text-fg"
+              >
+                +{business.amenities.length - 4} más
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </article>
   );
 }
 
