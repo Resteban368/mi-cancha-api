@@ -45,6 +45,7 @@ export const AUDIT_RULES: Record<string, AuditRule> = {
   'POST /admin/clients/:id/reservations/:reservationId/cancel': admin('reservation.cancelled', 'Reservation', 'reservationId'),
   'POST /admin/clients/:id/customers': admin('customer.created', 'Business'),
   'PATCH /admin/clients/:id/customers/:customerId': admin('customer.updated', 'Customer', 'customerId'),
+  'POST /admin/users/delete': admin('user.players_deleted', 'User'),
   'POST /admin/plans': admin('plan.created', 'Plan'),
   'PATCH /admin/plans/:id': admin('plan.updated', 'Plan'),
   'DELETE /admin/plans/:id': admin('plan.deleted', 'Plan'),

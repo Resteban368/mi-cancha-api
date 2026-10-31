@@ -3,6 +3,8 @@ import { Transform, Type } from 'class-transformer';
 import { MAX_PRICED_COURTS } from '../../common/plan-pricing.js';
 import {
   ArrayMaxSize,
+  ArrayMinSize,
+  ArrayUnique,
   IsArray,
   IsBoolean,
   IsEmail,
@@ -22,6 +24,7 @@ import {
   BookingLinkDto,
   BusinessPhotoDto,
 } from '../../businesses/dto/business.dto.js';
+import { IsBusinessName, NoMarkup } from '../../common/dto/business-name.js';
 import { PageQueryDto } from '../../common/dto/page.dto.js';
 import {
   PaymentConcept,
@@ -68,6 +71,7 @@ export class CreateClientDto {
   @IsString()
   @MinLength(2)
   @MaxLength(100)
+  @NoMarkup()
   fullName: string;
 
   /** @example contacto@golazo.co */
@@ -87,21 +91,21 @@ export class CreateClientDto {
   phone?: string;
 
   /** @example Complejo Deportivo El Golazo */
-  @IsString()
-  @MinLength(2)
-  @MaxLength(120)
+  @IsBusinessName()
   businessName: string;
 
   /** @example Calle 15 # 8-32 */
   @IsString()
   @MinLength(3)
   @MaxLength(200)
+  @NoMarkup()
   address: string;
 
   /** @example Barrio Centro */
   @IsString()
   @MinLength(2)
   @MaxLength(100)
+  @NoMarkup()
   neighborhood: string;
 
   /** Ciudad del negocio (GET /catalogs/departments/:id/cities); de ella sale el departamento. */
@@ -176,26 +180,27 @@ export class UpdateClientDto {
   cityId?: string;
 
   @IsOptional()
-  @IsString()
-  @MinLength(2)
-  @MaxLength(120)
+  @IsBusinessName()
   name?: string;
 
   @IsOptional()
   @IsString()
   @MinLength(3)
   @MaxLength(200)
+  @NoMarkup()
   address?: string;
 
   @IsOptional()
   @IsString()
   @MinLength(2)
   @MaxLength(100)
+  @NoMarkup()
   neighborhood?: string;
 
   @IsOptional()
   @IsString()
   @MaxLength(1000)
+  @NoMarkup()
   description?: string;
 
   @IsOptional()
@@ -210,6 +215,7 @@ export class UpdateClientOwnerDto {
   @IsString()
   @MinLength(2)
   @MaxLength(100)
+  @NoMarkup()
   fullName?: string;
 
   /** Con este correo inicia sesión el responsable; no puede repetirse. */
@@ -355,6 +361,23 @@ export class UsersQueryDto extends PageQueryDto {
   )
   @IsBoolean()
   banned?: boolean;
+}
+
+export class DeleteUsersDto {
+  /** Ids de los jugadores a eliminar (hasta 100 por vez). */
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(100)
+  @ArrayUnique()
+  @IsUUID('all', { each: true })
+  ids: string[];
+}
+
+export class DeleteUsersResultDto {
+  /** Jugadores eliminados. */
+  deleted: number;
+  /** Ids ignorados: no existen o no son jugadores (los negocios y super admins no se borran aquí). */
+  skipped: number;
 }
 
 export class AdminUserDto {

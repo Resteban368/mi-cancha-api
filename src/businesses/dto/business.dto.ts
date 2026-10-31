@@ -10,30 +10,32 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
+import { IsBusinessName, NoMarkup } from '../../common/dto/business-name.js';
 import { CityRefDto } from '../../catalogs/dto/location.dto.js';
 
 export class SaveBusinessDto {
   /** @example Complejo Deportivo El Golazo */
-  @IsString()
-  @MinLength(2)
-  @MaxLength(120)
+  @IsBusinessName()
   name: string;
 
   /** @example Calle 15 # 8-32 */
   @IsString()
   @MinLength(3)
   @MaxLength(200)
+  @NoMarkup()
   address: string;
 
   /** @example Barrio Centro */
   @IsString()
   @MinLength(2)
   @MaxLength(100)
+  @NoMarkup()
   neighborhood: string;
 
   @IsOptional()
   @IsString()
   @MaxLength(1000)
+  @NoMarkup()
   description?: string;
 
   /**

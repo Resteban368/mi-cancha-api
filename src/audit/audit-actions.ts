@@ -22,6 +22,7 @@ const security = (code: string, label: string): AuditActionInfo => ({
 export const AUDIT_ACTIONS: AuditActionInfo[] = [
   admin('client.created', 'Cliente creado'),
   admin('client.updated', 'Datos del cliente editados'),
+  admin('user.players_deleted', 'Jugadores eliminados'),
   admin('client.owner_updated', 'Responsable del cliente editado'),
   admin('client.deleted', 'Cliente eliminado'),
   admin('client.image_set', 'Foto del cliente cambiada'),

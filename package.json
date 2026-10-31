@@ -28,6 +28,7 @@
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
     "db:erd": "prisma generate",
+    "docs:api": "nest build && node scripts/api-docs.mjs",
     "build:admin": "npm --prefix admin run build",
     "build:web": "npm --prefix web run build",
     "admin:dev": "npm --prefix admin run dev",

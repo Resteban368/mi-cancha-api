@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { DeletePlayersDialog } from '../components/DeletePlayersDialog';
 import { BanUserDialog, UnbanUserDialog, type BanTarget } from '../components/BanDialogs';
-import { SearchIcon } from '../components/icons';
+import { SearchIcon, TrashIcon } from '../components/icons';
 import {
   Badge,
   Button,
@@ -36,6 +37,8 @@ export function UsersPage() {
   const [page, setPage] = useState(1);
   const [toBan, setToBan] = useState<BanTarget | null>(null);
   const [toUnban, setToUnban] = useState<BanTarget | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [toDelete, setToDelete] = useState<string[] | null>(null);
   const debouncedSearch = useDebounced(search.trim());
 
   const query = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) });
@@ -43,6 +46,21 @@ export function UsersPage() {
   if (status) query.set('banned', String(status === 'banned'));
   if (debouncedSearch) query.set('search', debouncedSearch);
   const users = useApi<Page<AdminUser & BanFields>>(`/admin/users?${query}`);
+
+  // Solo se pueden eliminar jugadores; la selección vale para la página que se está viendo.
+  const players = (users.data?.items ?? []).filter((u) => u.role === 'JUGADOR');
+  const allSelected = players.length > 0 && players.every((u) => selected.has(u.id));
+  const toggle = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
+  const toggleAll = () => setSelected(allSelected ? new Set() : new Set(players.map((u) => u.id)));
+  const changePage = (next: number) => {
+    setSelected(new Set());
+    setPage(next);
+  };
 
   return (
     <>
@@ -57,7 +75,7 @@ export function UsersPage() {
                 aria-pressed={role === f.value}
                 onClick={() => {
                   setRole(f.value);
-                  setPage(1);
+                  changePage(1);
                 }}
                 className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
                   role === f.value ? 'bg-surface text-fg shadow-sm' : 'text-fg-2 hover:text-fg'
@@ -78,7 +96,7 @@ export function UsersPage() {
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
-                setPage(1);
+                changePage(1);
               }}
             />
           </label>
@@ -88,7 +106,7 @@ export function UsersPage() {
             value={status}
             onChange={(e) => {
               setStatus(e.target.value as '' | 'banned' | 'active');
-              setPage(1);
+              changePage(1);
             }}
           >
             <option value="">Cualquier estado</option>
@@ -114,9 +132,34 @@ export function UsersPage() {
         ) : (
           users.data && (
             <>
+              {selected.size > 0 && (
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-accent-soft px-4 py-2.5 text-sm">
+                  <span className="font-medium text-fg">
+                    {selected.size === 1 ? '1 jugador seleccionado' : `${selected.size} jugadores seleccionados`}
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <Button size="sm" variant="secondary" onClick={() => setSelected(new Set())}>
+                      Quitar selección
+                    </Button>
+                    <Button size="sm" variant="danger" onClick={() => setToDelete([...selected])}>
+                      <TrashIcon width={14} height={14} /> Eliminar seleccionados
+                    </Button>
+                  </span>
+                </div>
+              )}
               <Table>
                 <thead>
                   <tr>
+                    <Th>
+                      <input
+                        type="checkbox"
+                        aria-label="Seleccionar todos los jugadores de la página"
+                        className="size-4 accent-[var(--accent)] disabled:opacity-40"
+                        checked={allSelected}
+                        disabled={players.length === 0}
+                        onChange={toggleAll}
+                      />
+                    </Th>
                     <Th>Nombre</Th>
                     <Th>Contacto</Th>
                     <Th>Rol</Th>
@@ -130,6 +173,17 @@ export function UsersPage() {
                 <tbody>
                   {users.data.items.map((user) => (
                     <tr key={user.id}>
+                      <Td>
+                        {user.role === 'JUGADOR' && (
+                          <input
+                            type="checkbox"
+                            aria-label={`Seleccionar a ${user.displayName}`}
+                            className="size-4 accent-[var(--accent)]"
+                            checked={selected.has(user.id)}
+                            onChange={() => toggle(user.id)}
+                          />
+                        )}
+                      </Td>
                       <Td>
                         <p className="font-medium">{user.displayName}</p>
                         {user.verified && <p className="text-xs text-fg-3">Verificado</p>}
@@ -180,13 +234,22 @@ export function UsersPage() {
                 page={users.data.page}
                 pageSize={users.data.pageSize}
                 total={users.data.total}
-                onChange={setPage}
+                onChange={changePage}
               />
             </>
           )
         )}
       </Card>
 
+      <DeletePlayersDialog
+        ids={toDelete}
+        onClose={() => setToDelete(null)}
+        onDone={() => {
+          setToDelete(null);
+          setSelected(new Set());
+          users.reload();
+        }}
+      />
       <BanUserDialog user={toBan} onClose={() => setToBan(null)} onDone={users.reload} />
       <UnbanUserDialog user={toUnban} onClose={() => setToUnban(null)} onDone={users.reload} />
     </>

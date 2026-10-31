@@ -8,6 +8,7 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
+import { IsBusinessName, NoMarkup } from '../../common/dto/business-name.js';
 import { UserRole } from '../../generated/prisma/enums.js';
 
 export class RegisterBusinessAdminDto {
@@ -15,6 +16,7 @@ export class RegisterBusinessAdminDto {
   @IsString()
   @MinLength(2)
   @MaxLength(100)
+  @NoMarkup()
   fullName: string;
 
   /** @example admin@golazo.co */
@@ -50,21 +52,21 @@ export class SignupBusinessDto extends OmitType(RegisterBusinessAdminDto, [
   phone: string;
 
   /** @example Cancha El Golazo */
-  @IsString()
-  @MinLength(2)
-  @MaxLength(120)
+  @IsBusinessName()
   businessName: string;
 
   /** @example Calle 10 # 5-20 */
   @IsString()
   @MinLength(3)
   @MaxLength(200)
+  @NoMarkup()
   address: string;
 
   /** @example Centro */
   @IsString()
   @MinLength(2)
   @MaxLength(120)
+  @NoMarkup()
   neighborhood: string;
 
   /** Ciudad del negocio (GET /catalogs/departments/:id/cities). */
@@ -114,6 +116,7 @@ export class AppleSignInDto {
   @IsOptional()
   @IsString()
   @MaxLength(100)
+  @NoMarkup()
   fullName?: string;
 }
 

@@ -70,6 +70,8 @@ Para regenerarlos a mano: `npm run db:erd`. No los edites directamente.
 
 ## Endpoints
 
+Documentación completa en [`docs/api/`](docs/api/README.md): guía de uso, referencia de endpoints, especificación OpenAPI y colección de Postman (`docs/api/mi-cancha.postman_collection.json`). Se regeneran con `npm run docs:api`.
+
 | Método | Ruta | Descripción |
 |---|---|---|
 | GET | `/health` | Estado de la API y de la BD |

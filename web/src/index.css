@@ -129,6 +129,14 @@ body {
   display: none;
 }
 
+@utility shadow-glow-accent {
+  box-shadow: 0 0 24px -4px rgba(0, 200, 83, 0.35);
+}
+
+@utility shadow-glow-teal {
+  box-shadow: 0 0 20px -2px rgba(15, 139, 122, 0.45);
+}
+
 /* Confirmación de reserva: check que se dibuja, ondas y entrada con rebote. */
 @keyframes pitch-pop {
   0% { transform: scale(0.6) translateY(20px); opacity: 0; }

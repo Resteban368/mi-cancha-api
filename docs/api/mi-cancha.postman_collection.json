@@ -1,0 +1,3706 @@
+{
+  "info": {
+    "name": "Mi Cancha API",
+    "description": "Colección generada desde la especificación OpenAPI (npm run docs:api). Empieza por «Salud y autenticación»: los logins guardan el token en businessToken, playerToken o adminToken, y los POST de creación guardan el id creado (courtId, customerId…). Para producción cambia baseUrl a https://mi-cancha-api.vercel.app/api/v1. Guía completa: docs/api/README.md.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// date por defecto: mañana en hora de Colombia (UTC-5), en formato YYYY-MM-DD.",
+          "if (!pm.collectionVariables.get('date')) {",
+          "  const tomorrow = new Date(Date.now() - 5 * 3600e3 + 24 * 3600e3);",
+          "  pm.variables.set('date', tomorrow.toISOString().slice(0, 10));",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Salud y autenticación",
+      "item": [
+        {
+          "name": "Estado de la API y de la base de datos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Estado de la API y de la base de datos",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": []
+        },
+        {
+          "name": "Registrar un administrador de negocio",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/business/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "business",
+                "register"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Registrar un administrador de negocio",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Juan Pérez\",\n  \"email\": \"admin@golazo.co\",\n  \"password\": \"MiCancha2026!\",\n  \"phone\": \"+57 300 123 4567\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code < 300) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.accessToken) pm.collectionVariables.set('businessToken', json.accessToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Iniciar sesión como negocio (email y contraseña) (guarda businessToken)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/business/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "business",
+                "login"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Iniciar sesión como negocio (email y contraseña)",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{businessEmail}}\",\n  \"password\": \"{{businessPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code < 300) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.accessToken) pm.collectionVariables.set('businessToken', json.accessToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Iniciar sesión como super admin (guarda adminToken)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/business/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "business",
+                "login"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Iniciar sesión como negocio (email y contraseña)",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code < 300) pm.collectionVariables.set('adminToken', pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Iniciar sesión como jugador con Google",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/google",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "google"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Iniciar sesión como jugador con Google",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idToken\": \"<idToken>\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": []
+        },
+        {
+          "name": "Iniciar sesión como jugador con Apple",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/apple",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "apple"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Iniciar sesión como jugador con Apple",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identityToken\": \"<identityToken>\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": []
+        },
+        {
+          "name": "Usuario autenticado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Usuario autenticado",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{businessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": []
+        }
+      ],
+      "auth": {
+        "type": "noauth"
+      }
+    },
+    {
+      "name": "Negocio (app y panel)",
+      "item": [
+        {
+          "name": "business / profile",
+          "item": [
+            {
+              "name": "Perfil del negocio (404 si aún no existe)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/business/profile",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "business",
+                    "profile"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "description": "Perfil del negocio (404 si aún no existe)"
+              },
+              "event": []
+            },
+            {
+              "name": "Crear o actualizar el perfil del negocio",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/business/profile",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "business",
+                    "profile"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "description": "Crear o actualizar el perfil del negocio",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Juan Pérez\",\n  \"address\": \"<address>\",\n  \"neighborhood\": \"<neighborhood>\",\n  \"latitude\": 4.6097,\n  \"longitude\": -74.0817,\n  \"amenities\": [\n    \"PARQUEADERO\",\n    \"WIFI\"\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": []
+            },
+            {
+              "name": "Subir o reemplazar la foto de portada (JPG o PNG, máx. 4 MB)",
+              "request": {
+                "method": "PUT",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/business/profile/image",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "business",
+                    "profile",
+                    "image"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "description": "Subir o reemplazar la foto de portada (JPG o PNG, máx. 4 MB)",
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "image",
+                      "type": "file",
+                      "src": [],
+                      "description": "JPG o PNG, máx. 4 MB"
+                    }
+                  ]
+                }
+              },
+              "event": []
+            },
+            {
+              "name": "Quitar la foto de portada",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/business/profile/image",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "business",
+                    "profile",
+                    "image"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "description": "Quitar la foto de portada"
+              },
+              "event": []
+            }
+          ]
+        },
+        {
+          "name": "catalogs",
+          "item": [
+            {
+              "name": "Servicios, métodos de pago y superficies de cancha activos (para la app)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/catalogs",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "catalogs"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "description": "Servicios, métodos de pago y superficies de cancha activos (para la app)"
+              },
+              "event": []
+            }
+          ]
+        },
+        {
+          "name": "business / courts",
+          "item": [
+            {
+              "name": "Listar las canchas del negocio",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/business/courts",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "business",
+                    "courts"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "description": "Listar las canchas del negocio"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code < 300) {",
+                      "  const json = pm.response.json();",
+                      "  if ((Array.isArray(json) ? json : json.items)?.[0]?.id && !pm.collectionVariables.get('courtId')) pm.collectionVariables.set('courtId', (Array.isArray(json) ? json : json.items)?.[0]?.id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Crear una cancha con horarios y tarifas (respeta el límite del plan; las fotos se suben después)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/business/courts",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "business",
+                    "courts"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "description": "Crear una cancha con horarios y tarifas (respeta el límite del plan; las fotos se suben después)",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"sport\": \"FUTBOL\",\n  \"surface\": \"GRAMA_SINTETICA\",\n  \"lengthMeters\": 42,\n  \"widthMeters\": 25,\n  \"playersPerSide\": 5,\n  \"name\": \"Cancha 1\",\n  \"isCovered\": true,\n  \"currency\": \"COP\",\n  \"basePricePerHour\": 80000,\n  \"schedules\": [\n    {\n      \"dayOfWeek\": \"MONDAY\",\n      \"isOpen\": true,\n      \"openTime\": \"06:00\",\n      \"closeTime\": \"23:00\"\n    },\n    {\n      \"dayOfWeek\": \"TUESDAY\",\n      \"isOpen\": true,\n      \"openTime\": \"06:00\",\n      \"closeTime\": \"23:00\"\n    },\n    {\n      \"dayOfWeek\": \"WEDNESDAY\",\n      \"isOpen\": true,\n      \"openTime\": \"06:00\",\n      \"closeTime\": \"23:00\"\n    },\n    {\n      \"dayOfWeek\": \"THURSDAY\",\n      \"isOpen\": true,\n      \"openTime\": \"06:00\",\n      \"closeTime\": \"23:00\"\n    },\n    {\n      \"dayOfWeek\": \"FRIDAY\",\n      \"isOpen\": true,\n      \"openTime\": \"06:00\",\n      \"closeTime\": \"23:00\"\n    },\n    {\n      \"dayOfWeek\": \"SATURDAY\",\n      \"isOpen\": true,\n      \"openTime\": \"06:00\",\n      \"closeTime\": \"23:00\"\n    },\n    {\n      \"dayOfWeek\": \"SUNDAY\",\n      \"isOpen\": true,\n      \"openTime\": \"06:00\",\n      \"closeTime\": \"23:00\"\n    }\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code < 300) {",
+                      "  const json = pm.response.json();",
+                      "  if (json.id) pm.collectionVariables.set('courtId', json.id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Detalle de una cancha",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/business/courts/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "business",
+                    "courts",
+                    ":id"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{courtId}}"
+                    }
+                  ]
+                },
+                "description": "Detalle de una cancha"
+              },
+              "event": []
+            },
+            {
+              "name": "Actualizar, activar o desactivar una cancha (schedules y rates reemplazan la lista completa)",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/business/courts/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "business",
+                    "courts",
+                    ":id"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{courtId}}"
+                    }
+                  ]
+                },
+                "description": "Actualizar, activar o desactivar una cancha (schedules y rates reemplazan la lista completa)",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"surface\": \"GRAMA_SINTETICA\",\n  \"lengthMeters\": 42,\n  \"widthMeters\": 25,\n  \"playersPerSide\": 5,\n  \"currency\": \"COP\",\n  \"basePricePerHour\": 80000\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": []
+            },
+            {
+              "name": "Desactivar una cancha",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/business/courts/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "business",
+                    "courts",
+                    ":id"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{courtId}}"
+                    }
+                  ]
+                },
+                "description": "Desactivar una cancha"
+              },
+              "event": []
+            },
+            {
+              "name": "Subir o reemplazar la foto de una posición (JPG o PNG, máx. 4 MB)",
+              "request": {
+                "method": "PUT",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/business/courts/:id/photos/:slot",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "business",
+                    "courts",
+                    ":id",
+                    "photos",
+                    ":slot"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{courtId}}"
+                    },
+                    {
+                      "key": "slot",
+                      "value": "{{photoSlot}}",
+                      "description": "Uno de: MAIN, SURFACE, LIGHTING, EXTRA_1, EXTRA_2"
+                    }
+                  ]
+                },
+                "description": "Subir o reemplazar la foto de una posición (JPG o PNG, máx. 4 MB)",
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "image",
+                      "type": "file",
+                      "src": [],
+                      "description": "JPG o PNG, máx. 4 MB"
+                    }
+                  ]
+                }
+              },
+              "event": []
+            },
+            {
+              "name": "Quitar la foto de una posición",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/business/courts/:id/photos/:slot",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "business",
+                    "courts",
+                    ":id",
+                    "photos",
+                    ":slot"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{courtId}}"
+                    },
+                    {
+                      "key": "slot",
+                      "value": "{{photoSlot}}",
+                      "description": "Uno de: MAIN, SURFACE, LIGHTING, EXTRA_1, EXTRA_2"
+                    }
+                  ]
+                },
+                "description": "Quitar la foto de una posición"
+              },
+              "event": []
+            }
+          ]
+        },
+        {
+          "name": "business / reservations",
+          "item": [
+            {
+              "name": "Reservas del negocio: con date, la agenda de ese día (lista); sin date, todas paginadas (más recientes primero)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/business/reservations",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "business",
+                    "reservations"
+                  ],
+                  "query": [
+                    {
+                      "key": "status",
+                      "value": "CONFIRMED",
+                      "disabled": true
+                    },
+                    {
+                      "key": "source",
+                      "value": "BUSINESS",
+                      "description": "BUSINESS o WEB (reservas hechas por jugadores desde el link).",
+                      "disabled": true
+                    },
+                    {
+                      "key": "date",
+                      "value": "{{date}}",
+                      "description": "Un día en hora del negocio.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "from",
+                      "value": "2026-10-01",
+                      "description": "Desde este día, inclusive.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "to",
+                      "value": "2026-10-31",
+                      "description": "Hasta este día, inclusive.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "courtId",
+                      "value": "{{courtId}}",
+                      "disabled": true
+                    },
+                    {
+                      "key": "customerId",
+                      "value": "{{customerId}}",
+                      "disabled": true
+                    },
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "disabled": true
+                    },
+                    {
+                      "key": "pageSize",
+                      "value": "20",
+                      "disabled": true
+                    },
+                    {
+                      "key": "search",
+                      "value": "<search>",
+                      "description": "Texto a buscar (nombre, email, teléfono…).",
+                      "disabled": true
+                    }
+                  ],
+                  "variable": []
+                },
+                "description": "Reservas del negocio: con date, la agenda de ese día (lista); sin date, todas paginadas (más recientes primero)"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code < 300) {",
+                      "  const json = pm.response.json();",
+                      "  if ((Array.isArray(json) ? json : json.items)?.[0]?.id && !pm.collectionVariables.get('reservationId')) pm.collectionVariables.set('reservationId', (Array.isArray(json) ? json : json.items)?.[0]?.id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Reservar turnos seguidos con cliente (existente o nuevo), descuento y pago opcional",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/business/reservations",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "business",
+                    "reservations"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "description": "Reservar turnos seguidos con cliente (existente o nuevo), descuento y pago opcional",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"start\": \"2026-10-20T19:00:00-05:00\",\n  \"slots\": 2,\n  \"customer\": {\n    \"name\": \"Juan Pérez\",\n    \"phone\": \"+57 300 123 4567\",\n    \"documentId\": \"1.117.523.456\"\n  },\n  \"customerDetail\": \"Equipo Los Halcones\",\n  \"tag\": \"Torneo\",\n  \"discount\": 10000,\n  \"payment\": {\n    \"amount\": 50000,\n    \"method\": \"NEQUI\",\n    \"reference\": \"M4829310\"\n  },\n  \"courtId\": \"{{courtId}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code < 300) {",
+                      "  const json = pm.response.json();",
+                      "  if (json.id) pm.collectionVariables.set('reservationId', json.id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Turnos de un día de todas las canchas reservables de un deporte (una tarjeta por cancha)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/business/availability?sport=FUTBOL&date={{date}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "business",
+                    "availability"
+                  ],
+                  "query": [
+                    {
+                      "key": "sport",
+                      "value": "FUTBOL",
+                      "disabled": false
+                    },
+                    {
+                      "key": "date",
+                      "value": "{{date}}",
+                      "description": "Día en la zona horaria del negocio.",
+                      "disabled": false
+                    }
+                  ],
+                  "variable": []
+                },
+                "description": "Turnos de un día de todas las canchas reservables de un deporte (una tarjeta por cancha)"
+              },
+              "event": []
+            },
+            {
+              "name": "Detalle de una reserva",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/business/reservations/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "business",
+                    "reservations",
+                    ":id"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{reservationId}}"
+                    }
+                  ]
+                },
+                "description": "Detalle de una reserva"
+              },
+              "event": []
+            },
+            {
+              "name": "Cancelar una reserva confirmada con su motivo (libera el turno y devuelve los pagos)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/business/reservations/:id/cancel",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "business",
+                    "reservations",
+                    ":id",
+                    "cancel"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{reservationId}}"
+                    }
+                  ]
+                },
+                "description": "Cancelar una reserva confirmada con su motivo (libera el turno y devuelve los pagos)",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reason\": \"El cliente pidió cancelar\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": []
+            },
+            {
+              "name": "Marcar como confirmada, jugada (COMPLETED) o no asistió (NO_SHOW)",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/business/reservations/:id/status",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "business",
+                    "reservations",
+                    ":id",
+                    "status"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{reservationId}}"
+                    }
+                  ]
+                },
+                "description": "Marcar como confirmada, jugada (COMPLETED) o no asistió (NO_SHOW)",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"CONFIRMED\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": []
+            },
+            {
+              "name": "Turnos de un día con su estado (AVAILABLE, BOOKED, PAST) y precio",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/business/courts/:id/availability?date={{date}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "business",
+                    "courts",
+                    ":id",
+                    "availability"
+                  ],
+                  "query": [
+                    {
+                      "key": "date",
+                      "value": "{{date}}",
+                      "description": "Día en la zona horaria del negocio.",
+                      "disabled": false
+                    }
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{courtId}}"
+                    }
+                  ]
+                },
+                "description": "Turnos de un día con su estado (AVAILABLE, BOOKED, PAST) y precio"
+              },
+              "event": []
+            }
+          ]
+        },
+        {
+          "name": "business / customers",
+          "item": [
+            {
+              "name": "Clientes: con page, la cartera paginada con métricas, resumen, filtros (segment) y orden (sort); sin page, búsqueda rápida (máx. 20)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/business/customers",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "business",
+                    "customers"
+                  ],
+                  "query": [
+                    {
+                      "key": "segment",
+                      "value": "ALL",
+                      "description": "ALL todos · LOYAL frecuentes y VIP · WITH_BALANCE con saldo por cobrar ·\nNEW registrados en los últimos 30 días.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "sort",
+                      "value": "MOST_RESERVATIONS",
+                      "description": "Por defecto MOST_RESERVATIONS.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "disabled": true
+                    },
+                    {
+                      "key": "pageSize",
+                      "value": "1",
+                      "disabled": true
+                    },
+                    {
+                      "key": "search",
+                      "value": "<search>",
+                      "description": "Texto a buscar (nombre, teléfono o cédula).",
+                      "disabled": true
+                    }
+                  ],
+                  "variable": []
+                },
+                "description": "Clientes: con page, la cartera paginada con métricas, resumen, filtros (segment) y orden (sort); sin page, búsqueda rápida (máx. 20)"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code < 300) {",
+                      "  const json = pm.response.json();",
+                      "  if ((Array.isArray(json) ? json : json.items)?.[0]?.id && !pm.collectionVariables.get('customerId')) pm.collectionVariables.set('customerId', (Array.isArray(json) ? json : json.items)?.[0]?.id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Registrar un cliente sin reserva",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/business/customers",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "business",
+                    "customers"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "description": "Registrar un cliente sin reserva",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Juan Pérez\",\n  \"phone\": \"+57 300 123 4567\",\n  \"documentId\": \"1.117.523.456\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code < 300) {",
+                      "  const json = pm.response.json();",
+                      "  if (json.id) pm.collectionVariables.set('customerId', json.id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Ficha del cliente con sus reservas y pagos en detalle",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/business/customers/:customerId",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "business",
+                    "customers",
+                    ":customerId"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "key": "customerId",
+                      "value": "{{customerId}}"
+                    }
+                  ]
+                },
+                "description": "Ficha del cliente con sus reservas y pagos en detalle"
+              },
+              "event": []
+            },
+            {
+              "name": "Editar nombre, teléfono, cédula, deporte habitual o notas (el nivel es automático)",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/business/customers/:customerId",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "business",
+                    "customers",
+                    ":customerId"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "key": "customerId",
+                      "value": "{{customerId}}"
+                    }
+                  ]
+                },
+                "description": "Editar nombre, teléfono, cédula, deporte habitual o notas (el nivel es automático)",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"documentId\": \"1.117.523.456\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": []
+            }
+          ]
+        },
+        {
+          "name": "business / refunds",
+          "item": [
+            {
+              "name": "Devoluciones del negocio (más recientes primero)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/business/refunds",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "business",
+                    "refunds"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "description": "Devoluciones del negocio (más recientes primero)"
+              },
+              "event": []
+            }
+          ]
+        },
+        {
+          "name": "business / dashboard",
+          "item": [
+            {
+              "name": "Métricas del negocio en un período: reservas, ingresos, ocupación, días y horas con más movimiento, top 5 clientes, métodos de pago y deportes",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/business/dashboard",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "business",
+                    "dashboard"
+                  ],
+                  "query": [
+                    {
+                      "key": "period",
+                      "value": "TODAY",
+                      "description": "Por defecto TODAY. Con CUSTOM, `from` y `to` son obligatorios (máx. 366 días).",
+                      "disabled": true
+                    },
+                    {
+                      "key": "sport",
+                      "value": "FUTBOL",
+                      "description": "Solo canchas de este deporte.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "from",
+                      "value": "<from>",
+                      "description": "Primer día, inclusive (YYYY-MM-DD, hora del negocio). Solo con CUSTOM.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "to",
+                      "value": "<to>",
+                      "description": "Último día, inclusive. Solo con CUSTOM.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "courtId",
+                      "value": "{{courtId}}",
+                      "description": "Solo esta cancha.",
+                      "disabled": true
+                    }
+                  ],
+                  "variable": []
+                },
+                "description": "Métricas del negocio en un período: reservas, ingresos, ocupación, días y horas con más movimiento, top 5 clientes, métodos de pago y deportes"
+              },
+              "event": []
+            }
+          ]
+        },
+        {
+          "name": "business / online booking",
+          "item": [
+            {
+              "name": "Link público de reservas y si está activo",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/business/online-booking",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "business",
+                    "online-booking"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "description": "Link público de reservas y si está activo"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code < 300) {",
+                      "  const json = pm.response.json();",
+                      "  if (json.slug) pm.collectionVariables.set('slug', json.slug);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Activar o desactivar el link, o cambiar su slug",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/business/online-booking",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "business",
+                    "online-booking"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "description": "Activar o desactivar el link, o cambiar su slug",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"slug\": \"complejo-el-golazo\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": []
+            }
+          ]
+        },
+        {
+          "name": "business / payments",
+          "item": [
+            {
+              "name": "Listar pagos (filtrables por estado)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/business/payments",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "business",
+                    "payments"
+                  ],
+                  "query": [
+                    {
+                      "key": "status",
+                      "value": "PENDING",
+                      "disabled": true
+                    }
+                  ],
+                  "variable": []
+                },
+                "description": "Listar pagos (filtrables por estado)"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code < 300) {",
+                      "  const json = pm.response.json();",
+                      "  if ((Array.isArray(json) ? json : json.items)?.[0]?.id && !pm.collectionVariables.get('paymentId')) pm.collectionVariables.set('paymentId', (Array.isArray(json) ? json : json.items)?.[0]?.id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Registrar un pago recibido por el negocio",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/business/payments",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "business",
+                    "payments"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "description": "Registrar un pago recibido por el negocio",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"concept\": \"ANTICIPO\",\n  \"customerName\": \"<customerName>\",\n  \"amount\": 60000,\n  \"method\": \"NEQUI\",\n  \"reference\": \"M4829310\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": []
+            },
+            {
+              "name": "Aprobar un pago pendiente",
+              "request": {
+                "method": "PATCH",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/business/payments/:id/approve",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "business",
+                    "payments",
+                    ":id",
+                    "approve"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{paymentId}}"
+                    }
+                  ]
+                },
+                "description": "Aprobar un pago pendiente"
+              },
+              "event": []
+            },
+            {
+              "name": "Rechazar un pago pendiente",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/business/payments/:id/reject",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "business",
+                    "payments",
+                    ":id",
+                    "reject"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{paymentId}}"
+                    }
+                  ]
+                },
+                "description": "Rechazar un pago pendiente",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reason\": \"El cliente pidió cancelar\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": []
+            }
+          ]
+        },
+        {
+          "name": "business / account",
+          "item": [
+            {
+              "name": "Perfil del administrador y suscripción",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/business/account",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "business",
+                    "account"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "description": "Perfil del administrador y suscripción"
+              },
+              "event": []
+            }
+          ]
+        }
+      ],
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{businessToken}}",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Reservas en línea: público",
+      "item": [
+        {
+          "name": "Registrar una cuenta de jugador",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/public/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "public",
+                "auth",
+                "register"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Registrar una cuenta de jugador",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Juan Pérez\",\n  \"email\": \"laura@correo.com\",\n  \"phone\": \"+57 300 123 4567\",\n  \"documentId\": \"1.075.111.222\",\n  \"password\": \"MiCancha2026!\",\n  \"birthDate\": \"1995-04-21\",\n  \"acceptDataPolicy\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code < 300) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.accessToken) pm.collectionVariables.set('playerToken', json.accessToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Iniciar sesión con celular o cédula y contraseña",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/public/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "public",
+                "auth",
+                "login"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Iniciar sesión con celular o cédula y contraseña",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"3115550001\",\n  \"password\": \"MiCancha2026!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code < 300) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.accessToken) pm.collectionVariables.set('playerToken', json.accessToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Información pública del negocio para reservar",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/public/businesses/:slug",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "public",
+                "businesses",
+                ":slug"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "slug",
+                  "value": "{{slug}}"
+                }
+              ]
+            },
+            "description": "Información pública del negocio para reservar",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": []
+        },
+        {
+          "name": "Turnos de un día de todas las canchas de un deporte (HELD = otro jugador los apartó)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/public/businesses/:slug/availability?sport=FUTBOL&date={{date}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "public",
+                "businesses",
+                ":slug",
+                "availability"
+              ],
+              "query": [
+                {
+                  "key": "sport",
+                  "value": "FUTBOL",
+                  "disabled": false
+                },
+                {
+                  "key": "date",
+                  "value": "{{date}}",
+                  "disabled": false
+                }
+              ],
+              "variable": [
+                {
+                  "key": "slug",
+                  "value": "{{slug}}"
+                }
+              ]
+            },
+            "description": "Turnos de un día de todas las canchas de un deporte (HELD = otro jugador los apartó)",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": []
+        }
+      ],
+      "auth": {
+        "type": "noauth"
+      }
+    },
+    {
+      "name": "Reservas en línea: jugador",
+      "item": [
+        {
+          "name": "Datos de la cuenta del jugador",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/player/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "player",
+                "me"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Datos de la cuenta del jugador"
+          },
+          "event": []
+        },
+        {
+          "name": "Reservar desde la web: queda confirmada y se paga en efectivo en la sede",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/player/businesses/:slug/reservations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "player",
+                "businesses",
+                ":slug",
+                "reservations"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "slug",
+                  "value": "{{slug}}"
+                }
+              ]
+            },
+            "description": "Reservar desde la web: queda confirmada y se paga en efectivo en la sede",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"courtId\": \"{{courtId}}\",\n  \"start\": \"<start>\",\n  \"slots\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code < 300) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.id) pm.collectionVariables.set('reservationId', json.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mis reservas en este negocio",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/player/businesses/:slug/reservations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "player",
+                "businesses",
+                ":slug",
+                "reservations"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "slug",
+                  "value": "{{slug}}"
+                }
+              ]
+            },
+            "description": "Mis reservas en este negocio"
+          },
+          "event": []
+        },
+        {
+          "name": "Mi apartado vigente en este negocio",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/player/businesses/:slug/hold",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "player",
+                "businesses",
+                ":slug",
+                "hold"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "slug",
+                  "value": "{{slug}}"
+                }
+              ]
+            },
+            "description": "Mi apartado vigente en este negocio"
+          },
+          "event": []
+        },
+        {
+          "name": "Apartar turnos mientras confirmo (3 min, máx. 3 turnos); reemplaza el apartado anterior",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/player/businesses/:slug/hold",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "player",
+                "businesses",
+                ":slug",
+                "hold"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "slug",
+                  "value": "{{slug}}"
+                }
+              ]
+            },
+            "description": "Apartar turnos mientras confirmo (3 min, máx. 3 turnos); reemplaza el apartado anterior",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"courtId\": \"{{courtId}}\",\n  \"start\": \"<start>\",\n  \"slots\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": []
+        },
+        {
+          "name": "Soltar mi apartado",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/player/businesses/:slug/hold",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "player",
+                "businesses",
+                ":slug",
+                "hold"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "slug",
+                  "value": "{{slug}}"
+                }
+              ]
+            },
+            "description": "Soltar mi apartado"
+          },
+          "event": []
+        }
+      ],
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{playerToken}}",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Super admin",
+      "item": [
+        {
+          "name": "admin / catalogs",
+          "item": [
+            {
+              "name": "Servicios (incluye inactivos y uso)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/catalogs/amenities",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "catalogs",
+                    "amenities"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "description": "Servicios (incluye inactivos y uso)"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code < 300) {",
+                      "  const json = pm.response.json();",
+                      "  if ((Array.isArray(json) ? json : json.items)?.[0]?.id && !pm.collectionVariables.get('amenityId')) pm.collectionVariables.set('amenityId', (Array.isArray(json) ? json : json.items)?.[0]?.id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Crear un servicio",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/catalogs/amenities",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "catalogs",
+                    "amenities"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "description": "Crear un servicio",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"code\": \"PISCINA\",\n  \"name\": \"Piscina\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code < 300) {",
+                      "  const json = pm.response.json();",
+                      "  if (json.id) pm.collectionVariables.set('amenityId', json.id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Métodos de pago (incluye inactivos y uso)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/catalogs/payment-methods",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "catalogs",
+                    "payment-methods"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "description": "Métodos de pago (incluye inactivos y uso)"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code < 300) {",
+                      "  const json = pm.response.json();",
+                      "  if ((Array.isArray(json) ? json : json.items)?.[0]?.id && !pm.collectionVariables.get('paymentMethodId')) pm.collectionVariables.set('paymentMethodId', (Array.isArray(json) ? json : json.items)?.[0]?.id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Crear un método de pago",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/catalogs/payment-methods",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "catalogs",
+                    "payment-methods"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "description": "Crear un método de pago",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"code\": \"PISCINA\",\n  \"name\": \"Piscina\",\n  \"requiresReference\": true\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code < 300) {",
+                      "  const json = pm.response.json();",
+                      "  if (json.id) pm.collectionVariables.set('paymentMethodId', json.id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Superficies de cancha (incluye inactivas y uso)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/catalogs/court-surfaces",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "catalogs",
+                    "court-surfaces"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "description": "Superficies de cancha (incluye inactivas y uso)"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code < 300) {",
+                      "  const json = pm.response.json();",
+                      "  if ((Array.isArray(json) ? json : json.items)?.[0]?.id && !pm.collectionVariables.get('courtSurfaceId')) pm.collectionVariables.set('courtSurfaceId', (Array.isArray(json) ? json : json.items)?.[0]?.id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Crear una superficie de cancha",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/catalogs/court-surfaces",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "catalogs",
+                    "court-surfaces"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "description": "Crear una superficie de cancha",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"sports\": [\n    \"FUTBOL\",\n    \"PADEL\"\n  ],\n  \"code\": \"PISCINA\",\n  \"name\": \"Piscina\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code < 300) {",
+                      "  const json = pm.response.json();",
+                      "  if (json.id) pm.collectionVariables.set('courtSurfaceId', json.id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Editar o (des)activar un servicio",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/catalogs/amenities/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "catalogs",
+                    "amenities",
+                    ":id"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{amenityId}}"
+                    }
+                  ]
+                },
+                "description": "Editar o (des)activar un servicio",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Piscina\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": []
+            },
+            {
+              "name": "Editar o (des)activar un método de pago",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/catalogs/payment-methods/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "catalogs",
+                    "payment-methods",
+                    ":id"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{paymentMethodId}}"
+                    }
+                  ]
+                },
+                "description": "Editar o (des)activar un método de pago",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Piscina\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": []
+            },
+            {
+              "name": "Editar o (des)activar una superficie de cancha",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/catalogs/court-surfaces/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "catalogs",
+                    "court-surfaces",
+                    ":id"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{courtSurfaceId}}"
+                    }
+                  ]
+                },
+                "description": "Editar o (des)activar una superficie de cancha",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Piscina\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": []
+            }
+          ]
+        },
+        {
+          "name": "admin",
+          "item": [
+            {
+              "name": "Métricas generales de la plataforma",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/dashboard",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "dashboard"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "description": "Métricas generales de la plataforma"
+              },
+              "event": []
+            },
+            {
+              "name": "Listado de clientes (negocios)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/clients",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "disabled": true
+                    },
+                    {
+                      "key": "pageSize",
+                      "value": "20",
+                      "disabled": true
+                    },
+                    {
+                      "key": "search",
+                      "value": "<search>",
+                      "description": "Texto a buscar (nombre, email, teléfono…).",
+                      "disabled": true
+                    }
+                  ],
+                  "variable": []
+                },
+                "description": "Listado de clientes (negocios)"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code < 300) {",
+                      "  const json = pm.response.json();",
+                      "  if ((Array.isArray(json) ? json : json.items)?.[0]?.id && !pm.collectionVariables.get('clientId')) pm.collectionVariables.set('clientId', (Array.isArray(json) ? json : json.items)?.[0]?.id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Crear un cliente: usuario de negocio + negocio + plan",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/clients",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "description": "Crear un cliente: usuario de negocio + negocio + plan",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"fullName\": \"Juan Pérez\",\n  \"email\": \"contacto@golazo.co\",\n  \"password\": \"MiCancha2026!\",\n  \"phone\": 3001234567,\n  \"businessName\": \"<businessName>\",\n  \"address\": \"<address>\",\n  \"neighborhood\": \"<neighborhood>\",\n  \"planId\": \"{{planId}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code < 300) {",
+                      "  const json = pm.response.json();",
+                      "  if (json.id) pm.collectionVariables.set('clientId', json.id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Listado de usuarios",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/users",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "users"
+                  ],
+                  "query": [
+                    {
+                      "key": "role",
+                      "value": "SUPER_ADMIN",
+                      "disabled": true
+                    },
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "disabled": true
+                    },
+                    {
+                      "key": "pageSize",
+                      "value": "20",
+                      "disabled": true
+                    },
+                    {
+                      "key": "search",
+                      "value": "<search>",
+                      "description": "Texto a buscar (nombre, email, teléfono…).",
+                      "disabled": true
+                    }
+                  ],
+                  "variable": []
+                },
+                "description": "Listado de usuarios"
+              },
+              "event": []
+            },
+            {
+              "name": "Planes de suscripción",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/plans",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "plans"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "description": "Planes de suscripción"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code < 300) {",
+                      "  const json = pm.response.json();",
+                      "  if ((Array.isArray(json) ? json : json.items)?.[0]?.id && !pm.collectionVariables.get('planId')) pm.collectionVariables.set('planId', (Array.isArray(json) ? json : json.items)?.[0]?.id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Crear un plan",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/plans",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "plans"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "description": "Crear un plan",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Pro\",\n  \"monthlyPrice\": 179000,\n  \"courtLimit\": 8,\n  \"benefits\": [\n    {\n      \"title\": \"<title>\",\n      \"detail\": \"<detail>\"\n    }\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code < 300) {",
+                      "  const json = pm.response.json();",
+                      "  if (json.id) pm.collectionVariables.set('planId', json.id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Enums fijos del sistema (solo lectura)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/enums",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "enums"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "description": "Enums fijos del sistema (solo lectura)"
+              },
+              "event": []
+            },
+            {
+              "name": "Métricas del negocio en un período: reservas, ingresos, ocupación, días y horas con más movimiento, top 5 clientes, métodos de pago y deportes",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/clients/:id/dashboard",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients",
+                    ":id",
+                    "dashboard"
+                  ],
+                  "query": [
+                    {
+                      "key": "period",
+                      "value": "TODAY",
+                      "description": "Por defecto TODAY. Con CUSTOM, `from` y `to` son obligatorios (máx. 366 días).",
+                      "disabled": true
+                    },
+                    {
+                      "key": "sport",
+                      "value": "FUTBOL",
+                      "description": "Solo canchas de este deporte.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "from",
+                      "value": "<from>",
+                      "description": "Primer día, inclusive (YYYY-MM-DD, hora del negocio). Solo con CUSTOM.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "to",
+                      "value": "<to>",
+                      "description": "Último día, inclusive. Solo con CUSTOM.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "courtId",
+                      "value": "{{courtId}}",
+                      "description": "Solo esta cancha.",
+                      "disabled": true
+                    }
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{clientId}}"
+                    }
+                  ]
+                },
+                "description": "Métricas del negocio en un período: reservas, ingresos, ocupación, días y horas con más movimiento, top 5 clientes, métodos de pago y deportes"
+              },
+              "event": []
+            },
+            {
+              "name": "Link público de reservas del cliente",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/clients/:id/online-booking",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients",
+                    ":id",
+                    "online-booking"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{clientId}}"
+                    }
+                  ]
+                },
+                "description": "Link público de reservas del cliente"
+              },
+              "event": []
+            },
+            {
+              "name": "Activar o desactivar el link del cliente, o cambiar su slug",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/clients/:id/online-booking",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients",
+                    ":id",
+                    "online-booking"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{clientId}}"
+                    }
+                  ]
+                },
+                "description": "Activar o desactivar el link del cliente, o cambiar su slug",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"slug\": \"complejo-el-golazo\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": []
+            },
+            {
+              "name": "Ficha del cliente: negocio, responsable, plan, canchas y actividad",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/clients/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients",
+                    ":id"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{clientId}}"
+                    }
+                  ]
+                },
+                "description": "Ficha del cliente: negocio, responsable, plan, canchas y actividad"
+              },
+              "event": []
+            },
+            {
+              "name": "Actualizar datos generales o ubicación del cliente",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/clients/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients",
+                    ":id"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{clientId}}"
+                    }
+                  ]
+                },
+                "description": "Actualizar datos generales o ubicación del cliente",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": []
+            },
+            {
+              "name": "Subir o reemplazar el logo/foto de portada del cliente (negocio)",
+              "request": {
+                "method": "PUT",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/clients/:id/image",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients",
+                    ":id",
+                    "image"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{clientId}}"
+                    }
+                  ]
+                },
+                "description": "Subir o reemplazar el logo/foto de portada del cliente (negocio)",
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "image",
+                      "type": "file",
+                      "src": [],
+                      "description": "JPG o PNG, máx. 4 MB"
+                    }
+                  ]
+                }
+              },
+              "event": []
+            },
+            {
+              "name": "Eliminar el logo/foto de portada del cliente (negocio)",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/clients/:id/image",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients",
+                    ":id",
+                    "image"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{clientId}}"
+                    }
+                  ]
+                },
+                "description": "Eliminar el logo/foto de portada del cliente (negocio)"
+              },
+              "event": []
+            },
+            {
+              "name": "Canchas del cliente con horarios, tarifas y fotos",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/clients/:id/courts",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients",
+                    ":id",
+                    "courts"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{clientId}}"
+                    }
+                  ]
+                },
+                "description": "Canchas del cliente con horarios, tarifas y fotos"
+              },
+              "event": []
+            },
+            {
+              "name": "Turnos de un día de todas las canchas de un deporte del cliente",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/clients/:id/availability?sport=FUTBOL&date={{date}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients",
+                    ":id",
+                    "availability"
+                  ],
+                  "query": [
+                    {
+                      "key": "sport",
+                      "value": "FUTBOL",
+                      "disabled": false
+                    },
+                    {
+                      "key": "date",
+                      "value": "{{date}}",
+                      "description": "Día en la zona horaria del negocio.",
+                      "disabled": false
+                    }
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{clientId}}"
+                    }
+                  ]
+                },
+                "description": "Turnos de un día de todas las canchas de un deporte del cliente"
+              },
+              "event": []
+            },
+            {
+              "name": "Reservas del cliente: con date, la agenda de ese día; sin date, paginadas con filtros",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/clients/:id/reservations",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients",
+                    ":id",
+                    "reservations"
+                  ],
+                  "query": [
+                    {
+                      "key": "status",
+                      "value": "CONFIRMED",
+                      "disabled": true
+                    },
+                    {
+                      "key": "source",
+                      "value": "BUSINESS",
+                      "description": "BUSINESS o WEB (reservas hechas por jugadores desde el link).",
+                      "disabled": true
+                    },
+                    {
+                      "key": "date",
+                      "value": "{{date}}",
+                      "description": "Un día en hora del negocio.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "from",
+                      "value": "2026-10-01",
+                      "description": "Desde este día, inclusive.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "to",
+                      "value": "2026-10-31",
+                      "description": "Hasta este día, inclusive.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "courtId",
+                      "value": "{{courtId}}",
+                      "disabled": true
+                    },
+                    {
+                      "key": "customerId",
+                      "value": "{{customerId}}",
+                      "disabled": true
+                    },
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "disabled": true
+                    },
+                    {
+                      "key": "pageSize",
+                      "value": "20",
+                      "disabled": true
+                    },
+                    {
+                      "key": "search",
+                      "value": "<search>",
+                      "description": "Texto a buscar (nombre, email, teléfono…).",
+                      "disabled": true
+                    }
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{clientId}}"
+                    }
+                  ]
+                },
+                "description": "Reservas del cliente: con date, la agenda de ese día; sin date, paginadas con filtros"
+              },
+              "event": []
+            },
+            {
+              "name": "Crear una reserva para el cliente (mismas reglas que el negocio)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/clients/:id/reservations",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients",
+                    ":id",
+                    "reservations"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{clientId}}"
+                    }
+                  ]
+                },
+                "description": "Crear una reserva para el cliente (mismas reglas que el negocio)",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"start\": \"2026-10-20T19:00:00-05:00\",\n  \"slots\": 2,\n  \"customer\": {\n    \"name\": \"Juan Pérez\",\n    \"phone\": \"+57 300 123 4567\",\n    \"documentId\": \"1.117.523.456\"\n  },\n  \"customerDetail\": \"Equipo Los Halcones\",\n  \"tag\": \"Torneo\",\n  \"discount\": 10000,\n  \"payment\": {\n    \"amount\": 50000,\n    \"method\": \"NEQUI\",\n    \"reference\": \"M4829310\"\n  },\n  \"courtId\": \"{{courtId}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": []
+            },
+            {
+              "name": "Clientes (personas) del negocio: con page, listado paginado con métricas; sin page, búsqueda rápida (máx. 20)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/clients/:id/customers",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients",
+                    ":id",
+                    "customers"
+                  ],
+                  "query": [
+                    {
+                      "key": "segment",
+                      "value": "ALL",
+                      "description": "ALL todos · LOYAL frecuentes y VIP · WITH_BALANCE con saldo por cobrar ·\nNEW registrados en los últimos 30 días.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "sort",
+                      "value": "MOST_RESERVATIONS",
+                      "description": "Por defecto MOST_RESERVATIONS.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "disabled": true
+                    },
+                    {
+                      "key": "pageSize",
+                      "value": "1",
+                      "disabled": true
+                    },
+                    {
+                      "key": "search",
+                      "value": "<search>",
+                      "description": "Texto a buscar (nombre, teléfono o cédula).",
+                      "disabled": true
+                    }
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{clientId}}"
+                    }
+                  ]
+                },
+                "description": "Clientes (personas) del negocio: con page, listado paginado con métricas; sin page, búsqueda rápida (máx. 20)"
+              },
+              "event": []
+            },
+            {
+              "name": "Registrar un cliente (persona) del negocio",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/clients/:id/customers",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients",
+                    ":id",
+                    "customers"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{clientId}}"
+                    }
+                  ]
+                },
+                "description": "Registrar un cliente (persona) del negocio",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Juan Pérez\",\n  \"phone\": \"+57 300 123 4567\",\n  \"documentId\": \"1.117.523.456\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": []
+            },
+            {
+              "name": "Devoluciones del negocio",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/clients/:id/refunds",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients",
+                    ":id",
+                    "refunds"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{clientId}}"
+                    }
+                  ]
+                },
+                "description": "Devoluciones del negocio"
+              },
+              "event": []
+            },
+            {
+              "name": "Cambiar el plan o activar/suspender al cliente",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/clients/:id/subscription",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients",
+                    ":id",
+                    "subscription"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{clientId}}"
+                    }
+                  ]
+                },
+                "description": "Cambiar el plan o activar/suspender al cliente",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": []
+            },
+            {
+              "name": "Editar un plan",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/plans/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "plans",
+                    ":id"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{planId}}"
+                    }
+                  ]
+                },
+                "description": "Editar un plan",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Pro\",\n  \"monthlyPrice\": 179000,\n  \"courtLimit\": 8\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": []
+            },
+            {
+              "name": "Eliminar un plan sin clientes",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/plans/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "plans",
+                    ":id"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{planId}}"
+                    }
+                  ]
+                },
+                "description": "Eliminar un plan sin clientes"
+              },
+              "event": []
+            },
+            {
+              "name": "Editar una cancha del cliente (mismas reglas que el negocio; schedules y rates reemplazan la lista)",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/clients/:id/courts/:courtId",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients",
+                    ":id",
+                    "courts",
+                    ":courtId"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{clientId}}"
+                    },
+                    {
+                      "key": "courtId",
+                      "value": "{{courtId}}"
+                    }
+                  ]
+                },
+                "description": "Editar una cancha del cliente (mismas reglas que el negocio; schedules y rates reemplazan la lista)",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"surface\": \"GRAMA_SINTETICA\",\n  \"lengthMeters\": 42,\n  \"widthMeters\": 25,\n  \"playersPerSide\": 5,\n  \"currency\": \"COP\",\n  \"basePricePerHour\": 80000\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": []
+            },
+            {
+              "name": "Turnos de un día de una cancha del cliente",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/clients/:id/courts/:courtId/availability?date={{date}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients",
+                    ":id",
+                    "courts",
+                    ":courtId",
+                    "availability"
+                  ],
+                  "query": [
+                    {
+                      "key": "date",
+                      "value": "{{date}}",
+                      "description": "Día en la zona horaria del negocio.",
+                      "disabled": false
+                    }
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{clientId}}"
+                    },
+                    {
+                      "key": "courtId",
+                      "value": "{{courtId}}"
+                    }
+                  ]
+                },
+                "description": "Turnos de un día de una cancha del cliente"
+              },
+              "event": []
+            },
+            {
+              "name": "Cancelar una reserva del cliente con su motivo",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/clients/:id/reservations/:reservationId/cancel",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients",
+                    ":id",
+                    "reservations",
+                    ":reservationId",
+                    "cancel"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{clientId}}"
+                    },
+                    {
+                      "key": "reservationId",
+                      "value": "{{reservationId}}"
+                    }
+                  ]
+                },
+                "description": "Cancelar una reserva del cliente con su motivo",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reason\": \"El cliente pidió cancelar\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": []
+            },
+            {
+              "name": "Editar un cliente (persona) del negocio",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/clients/:id/customers/:customerId",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients",
+                    ":id",
+                    "customers",
+                    ":customerId"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{clientId}}"
+                    },
+                    {
+                      "key": "customerId",
+                      "value": "{{customerId}}"
+                    }
+                  ]
+                },
+                "description": "Editar un cliente (persona) del negocio",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"documentId\": \"1.117.523.456\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": []
+            },
+            {
+              "name": "Ficha del cliente del negocio con todas sus reservas y pagos en detalle",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/clients/:id/customers/:customerId",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients",
+                    ":id",
+                    "customers",
+                    ":customerId"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{clientId}}"
+                    },
+                    {
+                      "key": "customerId",
+                      "value": "{{customerId}}"
+                    }
+                  ]
+                },
+                "description": "Ficha del cliente del negocio con todas sus reservas y pagos en detalle"
+              },
+              "event": []
+            }
+          ]
+        }
+      ],
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{adminToken}}",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Imágenes",
+      "item": [
+        {
+          "name": "Foto de portada de un negocio (pública)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/images/business-profile/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "images",
+                "business-profile",
+                ":id"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{imageId}}"
+                }
+              ]
+            },
+            "description": "Foto de portada de un negocio (pública)",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": []
+        },
+        {
+          "name": "Foto de una cancha (pública)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/images/courts/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "images",
+                "courts",
+                ":id"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{imageId}}"
+                }
+              ]
+            },
+            "description": "Foto de una cancha (pública)",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": []
+        }
+      ],
+      "auth": {
+        "type": "noauth"
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api/v1"
+    },
+    {
+      "key": "businessEmail",
+      "value": "admin@micancha.co"
+    },
+    {
+      "key": "businessPassword",
+      "value": "MiCancha2026!"
+    },
+    {
+      "key": "adminEmail",
+      "value": "superadmin@micancha.co"
+    },
+    {
+      "key": "adminPassword",
+      "value": "SuperAdmin2026!"
+    },
+    {
+      "key": "businessToken",
+      "value": ""
+    },
+    {
+      "key": "playerToken",
+      "value": ""
+    },
+    {
+      "key": "adminToken",
+      "value": ""
+    },
+    {
+      "key": "date",
+      "value": ""
+    },
+    {
+      "key": "slug",
+      "value": ""
+    },
+    {
+      "key": "photoSlot",
+      "value": "MAIN"
+    },
+    {
+      "key": "courtId",
+      "value": ""
+    },
+    {
+      "key": "customerId",
+      "value": ""
+    },
+    {
+      "key": "reservationId",
+      "value": ""
+    },
+    {
+      "key": "paymentId",
+      "value": ""
+    },
+    {
+      "key": "clientId",
+      "value": ""
+    },
+    {
+      "key": "planId",
+      "value": ""
+    },
+    {
+      "key": "amenityId",
+      "value": ""
+    },
+    {
+      "key": "paymentMethodId",
+      "value": ""
+    },
+    {
+      "key": "courtSurfaceId",
+      "value": ""
+    },
+    {
+      "key": "imageId",
+      "value": ""
+    }
+  ]
+}
