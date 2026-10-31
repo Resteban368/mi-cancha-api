@@ -12,6 +12,7 @@ import {
   ReservationStatus,
 } from '../generated/prisma/enums.js';
 import { pageArgs } from '../common/dto/page.dto.js';
+import { couponImageUrl, publicApiUrl } from '../common/public-url.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
   isCouponExhausted,
@@ -46,12 +47,14 @@ type CouponRow = Prisma.CouponGetPayload<object>;
 @Injectable()
 export class CouponsService {
   private readonly utcOffset: string;
+  private readonly origin: string;
 
   constructor(
     private readonly prisma: PrismaService,
     config: ConfigService,
   ) {
     this.utcOffset = config.getOrThrow<string>('APP_UTC_OFFSET');
+    this.origin = publicApiUrl(config);
   }
 
   /** El último día válido termina a medianoche en la zona del negocio. */
@@ -75,7 +78,7 @@ export class CouponsService {
       where: { businessId },
       orderBy: { createdAt: 'desc' },
     });
-    return coupons.map((coupon) => toCouponDto(coupon));
+    return coupons.map((coupon) => toCouponDto(coupon, this.origin));
   }
 
   async create(businessId: string, dto: CreateCouponDto): Promise<CouponDto> {
@@ -92,7 +95,7 @@ export class CouponsService {
         maxRedemptions: dto.maxRedemptions ?? null,
       },
     });
-    return toCouponDto(coupon);
+    return toCouponDto(coupon, this.origin);
   }
 
   async update(
@@ -122,11 +125,11 @@ export class CouponsService {
         isActive: dto.isActive,
       },
     });
-    return toCouponDto(coupon);
+    return toCouponDto(coupon, this.origin);
   }
 
   async findOne(businessId: string, id: string): Promise<CouponDto> {
-    return toCouponDto(await this.requireCoupon(businessId, id));
+    return toCouponDto(await this.requireCoupon(businessId, id), this.origin);
   }
 
   /** Tarjetas del cupón con su historial; las redimidas, de la más reciente a la más antigua. */
@@ -216,7 +219,9 @@ export class CouponsService {
       },
     });
     return coupons
-      .map((coupon) => toCustomerCoupon(coupon, coupon.cards[0], now))
+      .map((coupon) =>
+        toCustomerCoupon(coupon, coupon.cards[0], now, this.origin),
+      )
       .filter(
         (row) =>
           row.coupon.state === 'ACTIVE' ||
@@ -380,6 +385,9 @@ export class CouponsService {
         name: coupon.name,
         requiredReservations: coupon.requiredReservations,
         rewardDescription: coupon.rewardDescription,
+        imageUrl: coupon.imageId
+          ? couponImageUrl(this.origin, coupon.imageId)
+          : null,
         expiresAt: coupon.expiresAt,
       }));
   }
@@ -411,7 +419,7 @@ export class CouponsService {
       );
       return [...latest.values()].flatMap((card) => {
         const { coupon } = card;
-        const row = toCustomerCoupon(coupon, card, now);
+        const row = toCustomerCoupon(coupon, card, now, this.origin);
         const earned = row.status === CouponCardStatus.EARNED;
         const visible =
           row.cardId !== null &&
@@ -425,6 +433,7 @@ export class CouponsService {
             businessSlug: customer.business.slug,
             name: coupon.name,
             rewardDescription: coupon.rewardDescription,
+            imageUrl: row.coupon.imageUrl,
             status: row.status,
             completed: row.completed,
             required: row.required,
@@ -494,12 +503,13 @@ function toCustomerCoupon(
   coupon: CouponRow,
   card: CardWithStamps | undefined,
   now: Date,
+  origin: string,
 ): CustomerCouponDto {
   // Una tarjeta redimida ya no cuenta: el cliente vuelve a empezar.
   const open =
     card && card.status !== CouponCardStatus.REDEEMED ? card : undefined;
   return {
-    coupon: toCouponDto(coupon, now),
+    coupon: toCouponDto(coupon, origin, now),
     cardId: open?.id ?? null,
     status: open?.status ?? CouponCardStatus.IN_PROGRESS,
     completed: open?.stamps.length ?? 0,
@@ -526,7 +536,11 @@ function couponState(c: CouponRow, now: Date): CouponState {
   return c.isActive ? 'ACTIVE' : 'INACTIVE';
 }
 
-function toCouponDto(c: CouponRow, now = new Date()): CouponDto {
+function toCouponDto(
+  c: CouponRow,
+  origin: string,
+  now = new Date(),
+): CouponDto {
   return {
     id: c.id,
     name: c.name,
@@ -534,6 +548,7 @@ function toCouponDto(c: CouponRow, now = new Date()): CouponDto {
     rewardType: c.rewardType,
     percent: c.percent,
     rewardDescription: c.rewardDescription,
+    imageUrl: c.imageId ? couponImageUrl(origin, c.imageId) : null,
     expiresAt: c.expiresAt,
     maxRedemptions: c.maxRedemptions,
     redeemedCount: c.redeemedCount,

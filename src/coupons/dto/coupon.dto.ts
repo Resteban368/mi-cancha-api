@@ -95,6 +95,8 @@ export class CouponDto {
   rewardType: CouponRewardType;
   percent: number | null;
   rewardDescription: string;
+  /** null si no tiene imagen. */
+  imageUrl: string | null;
   expiresAt: Date | null;
   /** null = ilimitado. */
   maxRedemptions: number | null;
@@ -186,6 +188,7 @@ export class PublicCouponDto {
   name: string;
   requiredReservations: number;
   rewardDescription: string;
+  imageUrl: string | null;
   expiresAt: Date | null;
 }
 
@@ -195,6 +198,7 @@ export class PlayerCouponDto {
   businessSlug: string | null;
   name: string;
   rewardDescription: string;
+  imageUrl: string | null;
   @ApiProperty({ enum: CouponCardStatus })
   status: CouponCardStatus;
   completed: number;

@@ -1,20 +1,39 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  Header,
   Param,
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
   Query,
+  StreamableFile,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { BusinessesService } from '../businesses/businesses.service.js';
 import type { AuthPayload } from '../common/auth/auth-payload.js';
 import { CurrentUser } from '../common/auth/current-user.decorator.js';
 import { Public } from '../common/auth/public.decorator.js';
 import { Roles } from '../common/auth/roles.decorator.js';
+import { COUPON_IMAGE_ROUTE } from '../common/public-url.js';
 import { UserRole } from '../generated/prisma/enums.js';
+import {
+  MAX_IMAGE_BYTES,
+  type UploadedImage,
+} from '../storage/image-upload.js';
+import { CouponImagesService } from './coupon-images.service.js';
 import { CouponsService } from './coupons.service.js';
 import {
   CouponCardPageDto,
@@ -36,6 +55,7 @@ import {
 export class CouponsController {
   constructor(
     private readonly coupons: CouponsService,
+    private readonly images: CouponImagesService,
     private readonly businesses: BusinessesService,
   ) {}
 
@@ -107,6 +127,42 @@ export class CouponsController {
     );
   }
 
+  @Put('coupons/:id/image')
+  @ApiOperation({
+    summary: 'Poner o reemplazar la imagen del cupón (JPG o PNG, máx. 4 MB)',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['image'],
+      properties: { image: { type: 'string', format: 'binary' } },
+    },
+  })
+  @UseInterceptors(
+    FileInterceptor('image', { limits: { fileSize: MAX_IMAGE_BYTES } }),
+  )
+  async setImage(
+    @CurrentUser() user: AuthPayload,
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFile() file: UploadedImage | undefined,
+  ): Promise<CouponDto> {
+    const businessId = await this.businesses.requireBusinessId(user.sub);
+    await this.images.set(businessId, id, file);
+    return this.coupons.findOne(businessId, id);
+  }
+
+  @Delete('coupons/:id/image')
+  @ApiOperation({ summary: 'Quitar la imagen del cupón' })
+  async removeImage(
+    @CurrentUser() user: AuthPayload,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<CouponDto> {
+    const businessId = await this.businesses.requireBusinessId(user.sub);
+    await this.images.remove(businessId, id);
+    return this.coupons.findOne(businessId, id);
+  }
+
   @Get('customers/:customerId/coupons')
   @ApiOperation({
     summary:
@@ -161,5 +217,29 @@ export class PublicCouponsController {
   @ApiOperation({ summary: 'Cupones que ofrece el negocio' })
   findForBusiness(@Param('slug') slug: string): Promise<PublicCouponDto[]> {
     return this.coupons.publicForBusiness(slug);
+  }
+}
+
+const ONE_YEAR_SECONDS = 365 * 24 * 60 * 60;
+
+/** Las imágenes de los cupones son públicas: se ven en la página de cada sede. */
+@ApiTags('images')
+@Controller(COUPON_IMAGE_ROUTE)
+export class CouponImagesController {
+  constructor(private readonly images: CouponImagesService) {}
+
+  @Public()
+  @Get(':id')
+  @ApiOperation({ summary: 'Imagen de un cupón (pública)' })
+  // El id cambia con cada imagen, así que la respuesta nunca caduca.
+  @Header('Cache-Control', `public, max-age=${ONE_YEAR_SECONDS}, immutable`)
+  async findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<StreamableFile> {
+    const image = await this.images.read(id);
+    return new StreamableFile(image.data, {
+      type: image.contentType,
+      length: image.data.length,
+    });
   }
 }

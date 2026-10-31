@@ -967,6 +967,10 @@ model Coupon {
   rewardDescription    String
   /// Desde esta fecha no suma reservas ni se puede redimir; null = no vence.
   expiresAt            DateTime?
+  /// Imagen opcional. El id cambia con cada subida: es el de la URL pública.
+  imageId              String?          @unique
+  imagePath            String?
+  imageContentType     String?
   /// Tope de bonos a redimir entre todos los clientes; null = ilimitado.
   maxRedemptions       Int?
   redeemedCount        Int              @default(0)

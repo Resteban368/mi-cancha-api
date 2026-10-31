@@ -55,7 +55,7 @@ describe('CouponsService.redeem', () => {
         { provide: PrismaService, useValue: prisma },
         {
           provide: ConfigService,
-          useValue: { getOrThrow: () => '-05:00' },
+          useValue: { getOrThrow: () => '-05:00', get: () => undefined },
         },
       ],
     }).compile();
@@ -211,7 +211,10 @@ describe('CouponsService: vistas del jugador', () => {
       providers: [
         CouponsService,
         { provide: PrismaService, useValue: prisma },
-        { provide: ConfigService, useValue: { getOrThrow: () => '-05:00' } },
+        {
+          provide: ConfigService,
+          useValue: { getOrThrow: () => '-05:00', get: () => undefined },
+        },
       ],
     }).compile();
     service = moduleRef.get(CouponsService);

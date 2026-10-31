@@ -230,6 +230,7 @@ export interface PublicCoupon {
   name: string;
   requiredReservations: number;
   rewardDescription: string;
+  imageUrl: string | null;
   expiresAt: string | null;
 }
 
@@ -240,6 +241,7 @@ export interface PlayerCoupon {
   businessSlug: string | null;
   name: string;
   rewardDescription: string;
+  imageUrl: string | null;
   status: 'IN_PROGRESS' | 'EARNED';
   completed: number;
   required: number;
