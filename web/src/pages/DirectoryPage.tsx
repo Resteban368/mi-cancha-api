@@ -14,6 +14,7 @@ import {
   TuneIcon,
   VerifiedIcon,
 } from '../components/PitchChrome';
+import { CouponAlertBanner } from '../components/CouponAlertBanner';
 import { Alert, Button, Card, Skeleton } from '../components/ui';
 import { api, errorMessage } from '../lib/api';
 import { formatMoney, SPORT_EMOJI, SPORT_LABELS } from '../lib/format';
@@ -194,6 +195,9 @@ export function DirectoryPage() {
     <>
       <PitchHeader cityLabel={city?.label ?? 'Todas las ciudades'} onCityClick={() => setDialogOpen(true)} />
       <main className="mx-auto flex max-w-5xl flex-col gap-4 px-3.5 pb-28 pt-3 sm:gap-5 sm:px-4 sm:pb-14 sm:pt-4">
+        {/* Alerta de cupones por redimir o cerca de reclamar */}
+        <CouponAlertBanner />
+
         {/* Cabecera Hero */}
         <section className="space-y-1">
           <div className="inline-flex items-center gap-1.5 rounded-full border border-accent/25 bg-accent/10 px-2.5 py-0.5 text-[11px] font-bold tracking-wide text-accent-text uppercase shadow-sm">

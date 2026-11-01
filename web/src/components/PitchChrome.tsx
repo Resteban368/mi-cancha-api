@@ -4,6 +4,7 @@ import { accountPath } from '../lib/next';
 import { BrandMark, Wordmark } from './Brand';
 import { ThemeToggle } from './ThemeToggle';
 import { useSession } from '../lib/session';
+import { usePlayerCoupons } from '../lib/couponsContext';
 
 const icon = (path: ReactNode, defaultViewBox = '0 0 24 24') =>
   function Icon(props: SVGProps<SVGSVGElement>) {
@@ -277,6 +278,7 @@ export function PitchHeader({
 }) {
   const displayCity = cityLabel ?? city;
   const { player, signOut } = useSession();
+  const { earnedCount, nearCount } = usePlayerCoupons();
   const { pathname, search } = useLocation();
   const initial = player?.fullName.trim().charAt(0).toUpperCase() || '?';
 
@@ -327,9 +329,16 @@ export function PitchHeader({
               </Link>
               <Link
                 to="/cupones"
-                className="hidden whitespace-nowrap rounded-xl px-3 py-2 text-xs font-semibold tracking-wide text-fg-2 transition hover:text-fg sm:block"
+                className="hidden whitespace-nowrap items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold tracking-wide text-fg-2 transition hover:text-fg sm:inline-flex"
               >
-                Mis cupones
+                <span>Mis cupones</span>
+                {earnedCount > 0 ? (
+                  <span className="flex size-4.5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-black text-slate-950 shadow-glow-primary">
+                    {earnedCount}
+                  </span>
+                ) : nearCount > 0 ? (
+                  <span className="size-2 rounded-full bg-accent-lime animate-pulse" />
+                ) : null}
               </Link>
               <div className="relative">
                 <Link
@@ -370,6 +379,7 @@ export function PitchHeader({
 /** Barra inferior para el celular: explorar, mis reservas, cupones, mis sedes y cuenta. */
 export function PitchBottomNav() {
   const { player } = useSession();
+  const { earnedCount, nearCount } = usePlayerCoupons();
   const { pathname, search } = useLocation();
 
   const tab = ({ isActive }: { isActive: boolean }) =>
@@ -417,6 +427,13 @@ export function PitchBottomNav() {
                 <>
                   <div className="relative">
                     <TicketIcon className="size-5 transition-transform" />
+                    {earnedCount > 0 ? (
+                      <span className="absolute -top-1 -right-2 flex size-4 items-center justify-center rounded-full bg-primary text-[9px] font-black text-slate-950 shadow-glow-primary animate-pulse">
+                        {earnedCount}
+                      </span>
+                    ) : nearCount > 0 ? (
+                      <span className="absolute -top-0.5 -right-1 size-2 rounded-full bg-accent-lime animate-ping" />
+                    ) : null}
                     {isActive && (
                       <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 size-1.5 rounded-full bg-accent shadow-[0_0_10px_var(--accent)]" />
                     )}
