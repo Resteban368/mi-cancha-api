@@ -221,6 +221,7 @@ describe('CouponsService: vistas del jugador', () => {
       courts: 1,
       courtNames: ['A'],
       amount: 1,
+      reservation: { court: { sport: 'PADEL' } },
     })),
     coupon: coupon(over),
   });
@@ -249,7 +250,15 @@ describe('CouponsService: vistas del jugador', () => {
     const [row] = await service.forPlayer('u-1', NOW);
     expect(row).toMatchObject({ completed: 7, required: 10, remaining: 3 });
     expect(row.stamps).toHaveLength(7);
-    expect(row.stamps[0]).toEqual({ playedAt: NOW });
+    expect(row.stamps[0]).toEqual({ playedAt: NOW, sport: 'PADEL' });
+  });
+
+  it('deja el sello sin deporte si la reserva ya no existe', async () => {
+    const withoutReservation = card(CouponCardStatus.IN_PROGRESS, 1);
+    Object.assign(withoutReservation.stamps[0], { reservation: null });
+    player([withoutReservation]);
+    const [row] = await service.forPlayer('u-1', NOW);
+    expect(row.stamps[0]).toEqual({ playedAt: NOW, sport: null });
   });
 
   it('cuenta los bonos que ya usó el jugador', async () => {

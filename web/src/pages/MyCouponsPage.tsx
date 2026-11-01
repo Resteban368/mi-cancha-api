@@ -34,7 +34,6 @@ export function MyCouponsPage() {
   return (
     <>
       <PitchHeader />
-      <div className="coupons-page pass-type">
       <main className="mx-auto flex max-w-7xl flex-col gap-6 px-4 pb-28 pt-6 sm:px-6 sm:pb-14 sm:pt-10 lg:px-8">
         {/* Encabezado y resumen */}
         <section className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
@@ -42,7 +41,7 @@ export function MyCouponsPage() {
             <h1 className="text-3xl font-bold tracking-tight text-fg sm:text-4xl lg:text-5xl">Mis Cupones y Tarjetas</h1>
             <p className="mt-2 max-w-xl text-sm text-fg-3 sm:text-base">
               Lo que llevas y lo que te falta en cada sede. Toca cualquier tarjeta para{' '}
-              <span className="font-medium text-(--cp-lime)">voltearla</span> y descubrir tus sellos acumulados.
+              <span className="font-medium text-highlight">voltearla</span> y descubrir tus sellos acumulados.
             </p>
           </div>
 
@@ -52,9 +51,9 @@ export function MyCouponsPage() {
               <Stat
                 label="Sellos totales"
                 value={cards.reduce((sum, card) => sum + card.completed, 0)}
-                valueClass="text-(--cp-neon)"
+                valueClass="text-accent-text"
               />
-              <Stat label="Canjeados" value={summary.data?.redeemed ?? '0'} valueClass="text-(--cp-lime)" />
+              <Stat label="Canjeados" value={summary.data?.redeemed ?? '0'} valueClass="text-highlight" />
             </dl>
           )}
         </section>
@@ -95,7 +94,7 @@ export function MyCouponsPage() {
           <>
             {/* Filtros por sede y estado */}
             <div
-              className="no-scrollbar -mx-4 flex items-center gap-2 overflow-x-auto border-b border-(--cp-border) px-4 pb-4 sm:mx-0 sm:flex-wrap sm:px-0"
+              className="no-scrollbar -mx-4 flex items-center gap-2 overflow-x-auto border-b border-hairline px-4 pb-4 sm:mx-0 sm:flex-wrap sm:px-0"
               role="group"
               aria-label="Filtrar cupones por sede o estado"
             >
@@ -129,7 +128,6 @@ export function MyCouponsPage() {
           </>
         )}
       </main>
-      </div>
       <PitchBottomNav />
     </>
   );
@@ -145,7 +143,7 @@ function Stat({
   valueClass?: string;
 }) {
   return (
-    <div className="flex flex-col-reverse rounded-2xl border border-(--cp-border) bg-(--cp-panel) p-3.5 text-center sm:p-4 lg:min-w-32">
+    <div className="flex flex-col-reverse rounded-2xl border border-hairline bg-surface p-3.5 text-center sm:p-4 lg:min-w-32">
       <dt className="text-[11px] uppercase tracking-wider text-fg-3 sm:text-xs">{label}</dt>
       <dd className={`font-display text-xl font-bold sm:text-2xl ${valueClass}`}>{value}</dd>
     </div>
@@ -170,8 +168,8 @@ function FilterChip({
       onClick={onClick}
       className={`flex shrink-0 items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-semibold transition sm:text-sm ${
         active
-          ? 'bg-(--cp-chip-on) text-(--cp-chip-on-fg) shadow-md'
-          : `border border-(--cp-border) bg-(--cp-panel) hover:border-(--cp-neon) ${highlight ? 'text-(--cp-neon)' : 'text-fg-2 hover:text-fg'}`
+          ? 'bg-accent text-accent-fg shadow-md'
+          : `border border-hairline bg-surface hover:border-accent-text ${highlight ? 'text-accent-text' : 'text-fg-2 hover:text-fg'}`
       }`}
     >
       {children}

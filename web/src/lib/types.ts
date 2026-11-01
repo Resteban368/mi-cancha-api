@@ -247,5 +247,5 @@ export interface PlayerCoupon {
   required: number;
   remaining: number;
   expiresAt: string | null;
-  stamps: { playedAt: string }[];
+  stamps: { playedAt: string; sport: Sport | null }[];
 }

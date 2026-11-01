@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
-import type { PlayerCoupon } from '../lib/types';
+import { SPORT_LABELS } from '../lib/format';
+import type { PlayerCoupon, Sport } from '../lib/types';
 
 const stampDate = new Intl.DateTimeFormat('es-CO', { day: 'numeric', month: 'short', timeZone: 'America/Bogota' });
 const expiryDate = new Intl.DateTimeFormat('es-CO', {
@@ -68,7 +69,7 @@ export function LoyaltyCard({ card }: { card: PlayerCoupon }) {
   const toggle = () => setFlipped((prev) => !prev);
 
   return (
-    <div className="flip-perspective pass-type h-[510px] w-full">
+    <div className="flip-perspective h-[510px] w-full">
       <div
         className={`flip-inner cursor-pointer ${flipped ? 'is-flipped' : ''}`}
         onClick={toggle}
@@ -263,7 +264,11 @@ function Back({ card, onFlip }: { card: PlayerCoupon; onFlip: () => void }) {
                   className={`flex aspect-square flex-col items-center justify-center rounded-xl border bg-pass-surface p-1 text-center ${tone.stampBorder}`}
                 >
                   <span className={`text-[10px] font-bold ${tone.text}`}>#{i + 1}</span>
-                  <CheckIcon className={`size-4 ${tone.stampIcon}`} />
+                  {stamp.sport ? (
+                    <SportIcon sport={stamp.sport} className={`${few ? 'size-8' : 'size-5'} ${tone.stampIcon}`} />
+                  ) : (
+                    <CheckIcon className={`${few ? 'size-8' : 'size-5'} ${tone.stampIcon}`} />
+                  )}
                   <span className="max-w-full truncate text-[8px] text-slate-400">
                     {stampDate.format(new Date(stamp.playedAt))}
                   </span>
@@ -290,7 +295,7 @@ function Back({ card, onFlip }: { card: PlayerCoupon; onFlip: () => void }) {
                 className="flex aspect-square flex-col items-center justify-center rounded-xl border border-dashed border-pass-border p-1 text-center"
               >
                 <span className="text-[10px] font-bold text-slate-500">#{i + 1}</span>
-                <LockIcon className="size-4 text-slate-600" />
+                <SoccerBallIcon className="size-4 text-slate-600" />
               </li>
             );
           })}
@@ -334,12 +339,6 @@ const CheckIcon = ({ className }: IconProps) => (
   </svg>
 );
 
-const LockIcon = ({ className }: IconProps) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className={className}>
-    <path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-  </svg>
-);
-
 const RotateIcon = ({ className }: IconProps) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className={className}>
     <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
@@ -364,5 +363,38 @@ const SoccerBallIcon = ({ className }: IconProps) => (
 const TrophyIcon = ({ className }: IconProps) => (
   <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className={className}>
     <path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94.63 1.5 1.98 2.63 3.61 2.96V19H7v2h10v-2h-4v-3.1c1.63-.33 2.98-1.46 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z" />
+  </svg>
+);
+
+const SPORT_PATHS: Record<Sport, React.ReactNode> = {
+  FUTBOL: (
+    <>
+      <circle cx="12" cy="12" r="9.5" />
+      <path d="m12 7.5 4.3 3.1-1.6 5h-5.4l-1.6-5L12 7.5ZM12 7.5V2.5M16.3 10.6l4.7-1.6M14.7 15.6l2.9 4M9.3 15.6l-2.9 4M7.7 10.6 3 9" />
+    </>
+  ),
+  PADEL: (
+    <>
+      <path d="M15 2.5a6.5 6.5 0 0 1 4.6 11.1c-2.2 2.2-5.6 2.5-8 .9-1.6-2.4-1.3-5.8.9-8A6.5 6.5 0 0 1 15 2.5Z" />
+      <path d="M11.6 14.5 4 22 2 20l7.5-7.6M12 8.5l5.5 5.5M15 6l3.5 3.5" />
+    </>
+  ),
+  BALONCESTO: (
+    <>
+      <circle cx="12" cy="12" r="9.5" />
+      <path d="M2.5 12h19M12 2.5v19M5.3 5.3a9.5 9.5 0 0 1 0 13.4M18.7 5.3a9.5 9.5 0 0 0 0 13.4" />
+    </>
+  ),
+  VOLEIBOL: (
+    <>
+      <circle cx="12" cy="12" r="9.5" />
+      <path d="M12 12V2.5M12 12l8.2 4.8M12 12l-8.2 4.8M12 6.5c3.5.3 6.8 2.2 9 5.3M8.5 15c-1.5-3.2-1.6-7 0-11.8M15.5 15c-2 2.9-5.2 4.9-9.3 6" />
+    </>
+  ),
+};
+
+const SportIcon = ({ sport, className }: IconProps & { sport: Sport }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" role="img" aria-label={SPORT_LABELS[sport]} className={className}>
+    {SPORT_PATHS[sport]}
   </svg>
 );

@@ -23,7 +23,7 @@ export function applyMode(mode: ThemeMode) {
   root.dataset.mode = mode;
   document
     .querySelector('meta[name="theme-color"]')
-    ?.setAttribute('content', dark ? '#0b1f28' : '#f8fafc');
+    ?.setAttribute('content', dark ? '#081318' : '#f8fafc');
 }
 
 export function saveMode(mode: ThemeMode) {

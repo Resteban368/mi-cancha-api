@@ -15,10 +15,7 @@ import {
   ValidateIf,
 } from 'class-validator';
 import { PageQueryDto } from '../../common/dto/page.dto.js';
-import {
-  CouponCardStatus,
-  CouponRewardType,
-} from '../../generated/prisma/enums.js';
+import { CouponCardStatus, CouponRewardType, Sport } from '../../generated/prisma/enums.js';
 
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -117,6 +114,9 @@ export class CouponStampDto {
   courts: number;
   courtNames: string[];
   amount: number;
+  /** Deporte de la cancha; null si la reserva ya no existe. */
+  @ApiProperty({ enum: Sport, nullable: true })
+  sport: Sport | null;
 }
 
 export class CustomerCouponDto {
@@ -234,7 +234,7 @@ export class PlayerCouponDto {
   remaining: number;
   expiresAt: Date | null;
   /** Sellos de la tarjeta, del primero al último. */
-  stamps: { playedAt: Date }[];
+  stamps: { playedAt: Date; sport: Sport | null }[];
 }
 
 export class PlayerCouponSummaryDto {

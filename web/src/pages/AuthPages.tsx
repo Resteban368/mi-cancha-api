@@ -44,7 +44,7 @@ function CourtBackground() {
 
 function AuthLayout({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
   return (
-    <div className="relative isolate flex min-h-screen flex-col overflow-hidden bg-bg">
+    <div className="relative isolate flex min-h-screen flex-col overflow-hidden">
       <CourtBackground />
       <div className="relative z-10 flex min-h-screen flex-col">
         <Header />

@@ -1,7 +1,8 @@
 @import 'tailwindcss';
 
 /*
- * Paleta de marca Mi Cancha: verde esmeralda #00C853, negro azulado #0B1F28 y blanco #F8FAFC.
+ * Paleta de marca Mi Cancha: verde esmeralda #00C853, negro azulado #0B1F28 y blanco #F8FAFC en claro;
+ * en oscuro, la paleta del diseño de cupones: lima #CCFF00, neón #00E599 y fondo #081318.
  * Modo claro en :root y modo oscuro en [data-theme='dark']. theme.ts pone data-theme según la
  * preferencia guardada o la del sistema; sin JavaScript se sigue la del sistema.
  * --accent es el color de relleno (botones, marca); --accent-text es el verde legible como texto.
@@ -30,57 +31,66 @@
   --series-1: #2a78d6;
   --series-2: #eb6834;
   --grid: #e4ebe9;
+  --highlight: #007a33;
+  --pattern-line: rgba(11, 31, 40, 0.035);
+  --pattern-glow: rgba(0, 200, 83, 0.08);
 }
 
 :root[data-theme='dark'] {
   color-scheme: dark;
-  --bg: #0b1f28;
-  --surface: #102b37;
-  --surface-2: #163845;
-  --border: #1f4352;
+  --bg: #081318;
+  --surface: #0d1e24;
+  --surface-2: #142931;
+  --border: #1a3742;
   --hairline: rgba(248, 250, 252, 0.09);
   --hover: rgba(248, 250, 252, 0.06);
   --fg: #f8fafc;
   --fg-2: #bfd0d8;
   --fg-3: #8aa3ae;
-  --accent: #00c853;
-  --accent-fg: #0b1f28;
-  --accent-text: #00c853;
-  --accent-soft: rgba(0, 200, 83, 0.14);
+  --accent: #ccff00;
+  --accent-fg: #081318;
+  --accent-text: #00e599;
+  --accent-soft: rgba(0, 229, 153, 0.12);
   --danger: #ff8a80;
-  --danger-fg: #0b1f28;
+  --danger-fg: #081318;
   --danger-soft: rgba(255, 82, 82, 0.14);
   --warn-soft: rgba(255, 193, 7, 0.14);
   --warn: #ffd54f;
   --series-1: #3987e5;
   --series-2: #d95926;
-  --grid: #1a3c49;
+  --grid: #1a3742;
+  --highlight: #ccff00;
+  --pattern-line: rgba(15, 139, 122, 0.05);
+  --pattern-glow: rgba(204, 255, 0, 0.08);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
     color-scheme: dark;
-    --bg: #0b1f28;
-    --surface: #102b37;
-    --surface-2: #163845;
-    --border: #1f4352;
+    --bg: #081318;
+    --surface: #0d1e24;
+    --surface-2: #142931;
+    --border: #1a3742;
     --hairline: rgba(248, 250, 252, 0.09);
     --hover: rgba(248, 250, 252, 0.06);
     --fg: #f8fafc;
     --fg-2: #bfd0d8;
     --fg-3: #8aa3ae;
-    --accent: #00c853;
-    --accent-fg: #0b1f28;
-    --accent-text: #00c853;
-    --accent-soft: rgba(0, 200, 83, 0.14);
+    --accent: #ccff00;
+    --accent-fg: #081318;
+    --accent-text: #00e599;
+    --accent-soft: rgba(0, 229, 153, 0.12);
     --danger: #ff8a80;
-  --danger-fg: #0b1f28;
+  --danger-fg: #081318;
     --danger-soft: rgba(255, 82, 82, 0.14);
     --warn-soft: rgba(255, 193, 7, 0.14);
     --warn: #ffd54f;
     --series-1: #3987e5;
     --series-2: #d95926;
-    --grid: #1a3c49;
+    --grid: #1a3742;
+    --highlight: #ccff00;
+    --pattern-line: rgba(15, 139, 122, 0.05);
+    --pattern-glow: rgba(204, 255, 0, 0.08);
   }
 }
 
@@ -106,12 +116,19 @@
   --color-series-1: var(--series-1);
   --color-series-2: var(--series-2);
   --color-grid: var(--grid);
-  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --font-display: 'Montserrat', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --color-highlight: var(--highlight);
+  --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Space Grotesk', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 
+/* Fondo de toda la web: cuadrícula de cancha con brillo arriba, en tema claro y oscuro. */
 body {
-  background: var(--bg);
+  background-color: var(--bg);
+  background-image: radial-gradient(circle at 50% 0%, var(--pattern-glow) 0%, transparent 60%),
+    linear-gradient(to bottom, var(--pattern-line) 1px, transparent 1px),
+    linear-gradient(to right, var(--pattern-line) 1px, transparent 1px);
+  background-size: 100% 100vh, 40px 40px, 40px 40px;
+  background-repeat: no-repeat, repeat, repeat;
   color: var(--fg);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
@@ -130,7 +147,7 @@ body {
 }
 
 @utility shadow-glow-accent {
-  box-shadow: 0 0 24px -4px rgba(0, 200, 83, 0.35);
+  box-shadow: 0 0 24px -4px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
 @utility shadow-glow-teal {
@@ -139,7 +156,7 @@ body {
 
 /*
  * Tarjetas de cupón según el diseño de Stitch "Mis Cupones y Tarjetas de Fidelización 3D".
- * La tarjeta es oscura en ambos temas, como un pase físico; la página (.coupons-page) sí sigue el tema.
+ * La tarjeta es oscura en ambos temas, como un pase físico; el resto de la web sigue el tema.
  */
 @theme {
   --color-pass-dark: #081318;
@@ -151,42 +168,6 @@ body {
   --color-pass-teal: #0f8b7a;
   --color-pass-cyan: #22d3ee;
 }
-.pass-type {
-  font-family: 'Plus Jakarta Sans', var(--font-sans);
-}
-.pass-type h1,
-.pass-type h2,
-.pass-type h3,
-.pass-type .font-display {
-  font-family: 'Space Grotesk', var(--font-sans);
-}
-.coupons-page {
-  --cp-panel: var(--surface);
-  --cp-border: var(--hairline);
-  --cp-neon: var(--accent-text);
-  --cp-lime: var(--accent-text);
-  --cp-chip-on: var(--accent);
-  --cp-chip-on-fg: var(--accent-fg);
-  --cp-line: rgba(11, 31, 40, 0.035);
-  --cp-glow: rgba(0, 200, 83, 0.08);
-  min-height: 100vh;
-  background-image: radial-gradient(circle at 50% 0%, var(--cp-glow) 0%, transparent 60%),
-    linear-gradient(to bottom, var(--cp-line) 1px, transparent 1px),
-    linear-gradient(to right, var(--cp-line) 1px, transparent 1px);
-  background-size: 100% 100%, 40px 40px, 40px 40px;
-}
-[data-theme='dark'] .coupons-page {
-  --cp-panel: rgba(13, 30, 36, 0.9);
-  --cp-border: rgba(26, 55, 66, 0.8);
-  --cp-neon: #00e599;
-  --cp-lime: #ccff00;
-  --cp-chip-on: #ccff00;
-  --cp-chip-on-fg: #081318;
-  --cp-line: rgba(15, 139, 122, 0.05);
-  --cp-glow: rgba(204, 255, 0, 0.08);
-  background-color: #081318;
-}
-
 /* Flip 3D de tarjetas de fidelización / cupones */
 .flip-perspective {
   perspective: 1200px;
@@ -268,7 +249,7 @@ body {
   .shimmer::after { animation: none; }
 }
 
-/* Montserrat (tipografía de marca) en títulos y en el nombre de la marca. */
+/* Space Grotesk en títulos y en el nombre de la marca. */
 h1,
 h2,
 h3,

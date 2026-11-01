@@ -38,7 +38,12 @@ import {
 } from './dto/coupon.dto.js';
 
 const cardInclude = {
-  stamps: { orderBy: { playedAt: 'asc' } },
+  stamps: {
+    orderBy: { playedAt: 'asc' },
+    include: {
+      reservation: { select: { court: { select: { sport: true } } } },
+    },
+  },
 } satisfies Prisma.CouponCardInclude;
 
 type CardWithStamps = Prisma.CouponCardGetPayload<{
@@ -526,7 +531,10 @@ export class CouponsService {
             required: row.required,
             remaining: earned ? 0 : Math.max(row.required - row.completed, 0),
             expiresAt: coupon.expiresAt,
-            stamps: row.stamps.map((s) => ({ playedAt: s.playedAt })),
+            stamps: row.stamps.map((s) => ({
+              playedAt: s.playedAt,
+              sport: s.sport,
+            })),
           },
         ];
       });
@@ -615,6 +623,7 @@ function toStampDto(s: CardWithStamps['stamps'][number]) {
     courts: s.courts,
     courtNames: s.courtNames,
     amount: Number(s.amount),
+    sport: s.reservation?.court.sport ?? null,
   };
 }
 
