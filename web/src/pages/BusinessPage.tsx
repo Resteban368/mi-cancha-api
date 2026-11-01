@@ -119,7 +119,7 @@ export function BusinessPage() {
             {business.data.bookingAvailable ? (
               <>
                 <Booking business={business.data} />
-                <BusinessCoupons slug={slug} />
+                <BusinessCoupons slug={slug} businessName={business.data.name} />
               </>
             ) : (
               <Alert tone="warn">{UNAVAILABLE_MESSAGES[business.data.unavailableReason ?? 'DISABLED']}</Alert>
@@ -368,7 +368,7 @@ function VenueInfoDialog({ business: b, open, onClose }: { business: PublicBusin
             </ul>
           </div>
         )}
-        {b.bookingAvailable && <BusinessCoupons slug={b.slug} plain />}
+        {b.bookingAvailable && <BusinessCoupons slug={b.slug} businessName={b.name} plain />}
         <button
           type="button"
           onClick={onClose}
