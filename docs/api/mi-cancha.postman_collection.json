@@ -636,6 +636,48 @@
               "event": []
             },
             {
+              "name": "Precio mensual del plan según las canchas",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/catalogs/court-prices",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "catalogs",
+                    "court-prices"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "description": "Precio mensual del plan según las canchas"
+              },
+              "event": []
+            },
+            {
+              "name": "Precio mensual de los módulos opcionales",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/catalogs/module-prices",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "catalogs",
+                    "module-prices"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "description": "Precio mensual de los módulos opcionales"
+              },
+              "event": []
+            },
+            {
               "name": "Departamentos de Colombia (DANE)",
               "request": {
                 "method": "GET",
@@ -2206,6 +2248,371 @@
           ]
         },
         {
+          "name": "business / coupons",
+          "item": [
+            {
+              "name": "Cupones del negocio",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/business/coupons",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "business",
+                    "coupons"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "description": "Cupones del negocio"
+              },
+              "event": []
+            },
+            {
+              "name": "Crear un cupón: cada N reservas, cancha gratis o un porcentaje",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/business/coupons",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "business",
+                    "coupons"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "description": "Crear un cupón: cada N reservas, cancha gratis o un porcentaje",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"rewardType\": \"FREE_COURT\",\n  \"name\": \"Juan Pérez\",\n  \"requiredReservations\": 10,\n  \"percent\": 20,\n  \"rewardDescription\": \"<rewardDescription>\",\n  \"expiresOn\": \"2026-12-31\",\n  \"maxRedemptions\": 50\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": []
+            },
+            {
+              "name": "Pagos hechos con cupón (no suman dinero)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/business/coupon-payments",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "business",
+                    "coupon-payments"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "description": "Pagos hechos con cupón (no suman dinero)"
+              },
+              "event": []
+            },
+            {
+              "name": "Detalle de un cupón",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/business/coupons/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "business",
+                    "coupons",
+                    ":id"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{id}}"
+                    }
+                  ]
+                },
+                "description": "Detalle de un cupón"
+              },
+              "event": []
+            },
+            {
+              "name": "Editar nombre, premio, vencimiento o límite, o activar/desactivar",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/business/coupons/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "business",
+                    "coupons",
+                    ":id"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{id}}"
+                    }
+                  ]
+                },
+                "description": "Editar nombre, premio, vencimiento o límite, o activar/desactivar",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"expiresOn\": \"2026-12-31\",\n  \"maxRedemptions\": 50\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": []
+            },
+            {
+              "name": "Borrar un cupón sin bonos ganados ni redimidos",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/business/coupons/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "business",
+                    "coupons",
+                    ":id"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{id}}"
+                    }
+                  ]
+                },
+                "description": "Borrar un cupón sin bonos ganados ni redimidos"
+              },
+              "event": []
+            },
+            {
+              "name": "Tarjetas del cupón: quién redimió y a qué hora, y cuándo se llenó cada reserva",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/business/coupons/:id/cards",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "business",
+                    "coupons",
+                    ":id",
+                    "cards"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "disabled": true
+                    },
+                    {
+                      "key": "pageSize",
+                      "value": "20",
+                      "disabled": true
+                    },
+                    {
+                      "key": "search",
+                      "value": "<search>",
+                      "description": "Texto a buscar (nombre, email, teléfono…).",
+                      "disabled": true
+                    },
+                    {
+                      "key": "status",
+                      "value": "IN_PROGRESS",
+                      "description": "Sin valor, todas las tarjetas del cupón.",
+                      "disabled": true
+                    }
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{id}}"
+                    }
+                  ]
+                },
+                "description": "Tarjetas del cupón: quién redimió y a qué hora, y cuándo se llenó cada reserva"
+              },
+              "event": []
+            },
+            {
+              "name": "Poner o reemplazar la imagen del cupón (JPG o PNG, máx. 4 MB)",
+              "request": {
+                "method": "PUT",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/business/coupons/:id/image",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "business",
+                    "coupons",
+                    ":id",
+                    "image"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{id}}"
+                    }
+                  ]
+                },
+                "description": "Poner o reemplazar la imagen del cupón (JPG o PNG, máx. 4 MB)",
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "image",
+                      "type": "file",
+                      "src": [],
+                      "description": "JPG o PNG, máx. 4 MB"
+                    }
+                  ]
+                }
+              },
+              "event": []
+            },
+            {
+              "name": "Quitar la imagen del cupón",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/business/coupons/:id/image",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "business",
+                    "coupons",
+                    ":id",
+                    "image"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{id}}"
+                    }
+                  ]
+                },
+                "description": "Quitar la imagen del cupón"
+              },
+              "event": []
+            },
+            {
+              "name": "Avance del cliente en cada cupón, con el historial de sus reservas",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/business/customers/:customerId/coupons",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "business",
+                    "customers",
+                    ":customerId",
+                    "coupons"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "key": "customerId",
+                      "value": "{{customerId}}"
+                    }
+                  ]
+                },
+                "description": "Avance del cliente en cada cupón, con el historial de sus reservas"
+              },
+              "event": []
+            },
+            {
+              "name": "Redimir un bono al cobrar la reserva en persona",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/business/reservations/:id/coupon-redemption",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "business",
+                    "reservations",
+                    ":id",
+                    "coupon-redemption"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{reservationId}}"
+                    }
+                  ]
+                },
+                "description": "Redimir un bono al cobrar la reserva en persona",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"cardId\": \"{{cardId}}\",\n  \"courts\": 2\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": []
+            }
+          ]
+        },
+        {
           "name": "business / cash",
           "item": [
             {
@@ -3231,6 +3638,37 @@
               ]
             },
             "description": "Turnos de un día de todas las canchas de un deporte (HELD = otro jugador los apartó)",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": []
+        },
+        {
+          "name": "Cupones que ofrece el negocio",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/public/businesses/:slug/coupons",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "public",
+                "businesses",
+                ":slug",
+                "coupons"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "slug",
+                  "value": "{{slug}}"
+                }
+              ]
+            },
+            "description": "Cupones que ofrece el negocio",
             "auth": {
               "type": "noauth"
             }
@@ -4295,7 +4733,7 @@
                 "description": "Crear un cliente: usuario de negocio + negocio + plan",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"fullName\": \"Juan Pérez\",\n  \"email\": \"contacto@golazo.co\",\n  \"password\": \"Contrasena2026!\",\n  \"phone\": 3001234567,\n  \"businessName\": \"<businessName>\",\n  \"address\": \"<address>\",\n  \"neighborhood\": \"<neighborhood>\",\n  \"cityId\": \"{{cityId}}\",\n  \"planId\": \"{{planId}}\"\n}",
+                  "raw": "{\n  \"fullName\": \"Juan Pérez\",\n  \"email\": \"contacto@golazo.co\",\n  \"password\": \"Contrasena2026!\",\n  \"phone\": 3001234567,\n  \"businessName\": \"<businessName>\",\n  \"address\": \"<address>\",\n  \"neighborhood\": \"<neighborhood>\",\n  \"cityId\": \"{{cityId}}\",\n  \"planId\": \"{{planId}}\",\n  \"courts\": 3\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -4484,6 +4922,62 @@
                   }
                 }
               ]
+            },
+            {
+              "name": "Precio del módulo Ventas e inventario",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/billing-settings",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "billing-settings"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "description": "Precio del módulo Ventas e inventario"
+              },
+              "event": []
+            },
+            {
+              "name": "Cambiar el precio del módulo Ventas e inventario",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/billing-settings",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "billing-settings"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "description": "Cambiar el precio del módulo Ventas e inventario",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"salesModulePrice\": 50000\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": []
             },
             {
               "name": "Enums fijos del sistema (solo lectura)",
@@ -5316,7 +5810,7 @@
                 "description": "Cambiar el plan o activar/suspender al cliente",
                 "body": {
                   "mode": "raw",
-                  "raw": "{}",
+                  "raw": "{\n  \"courts\": 3\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -6007,6 +6501,36 @@
               ]
             },
             "description": "Imagen de un aviso (pública)",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": []
+        },
+        {
+          "name": "Imagen de un cupón (pública)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/images/coupons/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "images",
+                "coupons",
+                ":id"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{imageId}}"
+                }
+              ]
+            },
+            "description": "Imagen de un cupón (pública)",
             "auth": {
               "type": "noauth"
             }

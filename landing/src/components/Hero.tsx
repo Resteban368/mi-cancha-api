@@ -1,5 +1,7 @@
 import { CtaLink } from './ui';
 import { EXAMPLE_BOOKING_URL } from '../config';
+import { usePrecios } from '../lib/usePrecios';
+import { pesosEnTexto } from '../precios';
 
 const DEPORTES = ['Fútbol', 'Pádel', 'Vóley playa', 'Baloncesto'];
 
@@ -11,6 +13,8 @@ const TURNOS = [
 
 // El hero va siempre en oscuro (tema-oscuro), aunque el resto de la página siga al sistema.
 export function Hero() {
+  const precios = usePrecios();
+
   return (
     <section className="tema-oscuro relative overflow-hidden bg-bg text-fg">
       <div
@@ -53,7 +57,7 @@ export function Hero() {
               Ver una página de reservas
             </CtaLink>
           </div>
-          <p className="mt-6 text-sm text-fg-3">Para jugadores, siempre gratis · Desde $79.000 al mes</p>
+          <p className="mt-6 text-sm text-fg-3">Para jugadores, siempre gratis · Desde {pesosEnTexto(precios[0])} al mes</p>
         </div>
 
         <div className="relative mx-auto w-full max-w-lg">

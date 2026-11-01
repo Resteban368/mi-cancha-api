@@ -182,6 +182,33 @@ export class CouponRedemptionDto {
   balance: number;
 }
 
+/** Bono usado para pagar una reserva. No es dinero: no suma a caja ni a ingresos. */
+export class CouponPaymentDto {
+  id: string;
+  /** null si la reserva ya no existe. */
+  reservationId: string | null;
+  couponId: string;
+  couponName: string;
+  @ApiProperty({ enum: CouponRewardType })
+  rewardType: CouponRewardType;
+  /** Solo en un premio de porcentaje. */
+  percent: number | null;
+  /** Canchas regaladas; null si el premio es un porcentaje. */
+  courts: number | null;
+  customerName: string;
+  courtName: string | null;
+  reservationStart: Date | null;
+  /** Lo que cubrió el bono. */
+  amount: number;
+  /** Lo que quedó por pagar después; 0 = pago completo. */
+  balanceAfter: number;
+  /** Quien lo aplicó. */
+  createdByName: string | null;
+  createdAt: Date;
+  /** Cuándo se anuló por cancelar la reserva; null si sigue vigente. */
+  voidedAt: Date | null;
+}
+
 /** Lo que cualquiera ve de un cupón abierto en la página del negocio. */
 export class PublicCouponDto {
   id: string;

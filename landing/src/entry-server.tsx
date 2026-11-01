@@ -4,7 +4,9 @@ import { App } from './App';
 import { PrivacidadPage } from './pages/PrivacidadPage';
 import { TerminosPage } from './pages/TerminosPage';
 
-export { PREGUNTAS } from './faq';
+export { preguntas } from './faq';
+export { fetchPrecioVentas, fetchPrecios } from './lib/api';
+export { preciosIniciales } from './precios';
 
 const html = (node: ReactNode) => renderToString(<StrictMode>{node}</StrictMode>);
 

@@ -183,6 +183,7 @@ describe('PlayerHistoryService', () => {
       totalPrice: 100_000,
       consumptionsTotal: 0,
       payments: [],
+      couponPayments: [],
       sales: [],
       status: ReservationStatus.CONFIRMED,
       source: 'WEB',
@@ -206,6 +207,21 @@ describe('PlayerHistoryService', () => {
         businessName: 'El Golazo',
         businessSlug: 'el-golazo',
         balance: 100_000,
+      });
+    });
+
+    it('no le muestra al jugador qué empleado aplicó el bono', async () => {
+      prisma.reservation.findMany.mockResolvedValue([
+        listRow({
+          couponPayments: [
+            { amount: 10_000, balanceAfter: 0, createdByName: 'Carlos' },
+          ],
+        }),
+      ]);
+      const page = await service.list('p-1', query(), NOW);
+      expect(page.items[0].couponPayments[0]).toMatchObject({
+        amount: 10_000,
+        createdByName: null,
       });
     });
 

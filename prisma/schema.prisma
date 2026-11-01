@@ -192,6 +192,7 @@ model Business {
   cashMovements     CashMovement[]
   stockMovements    StockMovement[]
   coupons           Coupon[]
+  couponPayments    CouponPayment[]
 
   @@index([cityId])
 }
@@ -389,10 +390,11 @@ model Reservation {
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
 
-  payments     Payment[]
-  refunds      Refund[]
-  sales        Sale[]
-  couponStamps CouponStamp[]
+  payments       Payment[]
+  refunds        Refund[]
+  sales          Sale[]
+  couponStamps   CouponStamp[]
+  couponPayments CouponPayment[]
 
   @@index([businessId, start])
   @@index([customerId, status])
@@ -770,10 +772,20 @@ model Plan {
   courtLimit     Int
   /// El precio y el límite salen de las canchas contratadas en la suscripción, no de esta fila.
   pricedByCourts Boolean @default(false)
+  /// Precio mensual en COP por canchas contratadas (posición 0 = 1 cancha); vacía en los demás planes.
+  courtPrices    Int[]   @default([])
   /// Lista de { title, detail }.
   benefits       Json    @default("[]")
 
   subscriptions Subscription[]
+}
+
+/// Ajustes globales de cobro (una sola fila, id = 1).
+model BillingSettings {
+  id               Int      @id @default(1)
+  /// Precio mensual en COP del módulo Ventas e inventario; 0 = aún sin precio publicado.
+  salesModulePrice Int      @default(0)
+  updatedAt        DateTime @updatedAt
 }
 
 /// Plan que tiene contratado un negocio, su estado (activo o suspendido) y la fecha del próximo cobro.
@@ -1006,6 +1018,42 @@ model CouponCard {
 
   @@unique([couponId, customerId, cycle])
   @@index([customerId, status])
+}
+
+/// Registro de un bono usado para pagar una reserva, total o parcialmente. No es dinero: no entra
+/// en Payment, ni en caja ni en ingresos. Guarda copia de nombres y sin llave foránea a cupón,
+/// tarjeta y usuario a propósito: debe sobrevivir si se borran. Al cancelar se anula, no se borra.
+model CouponPayment {
+  id             String           @id @default(uuid())
+  businessId     String
+  business       Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  /// Reserva donde se aplicó; en un grupo, la primera cancha.
+  reservationId  String?
+  reservation    Reservation?     @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+  /// groupId de la reserva, o su id si es de una sola cancha.
+  reservationKey String
+  couponId       String
+  couponName     String
+  cardId         String
+  rewardType     CouponRewardType
+  /// Solo en PERCENT.
+  percent        Int?
+  /// Canchas regaladas; null si el premio es un porcentaje.
+  courts         Int?
+  customerName   String
+  /// Lo que cubrió el bono.
+  amount         Decimal          @db.Decimal(12, 2)
+  /// Lo que quedó por pagar justo después; 0 = pago completo.
+  balanceAfter   Decimal          @db.Decimal(12, 2)
+  /// Quien lo aplicó, como se llamaba en ese momento.
+  createdById    String?
+  createdByName  String?
+  createdAt      DateTime         @default(now())
+  /// Cuándo se anuló por cancelar la reserva; el bono vuelve a estar disponible.
+  voidedAt       DateTime?
+
+  @@index([businessId, createdAt])
+  @@index([reservationKey])
 }
 
 /// Una reserva jugada y pagada en una tarjeta, con sus datos para ver el historial al redimir.

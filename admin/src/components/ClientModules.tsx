@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { api, errorMessage } from '../lib/api';
-import { formatDate } from '../lib/format';
+import { formatCop, formatDate } from '../lib/format';
 import { useToast } from '../lib/toast';
 import type { ClientDetail } from '../lib/types';
 import { Badge, Card, Switch } from './ui';
@@ -54,6 +54,11 @@ export function ClientModules({
             {sales.enabled && sales.enabledAt
               ? `Activo desde ${formatDate(sales.enabledAt)}`
               : 'El negocio decide qué productos llevan control de stock.'}
+          </p>
+          <p className="mt-1 text-xs text-fg-3">
+            {sales.monthlyPrice > 0
+              ? `Suma ${formatCop(sales.monthlyPrice)} al mes sobre un plan de pago; no se cobra en la prueba.`
+              : 'Sin precio definido: por ahora no suma al total. Se fija en Planes.'}
           </p>
         </div>
         <Switch

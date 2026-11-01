@@ -40,6 +40,7 @@ import {
   CouponCardPageDto,
   CouponCardsQueryDto,
   CouponDto,
+  CouponPaymentDto,
   CouponRedemptionDto,
   CreateCouponDto,
   CustomerCouponDto,
@@ -207,6 +208,17 @@ export class CouponsController {
       await this.businesses.requireBusinessId(user.sub),
       id,
       dto,
+      user.sub,
+    );
+  }
+
+  @Get('coupon-payments')
+  @ApiOperation({ summary: 'Pagos hechos con cupón (no suman dinero)' })
+  async payments(
+    @CurrentUser() user: AuthPayload,
+  ): Promise<CouponPaymentDto[]> {
+    return this.coupons.payments(
+      await this.businesses.requireBusinessId(user.sub),
     );
   }
 }

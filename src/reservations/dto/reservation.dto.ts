@@ -350,7 +350,27 @@ export class ReservationGroupDto {
   balance: number;
 }
 
+/** Bono usado para pagar la reserva; no suma a lo pagado en dinero. */
+export class ReservationCouponPaymentDto {
+  id: string;
+  couponName: string;
+  /** Solo en un premio de porcentaje. */
+  percent: number | null;
+  /** Canchas regaladas; null si el premio es un porcentaje. */
+  courts: number | null;
+  amount: number;
+  /** Lo que quedó por pagar después; 0 = pago completo. */
+  balanceAfter: number;
+  /** Quien lo aplicó. */
+  createdByName: string | null;
+  createdAt: Date;
+  /** Cuándo se anuló por cancelar la reserva; null si sigue vigente. */
+  voidedAt: Date | null;
+}
+
 export class ReservationDto {
+  /** Bonos usados para pagar esta reserva (o su grupo). */
+  couponPayments: ReservationCouponPaymentDto[];
   id: string;
   courtId: string;
   courtName: string;

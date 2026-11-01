@@ -104,6 +104,11 @@ const plans = [
     monthlyPrice: 79_000,
     courtLimit: 20,
     pricedByCourts: true,
+    courtPrices: [
+      79_000, 98_000, 117_000, 136_000, 155_000, 171_000, 187_000, 203_000,
+      219_000, 235_000, 248_000, 261_000, 274_000, 287_000, 300_000, 309_000,
+      318_000, 327_000, 336_000, 345_000,
+    ],
     benefits: [
       {
         title: 'Todo el sistema incluido',

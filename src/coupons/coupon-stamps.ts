@@ -213,6 +213,10 @@ export async function restoreRedeemedCoupon(
   tx: Prisma.TransactionClient,
   reservationKey: string,
 ): Promise<void> {
+  await tx.couponPayment.updateMany({
+    where: { reservationKey, voidedAt: null },
+    data: { voidedAt: new Date() },
+  });
   const card = await tx.couponCard.findUnique({
     where: { redemptionKey: reservationKey },
     select: { id: true, couponId: true },

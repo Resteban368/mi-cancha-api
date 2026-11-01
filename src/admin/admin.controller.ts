@@ -77,12 +77,14 @@ import {
   CreateClientDto,
   CreatePlanDto,
   DashboardDto,
+  BillingSettingsDto,
   PlanDto,
   SystemEnumDto,
   DeleteUsersDto,
   DeleteUsersResultDto,
   UpdateClientDto,
   UpdateClientOwnerDto,
+  UpdateBillingSettingsDto,
   UpdatePlanDto,
   UpdateModulesDto,
   UpdateSubscriptionDto,
@@ -526,6 +528,20 @@ export class AdminController {
   @ApiOperation({ summary: 'Eliminar un plan sin clientes' })
   removePlan(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     return this.plansService.remove(id);
+  }
+
+  @Get('billing-settings')
+  @ApiOperation({ summary: 'Precio del módulo Ventas e inventario' })
+  billingSettings(): Promise<BillingSettingsDto> {
+    return this.plansService.billingSettings();
+  }
+
+  @Patch('billing-settings')
+  @ApiOperation({ summary: 'Cambiar el precio del módulo Ventas e inventario' })
+  updateBillingSettings(
+    @Body() dto: UpdateBillingSettingsDto,
+  ): Promise<BillingSettingsDto> {
+    return this.plansService.updateBillingSettings(dto);
   }
 
   @Get('enums')

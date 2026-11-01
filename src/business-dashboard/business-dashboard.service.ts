@@ -66,6 +66,7 @@ export class BusinessDashboardService {
       newCustomers,
       previousNewCustomers,
       refunds,
+      couponPayments,
       sales,
       previousSales,
       topProducts,
@@ -108,6 +109,20 @@ export class BusinessDashboardService {
         },
       }),
       this.refunds(businessId, current, filter),
+      this.prisma.couponPayment.aggregate({
+        where: {
+          businessId,
+          voidedAt: null,
+          createdAt: { gte: current.from, lt: current.to },
+          ...((filter.courtId || filter.sport) && {
+            reservation: {
+              court: { id: filter.courtId, sport: filter.sport },
+            },
+          }),
+        },
+        _count: { _all: true },
+        _sum: { amount: true },
+      }),
       this.salesSummary(businessId, current, filter),
       this.salesSummary(businessId, previous, filter),
       this.topProducts(businessId, current, filter),
@@ -182,6 +197,10 @@ export class BusinessDashboardService {
         noShowRate: pct(counts.noShow, counts.total),
         discounts: round2(counts.discounts),
         refunds: { count: refunds.count, amount: round2(refunds.amount) },
+        couponPayments: {
+          count: couponPayments._count._all,
+          amount: round2(Number(couponPayments._sum.amount ?? 0)),
+        },
       },
       occupancyByCourt: courts.map((c) => {
         const row = courtHours.find((r) => r.courtId === c.id);

@@ -164,6 +164,7 @@ describe('ClientsService', () => {
       monthlyPrice: 79_000,
       courtLimit: 20,
       pricedByCourts: true,
+      courtPrices: [79_000, 98_000, 117_000],
     };
     const updatedClient = {
       ...storedClient,

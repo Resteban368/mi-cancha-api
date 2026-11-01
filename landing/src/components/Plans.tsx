@@ -3,7 +3,8 @@ import { Icon } from './Icon';
 import { Reveal } from './Reveal';
 import { CtaLink, SectionTitle } from './ui';
 import { whatsapp } from '../config';
-import { formatoPesos, MAX_CANCHAS, PRECIOS } from '../precios';
+import { usePrecioVentas, usePrecios } from '../lib/usePrecios';
+import { formatoPesos, MAX_CANCHAS } from '../precios';
 
 const INCLUYE = [
   'Agenda en tiempo real de todas tus canchas',
@@ -19,7 +20,8 @@ const CANCHAS_INICIALES = 3;
 
 export function Plans() {
   const [canchas, setCanchas] = useState(CANCHAS_INICIALES);
-  const precio = PRECIOS[canchas - 1];
+  const precio = usePrecios()[canchas - 1];
+  const precioVentas = usePrecioVentas();
   const textoCanchas = canchas === 1 ? '1 cancha' : `${canchas} canchas`;
 
   return (
@@ -123,7 +125,14 @@ export function Plans() {
           <div className="flex-1">
             <p className="font-extrabold">Módulo opcional: Ventas e inventario</p>
             <p className="mt-1 text-sm text-fg-2">
-              Punto de venta, inventario, cuadre de caja y proveedores. Se suma a tu plan.{' '}
+              Punto de venta, inventario, cuadre de caja y proveedores. Se suma a tu plan
+              {precioVentas > 0 && (
+                <>
+                  {' por '}
+                  <span className="font-bold whitespace-nowrap text-fg">{formatoPesos(precioVentas)} al mes</span>
+                </>
+              )}
+              .{' '}
               <a href="#ventas" className="font-semibold text-accent-text underline underline-offset-2">
                 Ver qué incluye
               </a>
@@ -135,7 +144,7 @@ export function Plans() {
             rel="noopener noreferrer"
             className="text-sm font-bold whitespace-nowrap text-accent-text"
           >
-            Consultar precio →
+            {precioVentas > 0 ? 'Escríbenos →' : 'Consultar precio →'}
           </a>
         </div>
 

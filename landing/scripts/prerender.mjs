@@ -9,12 +9,25 @@ const root = fileURLToPath(new URL('..', import.meta.url));
 const publicDir = `${root}../public`;
 const ssrDir = `${root}dist-ssr`;
 
-const { render, renderTerminos, renderPrivacidad, PREGUNTAS } = await import(`${ssrDir}/entry-server.js`);
+const { render, renderTerminos, renderPrivacidad, preguntas, preciosIniciales, fetchPrecios, fetchPrecioVentas } = await import(
+  `${ssrDir}/entry-server.js`
+);
+
+// El HTML sale con los precios del admin; si la API no responde, el build sigue con el respaldo.
+try {
+  [globalThis.__PRECIOS__, globalThis.__PRECIO_VENTAS__] = await Promise.race([
+    Promise.all([fetchPrecios(), fetchPrecioVentas()]),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('tiempo agotado')), 10_000).unref()),
+  ]);
+} catch (error) {
+  console.warn(`Prerender con precios de respaldo: ${error.message}`);
+}
+const precios = preciosIniciales();
 
 const faqLd = {
   '@context': 'https://schema.org',
   '@type': 'FAQPage',
-  mainEntity: PREGUNTAS.map(({ p, r }) => ({
+  mainEntity: preguntas(precios).map(({ p, r }) => ({
     '@type': 'Question',
     name: p,
     acceptedAnswer: { '@type': 'Answer', text: r },
@@ -35,7 +48,11 @@ async function prerender(file, replacements) {
 
 await prerender('index.html', [
   ['<div id="root"></div>', `<div id="root">${render()}</div>`],
-  ['<!--faq-ld-->', `<script type="application/ld+json">${JSON.stringify(faqLd)}</script>`],
+  [
+    '<!--faq-ld-->',
+    `<script type="application/ld+json">${JSON.stringify(faqLd)}</script>` +
+      `<script>window.__PRECIOS__=${JSON.stringify(precios)};window.__PRECIO_VENTAS__=${JSON.stringify(globalThis.__PRECIO_VENTAS__ ?? 0)}</script>`,
+  ],
 ]);
 await prerender('terminos/index.html', [['<div id="root"></div>', `<div id="root">${renderTerminos()}</div>`]]);
 await prerender('privacidad/index.html', [['<div id="root"></div>', `<div id="root">${renderPrivacidad()}</div>`]]);

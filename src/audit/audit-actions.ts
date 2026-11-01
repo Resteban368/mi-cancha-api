@@ -38,6 +38,7 @@ export const AUDIT_ACTIONS: AuditActionInfo[] = [
   admin('plan.created', 'Plan creado'),
   admin('plan.updated', 'Plan editado'),
   admin('plan.deleted', 'Plan eliminado'),
+  admin('billing.settings_updated', 'Precio de módulo cambiado'),
   admin('user.banned', 'Usuario bloqueado'),
   admin('user.unbanned', 'Usuario desbloqueado'),
   admin('notification.broadcast', 'Aviso enviado a negocios'),

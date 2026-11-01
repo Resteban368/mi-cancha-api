@@ -3,15 +3,15 @@
 > Generado por `npm run docs:api` a partir del código (decoradores de Swagger y DTOs). No lo edites a mano.
 > Guía de uso (autenticación, errores, flujos): [README.md](README.md).
 
-Base URL: `http://localhost:3000/api/v1` (local) · `https://mi-cancha-api.vercel.app/api/v1` (producción). 159 endpoints.
+Base URL: `http://localhost:3000/api/v1` (local) · `https://mi-cancha-api.vercel.app/api/v1` (producción). 178 endpoints.
 
 - [Salud y autenticación](#salud-y-autenticación) (8)
-- [Negocio (app y panel)](#negocio-app-y-panel) (65)
-- [Reservas en línea: público](#reservas-en-línea-público) (11)
+- [Negocio (app y panel)](#negocio-app-y-panel) (78)
+- [Reservas en línea: público](#reservas-en-línea-público) (12)
 - [Reservas en línea: jugador](#reservas-en-línea-jugador) (12)
-- [Super admin](#super-admin) (57)
-- [Imágenes](#imágenes) (3)
-- [Modelos de respuesta](#modelos-de-respuesta) (134)
+- [Super admin](#super-admin) (59)
+- [Imágenes](#imágenes) (4)
+- [Modelos de respuesta](#modelos-de-respuesta) (148)
 
 ## Salud y autenticación
 
@@ -230,6 +230,8 @@ Usuario autenticado
 | POST | `/business/profile/photos` | Agregar una foto al negocio (hasta 5; JPG o PNG, máx. 4 MB) |
 | PUT | `/business/profile/photos/order` | Ordenar las fotos; la primera es la portada del directorio |
 | GET | `/catalogs` | Servicios, métodos de pago y superficies de cancha activos (para la app) |
+| GET | `/catalogs/court-prices` | Precio mensual del plan según las canchas |
+| GET | `/catalogs/module-prices` | Precio mensual de los módulos opcionales |
 | GET | `/catalogs/departments` | Departamentos de Colombia (DANE) |
 | GET | `/business/courts` | Listar las canchas del negocio |
 | POST | `/business/courts` | Crear una cancha con horarios y tarifas (respeta el límite del plan; las fotos se suben después) |
@@ -254,6 +256,9 @@ Usuario autenticado
 | POST | `/business/products` | Crear un producto |
 | GET | `/business/sales` | Ventas de un día o de una reserva (más recientes primero) |
 | POST | `/business/sales` | Registrar una venta: consumo de una reserva (suma a su saldo) o venta suelta pagada |
+| GET | `/business/coupons` | Cupones del negocio |
+| POST | `/business/coupons` | Crear un cupón: cada N reservas, cancha gratis o un porcentaje |
+| GET | `/business/coupon-payments` | Pagos hechos con cupón (no suman dinero) |
 | GET | `/business/cash/current` | Caja abierta con lo cobrado hasta ahora y el último cierre |
 | POST | `/business/cash/open` | Abrir la caja con una base de efectivo |
 | POST | `/business/cash/close` | Cerrar la caja con el efectivo contado (arqueo) |
@@ -283,6 +288,14 @@ Usuario autenticado
 | PATCH | `/business/payments/{id}/reject` | Rechazar un pago pendiente |
 | PATCH | `/business/products/{id}` | Editar nombre, precio o activar/desactivar un producto |
 | POST | `/business/sales/{id}/void` | Anular una venta (con motivo) |
+| GET | `/business/coupons/{id}` | Detalle de un cupón |
+| PATCH | `/business/coupons/{id}` | Editar nombre, premio, vencimiento o límite, o activar/desactivar |
+| DELETE | `/business/coupons/{id}` | Borrar un cupón sin bonos ganados ni redimidos |
+| GET | `/business/coupons/{id}/cards` | Tarjetas del cupón: quién redimió y a qué hora, y cuándo se llenó cada reserva |
+| PUT | `/business/coupons/{id}/image` | Poner o reemplazar la imagen del cupón (JPG o PNG, máx. 4 MB) |
+| DELETE | `/business/coupons/{id}/image` | Quitar la imagen del cupón |
+| GET | `/business/customers/{customerId}/coupons` | Avance del cliente en cada cupón, con el historial de sus reservas |
+| POST | `/business/reservations/{id}/coupon-redemption` | Redimir un bono al cobrar la reserva en persona |
 | POST | `/business/cash/movements/{id}/void` | Anular un ingreso o retiro (caja abierta) |
 | POST | `/business/cash/expenses/{id}/void` | Anular un pago a proveedor (caja abierta) |
 | PATCH | `/business/suppliers/{id}` | Editar o activar/desactivar un proveedor |
@@ -409,6 +422,20 @@ Servicios, métodos de pago y superficies de cancha activos (para la app)
 
 - **Acceso:** Bearer token · rol `ADMIN_NEGOCIO`
 - **Respuesta:** `200` · [CatalogsDto](#catalogsdto)
+
+#### `GET /catalogs/court-prices`
+
+Precio mensual del plan según las canchas
+
+- **Acceso:** Bearer token · rol `ADMIN_NEGOCIO`
+- **Respuesta:** `200` · [CourtPriceDto](#courtpricedto)[]
+
+#### `GET /catalogs/module-prices`
+
+Precio mensual de los módulos opcionales
+
+- **Acceso:** Bearer token · rol `ADMIN_NEGOCIO`
+- **Respuesta:** `200` · [ModulePricesDto](#modulepricesdto)
 
 #### `GET /catalogs/departments`
 
@@ -1369,6 +1396,196 @@ Anular una venta (con motivo)
 
 </details>
 
+### business / coupons
+
+#### `GET /business/coupons`
+
+Cupones del negocio
+
+- **Acceso:** Bearer token · rol `ADMIN_NEGOCIO`
+- **Respuesta:** `200` · [CouponDto](#coupondto)[]
+
+#### `POST /business/coupons`
+
+Crear un cupón: cada N reservas, cancha gratis o un porcentaje
+
+- **Acceso:** Bearer token · rol `ADMIN_NEGOCIO`
+- **Respuesta:** `201` · [CouponDto](#coupondto)
+
+**Body** `application/json`
+
+**`CreateCouponDto`**
+
+| Campo | Tipo | Obligatorio | Notas |
+|---|---|---|---|
+| `rewardType` | `FREE_COURT` \| `PERCENT` | sí |  |
+| `name` | string | sí | 2+ caracteres, hasta 80 caracteres |
+| `requiredReservations` | number | sí | Reservas jugadas y pagadas para ganar el bono. · mín. 1, máx. 100 Ej.: `10` |
+| `percent` | number | no | Obligatorio si el premio es PERCENT. · mín. 1, máx. 100 Ej.: `20` |
+| `rewardDescription` | string | sí | 2+ caracteres, hasta 200 caracteres |
+| `expiresOn` | string | no | Último día válido (AAAA-MM-DD); null o sin valor, no vence. Ej.: `"2026-12-31"` |
+| `maxRedemptions` | number | no | Tope de bonos a redimir entre todos los clientes; null o sin valor, ilimitado. · mín. 1, máx. 100000 Ej.: `50` |
+
+<details><summary>Ejemplo</summary>
+
+```json
+{
+  "rewardType": "FREE_COURT",
+  "name": "Juan Pérez",
+  "requiredReservations": 10,
+  "percent": 20,
+  "rewardDescription": "<rewardDescription>",
+  "expiresOn": "2026-12-31",
+  "maxRedemptions": 50
+}
+```
+
+</details>
+
+#### `GET /business/coupon-payments`
+
+Pagos hechos con cupón (no suman dinero)
+
+- **Acceso:** Bearer token · rol `ADMIN_NEGOCIO`
+- **Respuesta:** `200` · [CouponPaymentDto](#couponpaymentdto)[]
+
+#### `GET /business/coupons/{id}`
+
+Detalle de un cupón
+
+- **Acceso:** Bearer token · rol `ADMIN_NEGOCIO`
+- **Respuesta:** `200` · [CouponDto](#coupondto)
+
+| Parámetro | En | Tipo | Obligatorio | Notas |
+|---|---|---|---|---|
+| `id` | path | string | sí |  |
+
+#### `PATCH /business/coupons/{id}`
+
+Editar nombre, premio, vencimiento o límite, o activar/desactivar
+
+- **Acceso:** Bearer token · rol `ADMIN_NEGOCIO`
+- **Respuesta:** `200` · [CouponDto](#coupondto)
+
+| Parámetro | En | Tipo | Obligatorio | Notas |
+|---|---|---|---|---|
+| `id` | path | string | sí |  |
+
+**Body** `application/json`
+
+**`UpdateCouponDto`**
+
+| Campo | Tipo | Obligatorio | Notas |
+|---|---|---|---|
+| `name` | string | no | 2+ caracteres, hasta 80 caracteres |
+| `rewardDescription` | string | no | 2+ caracteres, hasta 200 caracteres |
+| `expiresOn` | string | no | Último día válido (AAAA-MM-DD); null o sin valor, no vence. Ej.: `"2026-12-31"` |
+| `maxRedemptions` | number | no | Tope de bonos a redimir entre todos los clientes; null o sin valor, ilimitado. · mín. 1, máx. 100000 Ej.: `50` |
+| `isActive` | boolean | no |  |
+
+<details><summary>Ejemplo</summary>
+
+```json
+{
+  "expiresOn": "2026-12-31",
+  "maxRedemptions": 50
+}
+```
+
+</details>
+
+#### `DELETE /business/coupons/{id}`
+
+Borrar un cupón sin bonos ganados ni redimidos
+
+- **Acceso:** Bearer token · rol `ADMIN_NEGOCIO`
+- **Respuesta:** `204` · sin contenido
+
+| Parámetro | En | Tipo | Obligatorio | Notas |
+|---|---|---|---|---|
+| `id` | path | string | sí |  |
+
+#### `GET /business/coupons/{id}/cards`
+
+Tarjetas del cupón: quién redimió y a qué hora, y cuándo se llenó cada reserva
+
+- **Acceso:** Bearer token · rol `ADMIN_NEGOCIO`
+- **Respuesta:** `200` · [CouponCardPageDto](#couponcardpagedto)
+
+| Parámetro | En | Tipo | Obligatorio | Notas |
+|---|---|---|---|---|
+| `id` | path | string | sí |  |
+| `page` | query | number | no | mín. 1, por defecto `1` |
+| `pageSize` | query | number | no | mín. 1, máx. 100, por defecto `20` |
+| `search` | query | string | no | Texto a buscar (nombre, email, teléfono…). · hasta 100 caracteres |
+| `status` | query | `IN_PROGRESS` \| `EARNED` \| `REDEEMED` | no | Sin valor, todas las tarjetas del cupón. |
+
+#### `PUT /business/coupons/{id}/image`
+
+Poner o reemplazar la imagen del cupón (JPG o PNG, máx. 4 MB)
+
+- **Acceso:** Bearer token · rol `ADMIN_NEGOCIO`
+- **Respuesta:** `200` · [CouponDto](#coupondto)
+
+| Parámetro | En | Tipo | Obligatorio | Notas |
+|---|---|---|---|---|
+| `id` | path | string | sí |  |
+
+**Body** `multipart/form-data`: campo `image` (archivo JPG o PNG, máx. 4 MB).
+
+#### `DELETE /business/coupons/{id}/image`
+
+Quitar la imagen del cupón
+
+- **Acceso:** Bearer token · rol `ADMIN_NEGOCIO`
+- **Respuesta:** `200` · [CouponDto](#coupondto)
+
+| Parámetro | En | Tipo | Obligatorio | Notas |
+|---|---|---|---|---|
+| `id` | path | string | sí |  |
+
+#### `GET /business/customers/{customerId}/coupons`
+
+Avance del cliente en cada cupón, con el historial de sus reservas
+
+- **Acceso:** Bearer token · rol `ADMIN_NEGOCIO`
+- **Respuesta:** `200` · [CustomerCouponDto](#customercoupondto)[]
+
+| Parámetro | En | Tipo | Obligatorio | Notas |
+|---|---|---|---|---|
+| `customerId` | path | string | sí |  |
+
+#### `POST /business/reservations/{id}/coupon-redemption`
+
+Redimir un bono al cobrar la reserva en persona
+
+- **Acceso:** Bearer token · rol `ADMIN_NEGOCIO`
+- **Respuesta:** `201` · [CouponRedemptionDto](#couponredemptiondto)
+
+| Parámetro | En | Tipo | Obligatorio | Notas |
+|---|---|---|---|---|
+| `id` | path | string | sí |  |
+
+**Body** `application/json`
+
+**`RedeemCouponDto`**
+
+| Campo | Tipo | Obligatorio | Notas |
+|---|---|---|---|
+| `cardId` | string (uuid) | sí |  |
+| `courts` | number | no | Canchas a regalar, solo en cancha gratis; sin valor, todas las de la reserva. · mín. 1 Ej.: `2` |
+
+<details><summary>Ejemplo</summary>
+
+```json
+{
+  "cardId": "{{cardId}}",
+  "courts": 2
+}
+```
+
+</details>
+
 ### business / cash
 
 #### `GET /business/cash/current`
@@ -1741,6 +1958,7 @@ Perfil del administrador y suscripción
 | POST | `/public/auth/login` | Iniciar sesión con celular o cédula y contraseña |
 | GET | `/public/businesses/{slug}` | Información pública del negocio para reservar |
 | GET | `/public/businesses/{slug}/availability` | Turnos de un día de todas las canchas de un deporte (HELD = otro jugador los apartó) |
+| GET | `/public/businesses/{slug}/coupons` | Cupones que ofrece el negocio |
 
 ### public / reservas en línea
 
@@ -1954,6 +2172,17 @@ Turnos de un día de todas las canchas de un deporte (HELD = otro jugador los ap
 | `slug` | path | string | sí |  |
 | `sport` | query | `FUTBOL` \| `PADEL` \| `BALONCESTO` \| `VOLEIBOL` | sí |  |
 | `date` | query | string | sí | patrón `^\d{4}-\d{2}-\d{2}$` Ej.: `2026-10-20` |
+
+#### `GET /public/businesses/{slug}/coupons`
+
+Cupones que ofrece el negocio
+
+- **Acceso:** público
+- **Respuesta:** `200` · [PublicCouponDto](#publiccoupondto)[]
+
+| Parámetro | En | Tipo | Obligatorio | Notas |
+|---|---|---|---|---|
+| `slug` | path | string | sí |  |
 
 ## Reservas en línea: jugador
 
@@ -2198,6 +2427,8 @@ Soltar mi apartado
 | POST | `/admin/users/delete` | Eliminar varios jugadores de forma definitiva (ignora negocios y super admins) |
 | GET | `/admin/plans` | Planes de suscripción |
 | POST | `/admin/plans` | Crear un plan |
+| GET | `/admin/billing-settings` | Precio del módulo Ventas e inventario |
+| PATCH | `/admin/billing-settings` | Cambiar el precio del módulo Ventas e inventario |
 | GET | `/admin/enums` | Enums fijos del sistema (solo lectura) |
 | GET | `/admin/security/otp` | Códigos SMS enviados: totales, por día y quién los pide más (por celular y por origen) |
 | GET | `/admin/security/audit` | Auditoría: acciones del super admin y eventos de seguridad, del más reciente al más antiguo |
@@ -2567,6 +2798,7 @@ Crear un cliente: usuario de negocio + negocio + plan
 | `neighborhood` | string | sí | 2+ caracteres, hasta 100 caracteres |
 | `cityId` | string (uuid) | sí | Ciudad del negocio (GET /catalogs/departments/:id/cities); de ella sale el departamento. |
 | `planId` | string (uuid) | sí |  |
+| `courts` | number | no | Canchas contratadas, solo en un plan por canchas (1 si no se indica). · mín. 1, máx. 20 Ej.: `3` |
 
 <details><summary>Ejemplo</summary>
 
@@ -2580,7 +2812,8 @@ Crear un cliente: usuario de negocio + negocio + plan
   "address": "<address>",
   "neighborhood": "<neighborhood>",
   "cityId": "{{cityId}}",
-  "planId": "{{planId}}"
+  "planId": "{{planId}}",
+  "courts": 3
 }
 ```
 
@@ -2673,6 +2906,38 @@ Crear un plan
       "detail": "<detail>"
     }
   ]
+}
+```
+
+</details>
+
+#### `GET /admin/billing-settings`
+
+Precio del módulo Ventas e inventario
+
+- **Acceso:** Bearer token · rol `SUPER_ADMIN`
+- **Respuesta:** `200` · [BillingSettingsDto](#billingsettingsdto)
+
+#### `PATCH /admin/billing-settings`
+
+Cambiar el precio del módulo Ventas e inventario
+
+- **Acceso:** Bearer token · rol `SUPER_ADMIN`
+- **Respuesta:** `200` · [BillingSettingsDto](#billingsettingsdto)
+
+**Body** `application/json`
+
+**`UpdateBillingSettingsDto`**
+
+| Campo | Tipo | Obligatorio | Notas |
+|---|---|---|---|
+| `salesModulePrice` | number | sí | Precio mensual en COP del módulo Ventas e inventario; 0 = sin precio. · mín. 0, máx. 100000000 Ej.: `50000` |
+
+<details><summary>Ejemplo</summary>
+
+```json
+{
+  "salesModulePrice": 50000
 }
 ```
 
@@ -3122,12 +3387,15 @@ Cambiar el plan o activar/suspender al cliente
 | Campo | Tipo | Obligatorio | Notas |
 |---|---|---|---|
 | `planId` | string (uuid) | no |  |
+| `courts` | number | no | Canchas contratadas, solo en un plan por canchas. · mín. 1, máx. 20 Ej.: `3` |
 | `isActive` | boolean | no |  |
 
 <details><summary>Ejemplo</summary>
 
 ```json
-{}
+{
+  "courts": 3
+}
 ```
 
 </details>
@@ -3153,6 +3421,7 @@ Editar un plan
 | `monthlyPrice` | number | no | Precio mensual en COP. · mín. 0, máx. 100000000 Ej.: `179000` |
 | `courtLimit` | number | no | Canchas activas permitidas. · mín. 1, máx. 500 Ej.: `8` |
 | `benefits` | PlanBenefitInputDto[] | no |  |
+| `courtPrices` | number[] | no | Tabla completa de un plan por canchas, en COP: la posición 0 es 1 cancha. |
 
 **`PlanBenefitInputDto`**
 
@@ -3461,6 +3730,7 @@ Desbloquear una cuenta
 | GET | `/images/business-profile/{id}` | Foto de portada de un negocio (pública) |
 | GET | `/images/courts/{id}` | Foto de una cancha (pública) |
 | GET | `/images/notifications/{id}` | Imagen de un aviso (pública) |
+| GET | `/images/coupons/{id}` | Imagen de un cupón (pública) |
 
 ### images
 
@@ -3489,6 +3759,17 @@ Foto de una cancha (pública)
 #### `GET /images/notifications/{id}`
 
 Imagen de un aviso (pública)
+
+- **Acceso:** público
+- **Respuesta:** `200` · —
+
+| Parámetro | En | Tipo | Obligatorio | Notas |
+|---|---|---|---|---|
+| `id` | path | string | sí |  |
+
+#### `GET /images/coupons/{id}`
+
+Imagen de un cupón (pública)
 
 - **Acceso:** público
 - **Respuesta:** `200` · —
@@ -3696,6 +3977,15 @@ Imagen de un aviso (pública)
 | `bannedAt` | string (date-time) | sí |  |
 | `cancelledReservations` | number | sí | Reservas que se cancelaron al bloquear (0 si no se pidió cancelarlas). |
 | `failedCancellations` | number | sí | Reservas que se quisieron cancelar y no se pudo; revisar a mano. |
+
+<a id="billingsettingsdto"></a>
+
+**`BillingSettingsDto`**
+
+| Campo | Tipo | Obligatorio | Notas |
+|---|---|---|---|
+| `salesModuleClients` | number | sí | Negocios con el módulo activo. |
+| `salesModulePrice` | number | sí | Precio mensual en COP del módulo Ventas e inventario; 0 = sin precio. · mín. 0, máx. 100000000 Ej.: `50000` |
 
 <a id="bookinglinkdto"></a>
 
@@ -4016,6 +4306,8 @@ Imagen de un aviso (pública)
 | `createdAt` | string (date-time) | sí |  |
 | `owner` | object | sí |  |
 | `plan` | object | sí |  |
+| `salesModulePrice` | number | sí | Lo que suma el módulo Ventas e inventario al mes; 0 si no se cobra. |
+| `totalMonthlyPrice` | number | sí | Total a pagar al mes en COP: plan + módulos. |
 | `subscriptionActive` | boolean | sí | false si el cliente está suspendido (aparte de si su prueba venció: ver trialExpired). |
 | `nextPayment` | string (date-time) | sí |  |
 | `trialEndsAt` | string (date-time) | sí | Fin de la prueba gratuita; null si el plan es de pago. |
@@ -4104,6 +4396,8 @@ Imagen de un aviso (pública)
 | Campo | Tipo | Obligatorio | Notas |
 |---|---|---|---|
 | `plan` | object | sí |  |
+| `salesModulePrice` | number | sí | Lo que suma el módulo Ventas e inventario al mes; 0 si no se cobra. |
+| `totalMonthlyPrice` | number | sí | Total a pagar al mes en COP: plan + módulos. |
 | `since` | string (date-time) | sí |  |
 | `nextPayment` | string (date-time) | sí |  |
 | `isActive` | boolean | sí |  |
@@ -4117,6 +4411,100 @@ Imagen de un aviso (pública)
 |---|---|---|---|
 | `label` | string | sí |  |
 | `count` | number | sí |  |
+
+<a id="couponcarddto"></a>
+
+**`CouponCardDto`**
+
+| Campo | Tipo | Obligatorio | Notas |
+|---|---|---|---|
+| `status` | `IN_PROGRESS` \| `EARNED` \| `REDEEMED` | sí |  |
+| `id` | string | sí |  |
+| `customer` | object | sí |  |
+| `completed` | number | sí |  |
+| `required` | number | sí |  |
+| `earnedAt` | string (date-time) | sí | Cuándo se llenó la tarjeta. |
+| `redeemedAt` | string (date-time) | sí |  |
+| `redeemedCourts` | number | sí |  |
+| `redeemedAmount` | number | sí |  |
+| `stamps` | [CouponStampDto](#couponstampdto)[] | sí |  |
+
+<a id="couponcardpagedto"></a>
+
+**`CouponCardPageDto`**
+
+| Campo | Tipo | Obligatorio | Notas |
+|---|---|---|---|
+| `items` | [CouponCardDto](#couponcarddto)[] | sí |  |
+| `total` | number | sí |  |
+| `page` | number | sí |  |
+| `pageSize` | number | sí |  |
+
+<a id="coupondto"></a>
+
+**`CouponDto`**
+
+| Campo | Tipo | Obligatorio | Notas |
+|---|---|---|---|
+| `rewardType` | `FREE_COURT` \| `PERCENT` | sí |  |
+| `state` | `ACTIVE` \| `INACTIVE` \| `EXPIRED` \| `EXHAUSTED` | sí |  |
+| `id` | string | sí |  |
+| `name` | string | sí |  |
+| `requiredReservations` | number | sí |  |
+| `percent` | number | sí |  |
+| `rewardDescription` | string | sí |  |
+| `imageUrl` | string | sí | null si no tiene imagen. |
+| `expiresAt` | string (date-time) | sí |  |
+| `maxRedemptions` | number | sí | null = ilimitado. |
+| `redeemedCount` | number | sí |  |
+| `isActive` | boolean | sí |  |
+| `createdAt` | string (date-time) | sí |  |
+
+<a id="couponpaymentdto"></a>
+
+**`CouponPaymentDto`**
+
+| Campo | Tipo | Obligatorio | Notas |
+|---|---|---|---|
+| `rewardType` | `FREE_COURT` \| `PERCENT` | sí |  |
+| `id` | string | sí |  |
+| `reservationId` | string | sí | null si la reserva ya no existe. |
+| `couponId` | string | sí |  |
+| `couponName` | string | sí |  |
+| `percent` | number | sí | Solo en un premio de porcentaje. |
+| `courts` | number | sí | Canchas regaladas; null si el premio es un porcentaje. |
+| `customerName` | string | sí |  |
+| `courtName` | string | sí |  |
+| `reservationStart` | string (date-time) | sí |  |
+| `amount` | number | sí | Lo que cubrió el bono. |
+| `balanceAfter` | number | sí | Lo que quedó por pagar después; 0 = pago completo. |
+| `createdByName` | string | sí | Quien lo aplicó. |
+| `createdAt` | string (date-time) | sí |  |
+| `voidedAt` | string (date-time) | sí | Cuándo se anuló por cancelar la reserva; null si sigue vigente. |
+
+<a id="couponredemptiondto"></a>
+
+**`CouponRedemptionDto`**
+
+| Campo | Tipo | Obligatorio | Notas |
+|---|---|---|---|
+| `cardId` | string | sí |  |
+| `amount` | number | sí | Lo descontado de la reserva. |
+| `courts` | number | sí | Canchas regaladas; null si el premio es un porcentaje. |
+| `balance` | number | sí | Lo que queda por pagar de la reserva. |
+
+<a id="couponstampdto"></a>
+
+**`CouponStampDto`**
+
+| Campo | Tipo | Obligatorio | Notas |
+|---|---|---|---|
+| `reservationId` | string | sí |  |
+| `playedAt` | string (date-time) | sí | Cuándo se jugó la reserva. |
+| `stampedAt` | string (date-time) | sí | Cuándo se llenó esta casilla de la tarjeta. |
+| `courts` | number | sí | Canchas de esa reserva: ayuda a decidir qué regalar. |
+| `courtNames` | string[] | sí |  |
+| `amount` | number | sí |  |
 
 <a id="courtdto"></a>
 
@@ -4166,6 +4554,15 @@ Imagen de un aviso (pública)
 |---|---|---|---|
 | `slot` | `MAIN` \| `SURFACE` \| `LIGHTING` \| `EXTRA_1` \| `EXTRA_2` | sí |  |
 | `url` | string | sí |  |
+
+<a id="courtpricedto"></a>
+
+**`CourtPriceDto`**
+
+| Campo | Tipo | Obligatorio | Notas |
+|---|---|---|---|
+| `courts` | number | sí | Canchas contratadas. Ej.: `3` |
+| `monthlyPrice` | number | sí | Precio mensual en COP. Ej.: `117000` |
 
 <a id="courtratedto"></a>
 
@@ -4229,6 +4626,20 @@ Imagen de un aviso (pública)
 | Campo | Tipo | Obligatorio | Notas |
 |---|---|---|---|
 | `hold` | [SlotHoldDto](#slotholddto) | sí |  |
+
+<a id="customercoupondto"></a>
+
+**`CustomerCouponDto`**
+
+| Campo | Tipo | Obligatorio | Notas |
+|---|---|---|---|
+| `status` | `IN_PROGRESS` \| `EARNED` \| `REDEEMED` | sí |  |
+| `coupon` | [CouponDto](#coupondto) | sí |  |
+| `cardId` | string | sí | null si el cliente aún no tiene reservas en este cupón. |
+| `completed` | number | sí |  |
+| `required` | number | sí |  |
+| `earnedAt` | string (date-time) | sí |  |
+| `stamps` | [CouponStampDto](#couponstampdto)[] | sí |  |
 
 <a id="customerdetaildto"></a>
 
@@ -4433,6 +4844,7 @@ Imagen de un aviso (pública)
 | `noShowRate` | number | sí | No asistió ÷ total, en %. |
 | `discounts` | number | sí | Descuentos de las reservas confirmadas y jugadas. |
 | `refunds` | object | sí |  |
+| `couponPayments` | object | sí |  |
 
 <a id="deleteusersresultdto"></a>
 
@@ -4562,6 +4974,14 @@ Imagen de un aviso (pública)
 | `stock` | number | sí |  |
 | `minStock` | number | sí |  |
 | `lowStock` | boolean | sí |  |
+
+<a id="modulepricesdto"></a>
+
+**`ModulePricesDto`**
+
+| Campo | Tipo | Obligatorio | Notas |
+|---|---|---|---|
+| `sales` | number | sí | Ventas e inventario, en COP al mes; 0 = aún sin precio publicado. Ej.: `50000` |
 
 <a id="monthlysignupsdto"></a>
 
@@ -4704,6 +5124,8 @@ Imagen de un aviso (pública)
 | `note` | string | sí |  |
 | `rejectionReason` | string | sí |  |
 | `registeredByBusiness` | boolean | sí |  |
+| `courtAmount` | number | sí | Parte del pago que fue para la cancha y parte para productos (consumos o venta suelta). En una reserva, lo pagado cubre primero la cancha y luego los consumos cargados al saldo. Suman `amount`. |
+| `productsAmount` | number | sí |  |
 
 <a id="paymentmethoddto"></a>
 
@@ -4759,6 +5181,8 @@ Imagen de un aviso (pública)
 | `courtLimit` | number | sí | Canchas activas permitidas. · mín. 1, máx. 500 Ej.: `8` |
 | `benefits` | [PlanBenefitInputDto](#planbenefitinputdto)[] | sí |  |
 | `id` | string | sí |  |
+| `pricedByCourts` | boolean | sí | El precio depende de las canchas contratadas: se edita la tabla, no el precio ni el límite. |
+| `courtPrices` | object[] | sí |  |
 | `subscriptions` | number | sí | Negocios suscritos a este plan. |
 
 <a id="playerbusinessdto"></a>
@@ -4773,6 +5197,33 @@ Imagen de un aviso (pública)
 | `neighborhood` | string | sí |  |
 | `imageUrl` | string | sí |  |
 | `clientSince` | string (date-time) | sí | Desde cuándo es cliente (su primera reserva en la sede). |
+
+<a id="playercoupondto"></a>
+
+**`PlayerCouponDto`**
+
+| Campo | Tipo | Obligatorio | Notas |
+|---|---|---|---|
+| `status` | `IN_PROGRESS` \| `EARNED` \| `REDEEMED` | sí |  |
+| `couponId` | string | sí |  |
+| `businessName` | string | sí |  |
+| `businessSlug` | string | sí |  |
+| `name` | string | sí |  |
+| `rewardDescription` | string | sí |  |
+| `imageUrl` | string | sí |  |
+| `completed` | number | sí |  |
+| `required` | number | sí |  |
+| `remaining` | number | sí | Reservas que faltan para ganar el bono; 0 si ya lo tiene. |
+| `expiresAt` | string (date-time) | sí |  |
+| `stamps` | object[] | sí |  |
+
+<a id="playercouponsummarydto"></a>
+
+**`PlayerCouponSummaryDto`**
+
+| Campo | Tipo | Obligatorio | Notas |
+|---|---|---|---|
+| `redeemed` | number | sí | Bonos que el jugador ya usó, en todas las sedes. |
 
 <a id="playerdto"></a>
 
@@ -4802,6 +5253,7 @@ Imagen de un aviso (pública)
 | `status` | `CONFIRMED` \| `COMPLETED` \| `NO_SHOW` \| `CANCELLED` | sí |  |
 | `source` | `BUSINESS` \| `WEB` | sí | BUSINESS (negocio o super admin) o WEB (jugador desde el link de reservas). |
 | `group` | [ReservationGroupDto](#reservationgroupdto) | sí | Si es parte de una reserva de varias canchas; los montos del grupo están aquí. |
+| `couponPayments` | [ReservationCouponPaymentDto](#reservationcouponpaymentdto)[] | sí | Bonos usados para pagar esta reserva (o su grupo). |
 | `id` | string | sí |  |
 | `courtId` | string | sí |  |
 | `courtName` | string | sí |  |
@@ -4957,6 +5409,19 @@ Imagen de un aviso (pública)
 | `bookingAvailable` | boolean | sí |  |
 | `unavailableReason` | string | sí | Por qué no se puede reservar: DISABLED, PLAN_INACTIVE o NO_COURTS. |
 
+<a id="publiccoupondto"></a>
+
+**`PublicCouponDto`**
+
+| Campo | Tipo | Obligatorio | Notas |
+|---|---|---|---|
+| `id` | string | sí |  |
+| `name` | string | sí |  |
+| `requiredReservations` | number | sí |  |
+| `rewardDescription` | string | sí |  |
+| `imageUrl` | string | sí |  |
+| `expiresAt` | string (date-time) | sí |  |
+
 <a id="publiccourtdto"></a>
 
 **`PublicCourtDto`**
@@ -4986,6 +5451,22 @@ Imagen de un aviso (pública)
 |---|---|---|---|
 | `customer` | object | sí |  |
 
+<a id="reservationcouponpaymentdto"></a>
+
+**`ReservationCouponPaymentDto`**
+
+| Campo | Tipo | Obligatorio | Notas |
+|---|---|---|---|
+| `id` | string | sí |  |
+| `couponName` | string | sí |  |
+| `percent` | number | sí | Solo en un premio de porcentaje. |
+| `courts` | number | sí | Canchas regaladas; null si el premio es un porcentaje. |
+| `amount` | number | sí |  |
+| `balanceAfter` | number | sí | Lo que quedó por pagar después; 0 = pago completo. |
+| `createdByName` | string | sí | Quien lo aplicó. |
+| `createdAt` | string (date-time) | sí |  |
+| `voidedAt` | string (date-time) | sí | Cuándo se anuló por cancelar la reserva; null si sigue vigente. |
+
 <a id="reservationdto"></a>
 
 **`ReservationDto`**
@@ -4998,6 +5479,7 @@ Imagen de un aviso (pública)
 | `status` | `CONFIRMED` \| `COMPLETED` \| `NO_SHOW` \| `CANCELLED` | sí |  |
 | `source` | `BUSINESS` \| `WEB` | sí | BUSINESS (negocio o super admin) o WEB (jugador desde el link de reservas). |
 | `group` | [ReservationGroupDto](#reservationgroupdto) | sí | Si es parte de una reserva de varias canchas; los montos del grupo están aquí. |
+| `couponPayments` | [ReservationCouponPaymentDto](#reservationcouponpaymentdto)[] | sí | Bonos usados para pagar esta reserva (o su grupo). |
 | `id` | string | sí |  |
 | `courtId` | string | sí |  |
 | `courtName` | string | sí |  |
@@ -5088,6 +5570,8 @@ Imagen de un aviso (pública)
 | `paymentMethod` | string | sí | Código del método con que se pagó (venta suelta o consumo cobrado ya). |
 | `courtName` | string | sí | Cancha e inicio de la reserva de un consumo. |
 | `reservationStart` | string (date-time) | sí |  |
+| `reservationPaid` | boolean | sí | Consumo cuya reserva ya está pagada por completo (saldo en cero): se cobró con la reserva aunque no tenga pago propio. |
+| `reservationPending` | number | sí | De un consumo cargado al saldo, lo que falta por cobrar: lo pagado en la reserva cubre primero la cancha y luego los consumos en orden de carga. 0 en ventas sueltas, consumos cobrados en el momento o ya cubiertos. |
 
 <a id="saleitemdto"></a>
 
@@ -5191,6 +5675,8 @@ Imagen de un aviso (pública)
 |---|---|---|---|
 | `planName` | string | sí |  |
 | `monthlyPrice` | number | sí | Precio mensual en COP. |
+| `salesModulePrice` | number | sí | Lo que suma el módulo Ventas e inventario al mes; 0 si no se cobra. |
+| `totalMonthlyPrice` | number | sí | Total a pagar al mes en COP: plan + módulos. |
 | `since` | string (date-time) | sí |  |
 | `nextPayment` | string (date-time) | sí |  |
 | `courtLimit` | number | sí |  |

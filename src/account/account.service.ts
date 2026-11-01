@@ -1,7 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { isSubscriptionUsable, trialStatusOf } from '../common/trial.js';
 import { UserRole } from '../generated/prisma/enums.js';
-import { subscriptionTerms } from '../common/plan-pricing.js';
+import {
+  monthlyBill,
+  salesModuleListPrice,
+  subscriptionTerms,
+} from '../common/plan-pricing.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
   BusinessAccountDto,
@@ -45,6 +49,11 @@ export class AccountService {
       subscriptionDto = {
         planName: subscription.plan.name,
         monthlyPrice: terms.monthlyPrice,
+        ...monthlyBill(
+          terms.monthlyPrice,
+          user.business.salesModuleEnabled,
+          await salesModuleListPrice(this.prisma),
+        ),
         since: subscription.since,
         nextPayment: subscription.nextPayment,
         courtLimit: terms.courtLimit,

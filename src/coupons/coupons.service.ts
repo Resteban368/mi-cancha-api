@@ -32,6 +32,7 @@ import {
   PlayerCouponDto,
   PlayerCouponSummaryDto,
   PublicCouponDto,
+  CouponPaymentDto,
   RedeemCouponDto,
   UpdateCouponDto,
 } from './dto/coupon.dto.js';
@@ -262,6 +263,7 @@ export class CouponsService {
     businessId: string,
     reservationId: string,
     dto: RedeemCouponDto,
+    actorId: string,
     now = new Date(),
   ): Promise<CouponRedemptionDto> {
     return this.prisma.$transaction(async (tx) => {
@@ -285,7 +287,10 @@ export class CouponsService {
           customerId: customerId ?? undefined,
           coupon: { businessId },
         },
-        include: { coupon: true },
+        include: {
+          coupon: true,
+          customer: { select: { name: true } },
+        },
       });
       if (!customerId || !card) {
         throw new NotFoundException('Este cliente no tiene ese bono');
@@ -374,13 +379,62 @@ export class CouponsService {
           },
         });
       }
-      return {
-        cardId: card.id,
-        amount,
-        courts,
-        balance: round2(balance - amount),
-      };
+      const remaining = round2(balance - amount);
+      const actor = await tx.user.findUnique({
+        where: { id: actorId },
+        select: { displayName: true },
+      });
+      await tx.couponPayment.create({
+        data: {
+          businessId,
+          reservationId: members[0].id,
+          reservationKey: key,
+          couponId: card.couponId,
+          couponName: card.coupon.name,
+          cardId: card.id,
+          rewardType: card.coupon.rewardType,
+          percent: card.coupon.percent,
+          courts,
+          customerName: card.customer.name,
+          amount,
+          balanceAfter: remaining,
+          createdById: actorId,
+          createdByName: actor?.displayName ?? null,
+          createdAt: now,
+        },
+      });
+      return { cardId: card.id, amount, courts, balance: remaining };
     });
+  }
+
+  /** Pagos hechos con cupón, del más reciente al más antiguo; incluye los anulados. */
+  async payments(businessId: string): Promise<CouponPaymentDto[]> {
+    const rows = await this.prisma.couponPayment.findMany({
+      where: { businessId },
+      include: {
+        reservation: {
+          select: { start: true, court: { select: { name: true } } },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    return rows.map((row) => ({
+      id: row.id,
+      reservationId: row.reservationId,
+      couponId: row.couponId,
+      couponName: row.couponName,
+      rewardType: row.rewardType,
+      percent: row.percent,
+      courts: row.courts,
+      customerName: row.customerName,
+      courtName: row.reservation?.court.name ?? null,
+      reservationStart: row.reservation?.start ?? null,
+      amount: Number(row.amount),
+      balanceAfter: Number(row.balanceAfter),
+      createdByName: row.createdByName,
+      createdAt: row.createdAt,
+      voidedAt: row.voidedAt,
+    }));
   }
 
   async summaryForPlayer(userId: string): Promise<PlayerCouponSummaryDto> {

@@ -543,6 +543,63 @@
         ]
       }
     },
+    "/api/v1/catalogs/court-prices": {
+      "get": {
+        "operationId": "CatalogsController_courtPrices",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CourtPriceDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Precio mensual del plan según las canchas",
+        "tags": [
+          "catalogs"
+        ]
+      }
+    },
+    "/api/v1/catalogs/module-prices": {
+      "get": {
+        "operationId": "CatalogsController_modulePrices",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModulePricesDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Precio mensual de los módulos opcionales",
+        "tags": [
+          "catalogs"
+        ]
+      }
+    },
     "/api/v1/catalogs/departments": {
       "get": {
         "operationId": "CatalogsController_departments",
@@ -4120,6 +4177,578 @@
         ]
       }
     },
+    "/api/v1/images/coupons/{id}": {
+      "get": {
+        "operationId": "CouponImagesController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Imagen de un cupón (pública)",
+        "tags": [
+          "images"
+        ]
+      }
+    },
+    "/api/v1/business/coupons": {
+      "get": {
+        "operationId": "CouponsController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CouponDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Cupones del negocio",
+        "tags": [
+          "business / coupons"
+        ]
+      },
+      "post": {
+        "operationId": "CouponsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCouponDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CouponDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Crear un cupón: cada N reservas, cancha gratis o un porcentaje",
+        "tags": [
+          "business / coupons"
+        ]
+      }
+    },
+    "/api/v1/business/coupons/{id}": {
+      "get": {
+        "operationId": "CouponsController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CouponDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Detalle de un cupón",
+        "tags": [
+          "business / coupons"
+        ]
+      },
+      "patch": {
+        "operationId": "CouponsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCouponDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CouponDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Editar nombre, premio, vencimiento o límite, o activar/desactivar",
+        "tags": [
+          "business / coupons"
+        ]
+      },
+      "delete": {
+        "operationId": "CouponsController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Borrar un cupón sin bonos ganados ni redimidos",
+        "tags": [
+          "business / coupons"
+        ]
+      }
+    },
+    "/api/v1/business/coupons/{id}/cards": {
+      "get": {
+        "operationId": "CouponsController_cards",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "Texto a buscar (nombre, email, teléfono…).",
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Sin valor, todas las tarjetas del cupón.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "IN_PROGRESS",
+                "EARNED",
+                "REDEEMED"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CouponCardPageDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Tarjetas del cupón: quién redimió y a qué hora, y cuándo se llenó cada reserva",
+        "tags": [
+          "business / coupons"
+        ]
+      }
+    },
+    "/api/v1/business/coupons/{id}/image": {
+      "put": {
+        "operationId": "CouponsController_setImage",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "image"
+                ],
+                "properties": {
+                  "image": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CouponDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Poner o reemplazar la imagen del cupón (JPG o PNG, máx. 4 MB)",
+        "tags": [
+          "business / coupons"
+        ]
+      },
+      "delete": {
+        "operationId": "CouponsController_removeImage",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CouponDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Quitar la imagen del cupón",
+        "tags": [
+          "business / coupons"
+        ]
+      }
+    },
+    "/api/v1/business/customers/{customerId}/coupons": {
+      "get": {
+        "operationId": "CouponsController_forCustomer",
+        "parameters": [
+          {
+            "name": "customerId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CustomerCouponDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Avance del cliente en cada cupón, con el historial de sus reservas",
+        "tags": [
+          "business / coupons"
+        ]
+      }
+    },
+    "/api/v1/business/reservations/{id}/coupon-redemption": {
+      "post": {
+        "operationId": "CouponsController_redeem",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RedeemCouponDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CouponRedemptionDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Redimir un bono al cobrar la reserva en persona",
+        "tags": [
+          "business / coupons"
+        ]
+      }
+    },
+    "/api/v1/business/coupon-payments": {
+      "get": {
+        "operationId": "CouponsController_payments",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CouponPaymentDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Pagos hechos con cupón (no suman dinero)",
+        "tags": [
+          "business / coupons"
+        ]
+      }
+    },
+    "/api/v1/player/coupons/summary": {
+      "get": {
+        "operationId": "PlayerCouponsController_summary",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayerCouponSummaryDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Cuántos bonos he usado en todas las sedes",
+        "tags": [
+          "player / coupons"
+        ]
+      }
+    },
+    "/api/v1/player/coupons": {
+      "get": {
+        "operationId": "PlayerCouponsController_findMine",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PlayerCouponDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mi avance en los cupones de cada negocio",
+        "tags": [
+          "player / coupons"
+        ]
+      }
+    },
+    "/api/v1/public/businesses/{slug}/coupons": {
+      "get": {
+        "operationId": "PublicCouponsController_findForBusiness",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PublicCouponDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Cupones que ofrece el negocio",
+        "tags": [
+          "public / reservas en línea"
+        ]
+      }
+    },
     "/api/v1/business/cash/current": {
       "get": {
         "operationId": "CashController_current",
@@ -6389,6 +7018,68 @@
         ]
       }
     },
+    "/api/v1/admin/billing-settings": {
+      "get": {
+        "operationId": "AdminController_billingSettings",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingSettingsDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Precio del módulo Ventas e inventario",
+        "tags": [
+          "admin"
+        ]
+      },
+      "patch": {
+        "operationId": "AdminController_updateBillingSettings",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateBillingSettingsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingSettingsDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Cambiar el precio del módulo Ventas e inventario",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/v1/admin/enums": {
       "get": {
         "operationId": "AdminController_enums",
@@ -7291,6 +7982,38 @@
           "courtSurfaces"
         ]
       },
+      "CourtPriceDto": {
+        "type": "object",
+        "properties": {
+          "courts": {
+            "type": "number",
+            "description": "Canchas contratadas.",
+            "example": 3
+          },
+          "monthlyPrice": {
+            "type": "number",
+            "description": "Precio mensual en COP.",
+            "example": 117000
+          }
+        },
+        "required": [
+          "courts",
+          "monthlyPrice"
+        ]
+      },
+      "ModulePricesDto": {
+        "type": "object",
+        "properties": {
+          "sales": {
+            "type": "number",
+            "description": "Ventas e inventario, en COP al mes; 0 = aún sin precio publicado.",
+            "example": 50000
+          }
+        },
+        "required": [
+          "sales"
+        ]
+      },
       "DepartmentDto": {
         "type": "object",
         "properties": {
@@ -8159,6 +8882,14 @@
             "format": "date-time",
             "type": "string",
             "nullable": true
+          },
+          "reservationPaid": {
+            "type": "boolean",
+            "description": "Consumo cuya reserva ya está pagada por completo (saldo en cero): se\ncobró con la reserva aunque no tenga pago propio."
+          },
+          "reservationPending": {
+            "type": "number",
+            "description": "De un consumo cargado al saldo, lo que falta por cobrar: lo pagado en la\nreserva cubre primero la cancha y luego los consumos en orden de carga.\n0 en ventas sueltas, consumos cobrados en el momento o ya cubiertos."
           }
         },
         "required": [
@@ -8174,7 +8905,9 @@
           "createdAt",
           "paymentMethod",
           "courtName",
-          "reservationStart"
+          "reservationStart",
+          "reservationPaid",
+          "reservationPending"
         ]
       },
       "ReservationPaymentDto": {
@@ -8283,6 +9016,60 @@
           "balance"
         ]
       },
+      "ReservationCouponPaymentDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "couponName": {
+            "type": "string"
+          },
+          "percent": {
+            "type": "number",
+            "nullable": true,
+            "description": "Solo en un premio de porcentaje."
+          },
+          "courts": {
+            "type": "number",
+            "nullable": true,
+            "description": "Canchas regaladas; null si el premio es un porcentaje."
+          },
+          "amount": {
+            "type": "number"
+          },
+          "balanceAfter": {
+            "type": "number",
+            "description": "Lo que quedó por pagar después; 0 = pago completo."
+          },
+          "createdByName": {
+            "type": "string",
+            "nullable": true,
+            "description": "Quien lo aplicó."
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "voidedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "Cuándo se anuló por cancelar la reserva; null si sigue vigente."
+          }
+        },
+        "required": [
+          "id",
+          "couponName",
+          "percent",
+          "courts",
+          "amount",
+          "balanceAfter",
+          "createdByName",
+          "createdAt",
+          "voidedAt"
+        ]
+      },
       "CustomerDto": {
         "type": "object",
         "properties": {
@@ -8382,6 +9169,13 @@
               }
             ]
           },
+          "couponPayments": {
+            "description": "Bonos usados para pagar esta reserva (o su grupo).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReservationCouponPaymentDto"
+            }
+          },
           "id": {
             "type": "string"
           },
@@ -8479,6 +9273,7 @@
           "status",
           "source",
           "group",
+          "couponPayments",
           "id",
           "courtId",
           "courtName",
@@ -10129,6 +10924,21 @@
               "count",
               "amount"
             ]
+          },
+          "couponPayments": {
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "number"
+              },
+              "amount": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "count",
+              "amount"
+            ]
           }
         },
         "required": [
@@ -10149,7 +10959,8 @@
           "cancellationRate",
           "noShowRate",
           "discounts",
-          "refunds"
+          "refunds",
+          "couponPayments"
         ]
       },
       "TopProductDto": {
@@ -11144,6 +11955,13 @@
               }
             ]
           },
+          "couponPayments": {
+            "description": "Bonos usados para pagar esta reserva (o su grupo).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReservationCouponPaymentDto"
+            }
+          },
           "id": {
             "type": "string"
           },
@@ -11247,6 +12065,7 @@
           "status",
           "source",
           "group",
+          "couponPayments",
           "id",
           "courtId",
           "courtName",
@@ -11756,6 +12575,13 @@
           },
           "registeredByBusiness": {
             "type": "boolean"
+          },
+          "courtAmount": {
+            "type": "number",
+            "description": "Parte del pago que fue para la cancha y parte para productos (consumos\no venta suelta). En una reserva, lo pagado cubre primero la cancha y\nluego los consumos cargados al saldo. Suman `amount`."
+          },
+          "productsAmount": {
+            "type": "number"
           }
         },
         "required": [
@@ -11772,7 +12598,9 @@
           "reference",
           "note",
           "rejectionReason",
-          "registeredByBusiness"
+          "registeredByBusiness",
+          "courtAmount",
+          "productsAmount"
         ]
       },
       "CreatePaymentDto": {
@@ -12071,6 +12899,618 @@
         },
         "required": [
           "reason"
+        ]
+      },
+      "CouponDto": {
+        "type": "object",
+        "properties": {
+          "rewardType": {
+            "enum": [
+              "FREE_COURT",
+              "PERCENT"
+            ],
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "ACTIVE",
+              "INACTIVE",
+              "EXPIRED",
+              "EXHAUSTED"
+            ],
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "requiredReservations": {
+            "type": "number"
+          },
+          "percent": {
+            "type": "number",
+            "nullable": true
+          },
+          "rewardDescription": {
+            "type": "string"
+          },
+          "imageUrl": {
+            "type": "string",
+            "nullable": true,
+            "description": "null si no tiene imagen."
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "maxRedemptions": {
+            "type": "number",
+            "nullable": true,
+            "description": "null = ilimitado."
+          },
+          "redeemedCount": {
+            "type": "number"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rewardType",
+          "state",
+          "id",
+          "name",
+          "requiredReservations",
+          "percent",
+          "rewardDescription",
+          "imageUrl",
+          "expiresAt",
+          "maxRedemptions",
+          "redeemedCount",
+          "isActive",
+          "createdAt"
+        ]
+      },
+      "CreateCouponDto": {
+        "type": "object",
+        "properties": {
+          "rewardType": {
+            "enum": [
+              "FREE_COURT",
+              "PERCENT"
+            ],
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 80
+          },
+          "requiredReservations": {
+            "type": "number",
+            "description": "Reservas jugadas y pagadas para ganar el bono.",
+            "example": 10,
+            "minimum": 1,
+            "maximum": 100
+          },
+          "percent": {
+            "type": "number",
+            "description": "Obligatorio si el premio es PERCENT.",
+            "example": 20,
+            "minimum": 1,
+            "maximum": 100
+          },
+          "rewardDescription": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 200
+          },
+          "expiresOn": {
+            "type": "string",
+            "nullable": true,
+            "description": "Último día válido (AAAA-MM-DD); null o sin valor, no vence.",
+            "example": "2026-12-31"
+          },
+          "maxRedemptions": {
+            "type": "number",
+            "nullable": true,
+            "description": "Tope de bonos a redimir entre todos los clientes; null o sin valor, ilimitado.",
+            "example": 50,
+            "minimum": 1,
+            "maximum": 100000
+          }
+        },
+        "required": [
+          "rewardType",
+          "name",
+          "requiredReservations",
+          "rewardDescription"
+        ]
+      },
+      "CouponStampDto": {
+        "type": "object",
+        "properties": {
+          "reservationId": {
+            "type": "string",
+            "nullable": true
+          },
+          "playedAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Cuándo se jugó la reserva."
+          },
+          "stampedAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Cuándo se llenó esta casilla de la tarjeta."
+          },
+          "courts": {
+            "type": "number",
+            "description": "Canchas de esa reserva: ayuda a decidir qué regalar."
+          },
+          "courtNames": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "amount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "reservationId",
+          "playedAt",
+          "stampedAt",
+          "courts",
+          "courtNames",
+          "amount"
+        ]
+      },
+      "CouponCardDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "enum": [
+              "IN_PROGRESS",
+              "EARNED",
+              "REDEEMED"
+            ],
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "customer": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "phone": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "phone"
+            ]
+          },
+          "completed": {
+            "type": "number"
+          },
+          "required": {
+            "type": "number"
+          },
+          "earnedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "Cuándo se llenó la tarjeta."
+          },
+          "redeemedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "redeemedCourts": {
+            "type": "number",
+            "nullable": true
+          },
+          "redeemedAmount": {
+            "type": "number",
+            "nullable": true
+          },
+          "stamps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CouponStampDto"
+            }
+          }
+        },
+        "required": [
+          "status",
+          "id",
+          "customer",
+          "completed",
+          "required",
+          "earnedAt",
+          "redeemedAt",
+          "redeemedCourts",
+          "redeemedAmount",
+          "stamps"
+        ]
+      },
+      "CouponCardPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CouponCardDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          },
+          "page": {
+            "type": "number"
+          },
+          "pageSize": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize"
+        ]
+      },
+      "UpdateCouponDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 80
+          },
+          "rewardDescription": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 200
+          },
+          "expiresOn": {
+            "type": "string",
+            "nullable": true,
+            "description": "Último día válido (AAAA-MM-DD); null o sin valor, no vence.",
+            "example": "2026-12-31"
+          },
+          "maxRedemptions": {
+            "type": "number",
+            "nullable": true,
+            "description": "Tope de bonos a redimir entre todos los clientes; null o sin valor, ilimitado.",
+            "example": 50,
+            "minimum": 1,
+            "maximum": 100000
+          },
+          "isActive": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CustomerCouponDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "enum": [
+              "IN_PROGRESS",
+              "EARNED",
+              "REDEEMED"
+            ],
+            "type": "string"
+          },
+          "coupon": {
+            "$ref": "#/components/schemas/CouponDto"
+          },
+          "cardId": {
+            "type": "string",
+            "nullable": true,
+            "description": "null si el cliente aún no tiene reservas en este cupón."
+          },
+          "completed": {
+            "type": "number"
+          },
+          "required": {
+            "type": "number"
+          },
+          "earnedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "stamps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CouponStampDto"
+            }
+          }
+        },
+        "required": [
+          "status",
+          "coupon",
+          "cardId",
+          "completed",
+          "required",
+          "earnedAt",
+          "stamps"
+        ]
+      },
+      "RedeemCouponDto": {
+        "type": "object",
+        "properties": {
+          "cardId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courts": {
+            "type": "number",
+            "description": "Canchas a regalar, solo en cancha gratis; sin valor, todas las de la reserva.",
+            "example": 2,
+            "minimum": 1
+          }
+        },
+        "required": [
+          "cardId"
+        ]
+      },
+      "CouponRedemptionDto": {
+        "type": "object",
+        "properties": {
+          "cardId": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number",
+            "description": "Lo descontado de la reserva."
+          },
+          "courts": {
+            "type": "number",
+            "nullable": true,
+            "description": "Canchas regaladas; null si el premio es un porcentaje."
+          },
+          "balance": {
+            "type": "number",
+            "description": "Lo que queda por pagar de la reserva."
+          }
+        },
+        "required": [
+          "cardId",
+          "amount",
+          "courts",
+          "balance"
+        ]
+      },
+      "CouponPaymentDto": {
+        "type": "object",
+        "properties": {
+          "rewardType": {
+            "enum": [
+              "FREE_COURT",
+              "PERCENT"
+            ],
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "reservationId": {
+            "type": "string",
+            "nullable": true,
+            "description": "null si la reserva ya no existe."
+          },
+          "couponId": {
+            "type": "string"
+          },
+          "couponName": {
+            "type": "string"
+          },
+          "percent": {
+            "type": "number",
+            "nullable": true,
+            "description": "Solo en un premio de porcentaje."
+          },
+          "courts": {
+            "type": "number",
+            "nullable": true,
+            "description": "Canchas regaladas; null si el premio es un porcentaje."
+          },
+          "customerName": {
+            "type": "string"
+          },
+          "courtName": {
+            "type": "string",
+            "nullable": true
+          },
+          "reservationStart": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "amount": {
+            "type": "number",
+            "description": "Lo que cubrió el bono."
+          },
+          "balanceAfter": {
+            "type": "number",
+            "description": "Lo que quedó por pagar después; 0 = pago completo."
+          },
+          "createdByName": {
+            "type": "string",
+            "nullable": true,
+            "description": "Quien lo aplicó."
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "voidedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "Cuándo se anuló por cancelar la reserva; null si sigue vigente."
+          }
+        },
+        "required": [
+          "rewardType",
+          "id",
+          "reservationId",
+          "couponId",
+          "couponName",
+          "percent",
+          "courts",
+          "customerName",
+          "courtName",
+          "reservationStart",
+          "amount",
+          "balanceAfter",
+          "createdByName",
+          "createdAt",
+          "voidedAt"
+        ]
+      },
+      "PlayerCouponSummaryDto": {
+        "type": "object",
+        "properties": {
+          "redeemed": {
+            "type": "number",
+            "description": "Bonos que el jugador ya usó, en todas las sedes."
+          }
+        },
+        "required": [
+          "redeemed"
+        ]
+      },
+      "PlayerCouponDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "enum": [
+              "IN_PROGRESS",
+              "EARNED",
+              "REDEEMED"
+            ],
+            "type": "string"
+          },
+          "couponId": {
+            "type": "string"
+          },
+          "businessName": {
+            "type": "string"
+          },
+          "businessSlug": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string"
+          },
+          "rewardDescription": {
+            "type": "string"
+          },
+          "imageUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "completed": {
+            "type": "number"
+          },
+          "required": {
+            "type": "number"
+          },
+          "remaining": {
+            "type": "number",
+            "description": "Reservas que faltan para ganar el bono; 0 si ya lo tiene."
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "stamps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "playedAt": {
+                  "format": "date-time",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "playedAt"
+              ]
+            }
+          }
+        },
+        "required": [
+          "status",
+          "couponId",
+          "businessName",
+          "businessSlug",
+          "name",
+          "rewardDescription",
+          "imageUrl",
+          "completed",
+          "required",
+          "remaining",
+          "expiresAt",
+          "stamps"
+        ]
+      },
+      "PublicCouponDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "requiredReservations": {
+            "type": "number"
+          },
+          "rewardDescription": {
+            "type": "string"
+          },
+          "imageUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "requiredReservations",
+          "rewardDescription",
+          "imageUrl",
+          "expiresAt"
         ]
       },
       "CashMethodDto": {
@@ -12839,6 +14279,14 @@
             "type": "number",
             "description": "Precio mensual en COP."
           },
+          "salesModulePrice": {
+            "type": "number",
+            "description": "Lo que suma el módulo Ventas e inventario al mes; 0 si no se cobra."
+          },
+          "totalMonthlyPrice": {
+            "type": "number",
+            "description": "Total a pagar al mes en COP: plan + módulos."
+          },
           "since": {
             "format": "date-time",
             "type": "string"
@@ -12891,6 +14339,8 @@
         "required": [
           "planName",
           "monthlyPrice",
+          "salesModulePrice",
+          "totalMonthlyPrice",
           "since",
           "nextPayment",
           "courtLimit",
@@ -13113,13 +14563,29 @@
               },
               "monthlyPrice": {
                 "type": "number"
+              },
+              "courtLimit": {
+                "type": "number"
+              },
+              "pricedByCourts": {
+                "type": "boolean"
               }
             },
             "required": [
               "id",
               "name",
-              "monthlyPrice"
+              "monthlyPrice",
+              "courtLimit",
+              "pricedByCourts"
             ]
+          },
+          "salesModulePrice": {
+            "type": "number",
+            "description": "Lo que suma el módulo Ventas e inventario al mes; 0 si no se cobra."
+          },
+          "totalMonthlyPrice": {
+            "type": "number",
+            "description": "Total a pagar al mes en COP: plan + módulos."
           },
           "subscriptionActive": {
             "type": "boolean",
@@ -13157,6 +14623,8 @@
           "createdAt",
           "owner",
           "plan",
+          "salesModulePrice",
+          "totalMonthlyPrice",
           "subscriptionActive",
           "nextPayment",
           "trialEndsAt",
@@ -13257,14 +14725,26 @@
               },
               "courtLimit": {
                 "type": "number"
+              },
+              "pricedByCourts": {
+                "type": "boolean"
               }
             },
             "required": [
               "id",
               "name",
               "monthlyPrice",
-              "courtLimit"
+              "courtLimit",
+              "pricedByCourts"
             ]
+          },
+          "salesModulePrice": {
+            "type": "number",
+            "description": "Lo que suma el módulo Ventas e inventario al mes; 0 si no se cobra."
+          },
+          "totalMonthlyPrice": {
+            "type": "number",
+            "description": "Total a pagar al mes en COP: plan + módulos."
           },
           "since": {
             "format": "date-time",
@@ -13283,6 +14763,8 @@
         },
         "required": [
           "plan",
+          "salesModulePrice",
+          "totalMonthlyPrice",
           "since",
           "nextPayment",
           "isActive",
@@ -13302,11 +14784,15 @@
                 "format": "date-time",
                 "type": "string",
                 "nullable": true
+              },
+              "monthlyPrice": {
+                "type": "number"
               }
             },
             "required": [
               "enabled",
-              "enabledAt"
+              "enabledAt",
+              "monthlyPrice"
             ]
           }
         },
@@ -13730,6 +15216,13 @@
           "planId": {
             "type": "string",
             "format": "uuid"
+          },
+          "courts": {
+            "type": "number",
+            "description": "Canchas contratadas, solo en un plan por canchas (1 si no se indica).",
+            "example": 3,
+            "minimum": 1,
+            "maximum": 20
           }
         },
         "required": [
@@ -13761,6 +15254,13 @@
           "planId": {
             "type": "string",
             "format": "uuid"
+          },
+          "courts": {
+            "type": "number",
+            "description": "Canchas contratadas, solo en un plan por canchas.",
+            "example": 3,
+            "minimum": 1,
+            "maximum": 20
           },
           "isActive": {
             "type": "boolean"
@@ -13949,6 +15449,28 @@
           "id": {
             "type": "string"
           },
+          "pricedByCourts": {
+            "type": "boolean",
+            "description": "El precio depende de las canchas contratadas: se edita la tabla, no el precio ni el límite."
+          },
+          "courtPrices": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "courts": {
+                  "type": "number"
+                },
+                "monthlyPrice": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "courts",
+                "monthlyPrice"
+              ]
+            }
+          },
           "subscriptions": {
             "type": "number",
             "description": "Negocios suscritos a este plan."
@@ -13960,6 +15482,8 @@
           "courtLimit",
           "benefits",
           "id",
+          "pricedByCourts",
+          "courtPrices",
           "subscriptions"
         ]
       },
@@ -14030,8 +15554,52 @@
             "items": {
               "$ref": "#/components/schemas/PlanBenefitInputDto"
             }
+          },
+          "courtPrices": {
+            "description": "Tabla completa de un plan por canchas, en COP: la posición 0 es 1 cancha.",
+            "type": "array",
+            "items": {
+              "type": "number",
+              "maximum": 100000000,
+              "minimum": 1
+            }
           }
         }
+      },
+      "BillingSettingsDto": {
+        "type": "object",
+        "properties": {
+          "salesModuleClients": {
+            "type": "number",
+            "description": "Negocios con el módulo activo."
+          },
+          "salesModulePrice": {
+            "type": "number",
+            "description": "Precio mensual en COP del módulo Ventas e inventario; 0 = sin precio.",
+            "example": 50000,
+            "minimum": 0,
+            "maximum": 100000000
+          }
+        },
+        "required": [
+          "salesModuleClients",
+          "salesModulePrice"
+        ]
+      },
+      "UpdateBillingSettingsDto": {
+        "type": "object",
+        "properties": {
+          "salesModulePrice": {
+            "type": "number",
+            "description": "Precio mensual en COP del módulo Ventas e inventario; 0 = sin precio.",
+            "example": 50000,
+            "minimum": 0,
+            "maximum": 100000000
+          }
+        },
+        "required": [
+          "salesModulePrice"
+        ]
       },
       "SystemEnumDto": {
         "type": "object",

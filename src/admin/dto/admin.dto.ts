@@ -130,7 +130,8 @@ export class UpdateModulesDto {
 }
 
 export class ClientModulesDto {
-  sales: { enabled: boolean; enabledAt: Date | null };
+  /** monthlyPrice es el precio de lista: solo se cobra sobre un plan de pago. */
+  sales: { enabled: boolean; enabledAt: Date | null; monthlyPrice: number };
 }
 
 export class UpdateSubscriptionDto {
@@ -172,6 +173,10 @@ export class ClientDto {
     courtLimit: number;
     pricedByCourts: boolean;
   } | null;
+  /** Lo que suma el módulo Ventas e inventario al mes; 0 si no se cobra. */
+  salesModulePrice: number;
+  /** Total a pagar al mes en COP: plan + módulos. */
+  totalMonthlyPrice: number;
   /** false si el cliente está suspendido (aparte de si su prueba venció: ver trialExpired). */
   subscriptionActive: boolean;
   nextPayment: Date | null;
@@ -271,6 +276,10 @@ export class ClientSubscriptionDto {
     courtLimit: number;
     pricedByCourts: boolean;
   };
+  /** Lo que suma el módulo Ventas e inventario al mes; 0 si no se cobra. */
+  salesModulePrice: number;
+  /** Total a pagar al mes en COP: plan + módulos. */
+  totalMonthlyPrice: number;
   since: Date;
   nextPayment: Date;
   isActive: boolean;
@@ -457,16 +466,39 @@ export class CreatePlanDto {
   benefits: PlanBenefitInputDto[];
 }
 
-export class UpdatePlanDto extends PartialType(CreatePlanDto) {}
+export class UpdatePlanDto extends PartialType(CreatePlanDto) {
+  /** Tabla completa de un plan por canchas, en COP: la posición 0 es 1 cancha. */
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(MAX_PRICED_COURTS)
+  @ArrayMaxSize(MAX_PRICED_COURTS)
+  @IsInt({ each: true })
+  @Min(1, { each: true })
+  @Max(100_000_000, { each: true })
+  courtPrices?: number[];
+}
 
 export class PlanDto extends OmitType(CreatePlanDto, [] as const) {
   id: string;
-  /** El precio depende de las canchas contratadas: no se editan precio ni límite. */
+  /** El precio depende de las canchas contratadas: se edita la tabla, no el precio ni el límite. */
   pricedByCourts: boolean;
   /** Tabla de precios de un plan por canchas; vacía en los demás. */
   courtPrices: { courts: number; monthlyPrice: number }[];
   /** Negocios suscritos a este plan. */
   subscriptions: number;
+}
+
+export class UpdateBillingSettingsDto {
+  /** Precio mensual en COP del módulo Ventas e inventario; 0 = sin precio. @example 50000 */
+  @IsInt()
+  @Min(0)
+  @Max(100_000_000)
+  salesModulePrice: number;
+}
+
+export class BillingSettingsDto extends UpdateBillingSettingsDto {
+  /** Negocios con el módulo activo. */
+  salesModuleClients: number;
 }
 
 // ---------- Enums ----------

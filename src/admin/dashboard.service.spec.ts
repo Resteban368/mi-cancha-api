@@ -44,9 +44,19 @@ describe('DashboardService', () => {
     prisma.court.count.mockResolvedValue(7);
     prisma.reservation.count.mockResolvedValue(12);
     prisma.subscription.findMany.mockResolvedValue([
-      { plan: { monthlyPrice: 89_000 } },
-      { plan: { monthlyPrice: 179_000 } },
+      {
+        plan: { monthlyPrice: 89_000 },
+        business: { salesModuleEnabled: true },
+      },
+      {
+        plan: { monthlyPrice: 179_000 },
+        business: { salesModuleEnabled: false },
+      },
+      { plan: { monthlyPrice: 0 }, business: { salesModuleEnabled: true } },
     ]);
+    prisma.billingSettings.findUnique.mockResolvedValue({
+      salesModulePrice: 50_000,
+    });
     prisma.plan.findMany.mockResolvedValue([
       { name: 'Gratis', _count: { subscriptions: 1 } },
     ]);
@@ -63,7 +73,7 @@ describe('DashboardService', () => {
       businessAdmins: 5,
       players: 9,
     });
-    expect(result.monthlyRecurringRevenue).toBe(268_000);
+    expect(result.monthlyRecurringRevenue).toBe(318_000);
     expect(result.signupsByMonth).toHaveLength(6);
     expect(result.signupsByMonth.at(-1)).toEqual({
       month: '2026-10',

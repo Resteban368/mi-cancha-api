@@ -344,7 +344,13 @@ llegaron por la web y aún no la registran (el negocio siempre la pide)."
     Int monthlyPrice "Precio mensual en COP."
     Int courtLimit
     Boolean pricedByCourts "El precio y el límite salen de las canchas contratadas en la suscripción, no de esta fila."
+    Int[] courtPrices "Precio mensual en COP por canchas contratadas (posición 0 = 1 cancha); vacía en los demás planes."
     Json benefits "Lista de { title, detail }."
+  }
+  BillingSettings {
+    Int id PK
+    Int salesModulePrice "Precio mensual en COP del módulo Ventas e inventario; 0 = aún sin precio publicado."
+    DateTime updatedAt
   }
   Subscription {
     String id PK
@@ -457,6 +463,25 @@ como sin plan activo (solo consulta) hasta que se le asigne uno."
     Decimal redeemedAmount "opcional"
     DateTime createdAt
   }
+  CouponPayment {
+    String id PK
+    String businessId FK
+    String reservationId FK "opcional · Reserva donde se aplicó; en un grupo, la primera cancha."
+    String reservationKey "groupId de la reserva, o su id si es de una sola cancha."
+    String couponId
+    String couponName
+    String cardId
+    CouponRewardType rewardType
+    Int percent "opcional · Solo en PERCENT."
+    Int courts "opcional · Canchas regaladas; null si el premio es un porcentaje."
+    String customerName
+    Decimal amount "Lo que cubrió el bono."
+    Decimal balanceAfter "Lo que quedó por pagar justo después; 0 = pago completo."
+    String createdById "opcional · Quien lo aplicó, como se llamaba en ese momento."
+    String createdByName "opcional"
+    DateTime createdAt
+    DateTime voidedAt "opcional · Cuándo se anuló por cancelar la reserva; el bono vuelve a estar disponible."
+  }
   CouponStamp {
     String id PK
     String couponId FK
@@ -526,6 +551,8 @@ como sin plan activo (solo consulta) hasta que se le asigne uno."
   Business ||--o{ Coupon : "coupons"
   Coupon ||--o{ CouponCard : "cards"
   Customer ||--o{ CouponCard : "couponCards"
+  Business ||--o{ CouponPayment : "couponPayments"
+  Reservation |o--o{ CouponPayment : "couponPayments"
   Coupon ||--o{ CouponStamp : "stamps"
   CouponCard ||--o{ CouponStamp : "stamps"
   Reservation |o--o{ CouponStamp : "couponStamps"
@@ -573,6 +600,7 @@ La sede deportiva de un cliente. Cada administrador de negocio tiene exactamente
 - **CashMovement**: Tiene cero o muchos CashMovement (campo cashMovements). Cada CashMovement apunta a este Business.
 - **StockMovement**: Tiene cero o muchos StockMovement (campo stockMovements). Cada StockMovement apunta a este Business.
 - **Coupon**: Tiene cero o muchos Coupon (campo coupons). Cada Coupon apunta a este Business.
+- **CouponPayment**: Tiene cero o muchos CouponPayment (campo couponPayments). Cada CouponPayment apunta a este Business.
 
 ### Department
 
@@ -651,6 +679,7 @@ Un turno reservado en una cancha. La crea el negocio desde la app (o un jugador,
 - **Refund**: Tiene cero o muchos Refund (campo refunds). Cada Refund apunta a este Reservation.
 - **Sale**: Tiene cero o muchos Sale (campo sales). Cada Sale apunta a este Reservation.
 - **CouponStamp**: Tiene cero o muchos CouponStamp (campo couponStamps). Cada CouponStamp apunta a este Reservation.
+- **CouponPayment**: Tiene cero o muchos CouponPayment (campo couponPayments). Cada CouponPayment apunta a este Reservation.
 
 ### ReservationGroup
 
@@ -787,6 +816,12 @@ Plan de suscripción de Mi Cancha (Gratis, Básico, Pro): precio mensual y cuán
 
 - **Subscription**: Tiene cero o muchos Subscription (campo subscriptions). Cada Subscription apunta a este Plan.
 
+### BillingSettings
+
+Ajustes globales de cobro (una sola fila, id = 1).
+
+
+
 ### Subscription
 
 Plan que tiene contratado un negocio, su estado (activo o suspendido) y la fecha del próximo cobro.
@@ -852,6 +887,15 @@ Tarjeta de un cliente en un cupón. Al redimirse, la siguiente reserva abre otra
 - **Coupon**: Pertenece siempre a un Coupon mediante couponId; un Coupon puede tener varios CouponCard. Si se borra el Coupon, se borran también sus CouponCard.
 - **Customer**: Pertenece siempre a un Customer mediante customerId; un Customer puede tener varios CouponCard. Si se borra el Customer, se borran también sus CouponCard.
 - **CouponStamp**: Tiene cero o muchos CouponStamp (campo stamps). Cada CouponStamp apunta a este CouponCard.
+
+### CouponPayment
+
+Registro de un bono usado para pagar una reserva, total o parcialmente. No es dinero: no entra
+en Payment, ni en caja ni en ingresos. Guarda copia de nombres y sin llave foránea a cupón,
+tarjeta y usuario a propósito: debe sobrevivir si se borran. Al cancelar se anula, no se borra.
+
+- **Business**: Pertenece siempre a un Business mediante businessId; un Business puede tener varios CouponPayment. Si se borra el Business, se borran también sus CouponPayment.
+- **Reservation**: Puede pertenecer a un Reservation mediante reservationId; un Reservation puede tener varios CouponPayment. Si se borra el Reservation, el CouponPayment se conserva sin Reservation.
 
 ### CouponStamp
 

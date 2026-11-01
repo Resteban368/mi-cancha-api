@@ -2,7 +2,7 @@ import { Controller, Get, Param, ParseUUIDPipe } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Public } from '../common/auth/public.decorator.js';
 import { CatalogsService } from './catalogs.service.js';
-import { CatalogsDto } from './dto/catalog.dto.js';
+import { CatalogsDto, CourtPriceDto, ModulePricesDto } from './dto/catalog.dto.js';
 import { CityDto, DepartmentDto } from './dto/location.dto.js';
 
 @ApiTags('catalogs')
@@ -18,6 +18,21 @@ export class CatalogsController {
   })
   findActive(): Promise<CatalogsDto> {
     return this.catalogsService.findActive();
+  }
+
+  // Público: la landing muestra los precios vigentes a quien aún no tiene cuenta.
+  @Public()
+  @Get('court-prices')
+  @ApiOperation({ summary: 'Precio mensual del plan según las canchas' })
+  courtPrices(): Promise<CourtPriceDto[]> {
+    return this.catalogsService.courtPrices();
+  }
+
+  @Public()
+  @Get('module-prices')
+  @ApiOperation({ summary: 'Precio mensual de los módulos opcionales' })
+  modulePrices(): Promise<ModulePricesDto> {
+    return this.catalogsService.modulePrices();
   }
 
   // Públicos: los usa el formulario de registro de la landing, antes de tener cuenta.

@@ -50,6 +50,7 @@ export const AUDIT_RULES: Record<string, AuditRule> = {
   'POST /admin/plans': admin('plan.created', 'Plan'),
   'PATCH /admin/plans/:id': admin('plan.updated', 'Plan'),
   'DELETE /admin/plans/:id': admin('plan.deleted', 'Plan'),
+  'PATCH /admin/billing-settings': admin('billing.settings_updated', 'BillingSettings'),
 
   'POST /auth/business/login': {
     category: AuditCategory.SECURITY,

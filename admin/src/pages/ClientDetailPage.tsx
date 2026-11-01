@@ -497,6 +497,20 @@ function SubscriptionCard({
             {subscription && ` de ${subscription.plan.courtLimit}`}
           </span>
         </Detail>
+        <Detail label="Total a pagar">
+          {subscription ? (
+            <>
+              <span className="tabular">{formatCop(subscription.totalMonthlyPrice)}/mes</span>
+              {subscription.salesModulePrice > 0 && (
+                <span className="tabular block text-xs text-fg-3">
+                  Plan {formatCop(subscription.plan.monthlyPrice)} + Ventas {formatCop(subscription.salesModulePrice)}
+                </span>
+              )}
+            </>
+          ) : (
+            '—'
+          )}
+        </Detail>
         <Detail label="Suscrito desde">
           {subscription ? formatDate(subscription.since) : '—'}
         </Detail>

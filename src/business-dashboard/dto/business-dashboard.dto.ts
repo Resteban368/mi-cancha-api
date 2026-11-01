@@ -100,6 +100,8 @@ export class DashboardSummaryDto {
   discounts: number;
   /** Devoluciones hechas en el período. */
   refunds: { count: number; amount: number };
+  /** Bonos redimidos en el período y su valor; ya incluidos en los descuentos, no son ingreso. */
+  couponPayments: { count: number; amount: number };
 }
 
 export class CourtOccupancyDto {

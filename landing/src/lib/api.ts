@@ -1,4 +1,5 @@
 import { API_URL } from '../config';
+import { MAX_CANCHAS } from '../precios';
 
 export type Lugar = { id: string; code: string; name: string };
 
@@ -34,6 +35,26 @@ async function getJson<T>(path: string): Promise<T> {
 function cached<T>(promise: Promise<T>, onError: () => void): Promise<T> {
   promise.catch(onError);
   return promise;
+}
+
+let precios: Promise<number[]> | null = null;
+
+/** Tabla vigente del admin; una tabla incompleta cuenta como error, para no romper el selector. */
+export function fetchPrecios(): Promise<number[]> {
+  precios ??= cached(
+    getJson<{ courts: number; monthlyPrice: number }[]>('/catalogs/court-prices').then((tabla) => {
+      if (tabla.length !== MAX_CANCHAS) throw new Error('Tabla de precios incompleta');
+      return tabla.map((fila) => fila.monthlyPrice);
+    }),
+    () => {
+      precios = null;
+    },
+  );
+  return precios;
+}
+
+export async function fetchPrecioVentas(): Promise<number> {
+  return (await getJson<{ sales: number }>('/catalogs/module-prices')).sales;
 }
 
 export function fetchDepartamentos(): Promise<Lugar[]> {

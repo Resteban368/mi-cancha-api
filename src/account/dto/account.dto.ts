@@ -15,6 +15,10 @@ export class SubscriptionDto {
   planName: string;
   /** Precio mensual en COP. */
   monthlyPrice: number;
+  /** Lo que suma el módulo Ventas e inventario al mes; 0 si no se cobra. */
+  salesModulePrice: number;
+  /** Total a pagar al mes en COP: plan + módulos. */
+  totalMonthlyPrice: number;
   since: Date;
   nextPayment: Date;
   courtLimit: number;

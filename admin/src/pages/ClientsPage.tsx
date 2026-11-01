@@ -122,6 +122,7 @@ export function ClientsPage() {
                     <Th>Negocio</Th>
                     <Th>Responsable</Th>
                     <Th>Plan</Th>
+                    <Th align="right">Total/mes</Th>
                     <Th align="right">Canchas</Th>
                     <Th>Estado</Th>
                     <Th>Alta</Th>
@@ -166,6 +167,9 @@ export function ClientsPage() {
                             </option>
                           ))}
                         </Select>
+                      </Td>
+                      <Td align="right" className="tabular">
+                        {client.plan ? formatCop(client.totalMonthlyPrice) : '—'}
                       </Td>
                       <Td align="right" className="tabular">
                         {client.activeCourts}

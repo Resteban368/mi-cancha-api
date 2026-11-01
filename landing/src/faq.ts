@@ -1,6 +1,8 @@
 // Preguntas frecuentes. Las usa la sección FAQ y el prerender, que genera con ellas el
 // JSON-LD FAQPage para que Google pueda mostrarlas en los resultados.
-export const PREGUNTAS = [
+import { MAX_CANCHAS, pesosEnTexto } from './precios';
+
+export const preguntas = (precios: number[]) => [
   {
     p: '¿Cómo reservo una cancha sintética en línea?',
     r: 'Entra a la página de reservas de la cancha, elige el deporte, el día y un horario libre, y confirma. Ves la disponibilidad en vivo, sin llamar ni escribir por WhatsApp.',
@@ -19,7 +21,7 @@ export const PREGUNTAS = [
   },
   {
     p: '¿Cuánto cuesta el sistema de reservas para mi cancha?',
-    r: 'Hay un solo plan con todo incluido y el precio depende de cuántas canchas tienes: desde $79.000 al mes por 1 cancha, $117.000 por 3, $155.000 por 5, $235.000 por 10 y $345.000 por 20. Si tienes más de 20, escríbenos.',
+    r: `Hay un solo plan con todo incluido y el precio depende de cuántas canchas tienes: desde ${pesosEnTexto(precios[0])} al mes por 1 cancha, ${pesosEnTexto(precios[2])} por 3, ${pesosEnTexto(precios[4])} por 5, ${pesosEnTexto(precios[9])} por 10 y ${pesosEnTexto(precios[MAX_CANCHAS - 1])} por ${MAX_CANCHAS}. Si tienes más de ${MAX_CANCHAS}, escríbenos.`,
   },
   {
     p: '¿Cómo se manejan los pagos de las reservas?',

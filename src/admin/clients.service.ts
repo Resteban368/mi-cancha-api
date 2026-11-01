@@ -28,6 +28,8 @@ import {
 import { REQUIRED_PHOTOS } from '../courts/courts.service.js';
 import {
   MAX_PRICED_COURTS,
+  monthlyBill,
+  salesModuleListPrice,
   subscriptionTerms,
 } from '../common/plan-pricing.js';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -52,6 +54,7 @@ const planSelect = {
   monthlyPrice: true,
   courtLimit: true,
   pricedByCourts: true,
+  courtPrices: true,
 } satisfies Prisma.PlanSelect;
 
 const clientInclude = {
@@ -143,8 +146,9 @@ export class ClientsService {
       }),
       this.prisma.business.count({ where }),
     ]);
+    const salesPrice = await salesModuleListPrice(this.prisma);
     return {
-      items: items.map(toClientDto),
+      items: items.map((item) => toClientDto(item, salesPrice)),
       total,
       page: query.page,
       pageSize: query.pageSize,
@@ -209,6 +213,7 @@ export class ClientsService {
     ]);
 
     const { owner, subscription } = business;
+    const salesPrice = await salesModuleListPrice(this.prisma);
     const photos = toBusinessPhotos(this.publicApiUrl, business.profileImages);
     return {
       id: business.id,
@@ -231,6 +236,7 @@ export class ClientsService {
         sales: {
           enabled: business.salesModuleEnabled,
           enabledAt: business.salesModuleEnabledAt,
+          monthlyPrice: salesPrice,
         },
       },
       amenities: business.amenities,
@@ -245,7 +251,12 @@ export class ClientsService {
         createdAt: owner.createdAt,
       },
       subscription: subscription && {
-        plan: { ...subscription.plan, ...subscriptionTerms(subscription) },
+        plan: contractedPlan(subscription),
+        ...monthlyBill(
+          subscriptionTerms(subscription).monthlyPrice,
+          business.salesModuleEnabled,
+          salesPrice,
+        ),
         since: subscription.since,
         nextPayment: subscription.nextPayment,
         isActive: subscription.isActive,
@@ -338,7 +349,7 @@ export class ClientsService {
       },
       include: clientInclude,
     });
-    return toClientDto(business);
+    return toClientDto(business, await salesModuleListPrice(this.prisma));
   }
 
   /** Activa o desactiva módulos del negocio y devuelve la ficha. */
@@ -434,7 +445,7 @@ export class ClientsService {
       where: { id: businessId },
       include: clientInclude,
     });
-    return toClientDto(updated);
+    return toClientDto(updated, await salesModuleListPrice(this.prisma));
   }
 
   /** Actualiza datos del negocio, dirección y georreferenciación (lat/lng). */
@@ -569,6 +580,12 @@ function assertCourtsAllowed(
   }
 }
 
+/** El plan como lo ve el cliente: con su precio y límite, sin la tabla completa. */
+function contractedPlan(subscription: NonNullable<ClientRecord['subscription']>) {
+  const { courtPrices: _table, ...plan } = subscription.plan;
+  return { ...plan, ...subscriptionTerms(subscription) };
+}
+
 /** Canchas a contratar por defecto: las que el negocio ya tiene activas, dentro de la tabla. */
 function courtsForActive(activeCourts: number): number {
   return Math.min(Math.max(activeCourts, 1), MAX_PRICED_COURTS);
@@ -593,7 +610,8 @@ function addDays(date: Date, days: number): Date {
   return new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
 }
 
-function toClientDto(b: ClientRecord): ClientDto {
+function toClientDto(b: ClientRecord, salesPrice: number): ClientDto {
+  const plan = b.subscription ? contractedPlan(b.subscription) : null;
   return {
     id: b.id,
     name: b.name,
@@ -607,9 +625,8 @@ function toClientDto(b: ClientRecord): ClientDto {
       email: b.owner.email,
       phone: b.owner.phone,
     },
-    plan: b.subscription
-      ? { ...b.subscription.plan, ...subscriptionTerms(b.subscription) }
-      : null,
+    plan,
+    ...monthlyBill(plan?.monthlyPrice ?? 0, b.salesModuleEnabled, salesPrice),
     subscriptionActive: b.subscription?.isActive ?? false,
     nextPayment: b.subscription?.nextPayment ?? null,
     ...trialStatusOf(b.subscription),

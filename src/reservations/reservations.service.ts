@@ -95,7 +95,20 @@ export type WebSlotsInput = {
 };
 type Prices = { subtotal: number; discount: number; totalPrice: number };
 
+const couponPaymentSelect = {
+  id: true,
+  couponName: true,
+  percent: true,
+  courts: true,
+  amount: true,
+  balanceAfter: true,
+  createdByName: true,
+  createdAt: true,
+  voidedAt: true,
+} satisfies Prisma.CouponPaymentSelect;
+
 export const reservationInclude = {
+  couponPayments: { select: couponPaymentSelect },
   court: { select: { name: true, sport: true, currency: true } },
   customer: true,
   cancelledBy: { select: { displayName: true } },
@@ -114,6 +127,7 @@ export const reservationInclude = {
           consumptionsTotal: true,
           court: { select: { name: true } },
           payments: { select: { status: true, amount: true } },
+          couponPayments: { select: couponPaymentSelect },
         },
         orderBy: { createdAt: 'asc' },
       },
@@ -1322,6 +1336,15 @@ export function toReservationDto(r: ReservationWithRelations): ReservationDto {
     amountPaid,
     balance: round2(totalPrice + consumptionsTotal - amountPaid),
     consumptions: r.sales.map(toSaleDto),
+    // En un grupo, el registro queda en una de sus canchas: se muestra en todas.
+    couponPayments: (r.group
+      ? r.group.reservations.flatMap((m) => m.couponPayments)
+      : r.couponPayments
+    ).map((c) => ({
+      ...c,
+      amount: Number(c.amount),
+      balanceAfter: Number(c.balanceAfter),
+    })),
     payments: r.payments.map((p) => ({
       id: p.id,
       amount: Number(p.amount),

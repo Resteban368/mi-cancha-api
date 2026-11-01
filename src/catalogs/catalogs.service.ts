@@ -10,6 +10,7 @@ import type {
   PaymentMethod,
 } from '../generated/prisma/client.js';
 import type { Sport } from '../generated/prisma/enums.js';
+import { courtPriceTable, salesModuleListPrice } from '../common/plan-pricing.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CityDto, DepartmentDto } from './dto/location.dto.js';
 import {
@@ -18,6 +19,8 @@ import {
   AdminPaymentMethodDto,
   AmenityDto,
   CatalogsDto,
+  CourtPriceDto,
+  ModulePricesDto,
   CourtSurfaceDto,
   CreateAmenityDto,
   CreateCourtSurfaceDto,
@@ -33,6 +36,20 @@ const catalogOrder = [{ sortOrder: 'asc' as const }, { name: 'asc' as const }];
 @Injectable()
 export class CatalogsService {
   constructor(private readonly prisma: PrismaService) {}
+
+  /** Tabla vigente del plan por canchas. */
+  async courtPrices(): Promise<CourtPriceDto[]> {
+    const plan = await this.prisma.plan.findFirst({
+      where: { pricedByCourts: true },
+      select: { courtPrices: true },
+    });
+    return courtPriceTable(plan?.courtPrices ?? []);
+  }
+
+  /** Precio vigente de los módulos; 0 = aún sin precio publicado. */
+  async modulePrices(): Promise<ModulePricesDto> {
+    return { sales: await salesModuleListPrice(this.prisma) };
+  }
 
   /** Departamentos de Colombia (DANE) en orden alfabético. */
   async departments(): Promise<DepartmentDto[]> {

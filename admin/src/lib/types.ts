@@ -47,6 +47,8 @@ export interface Client {
   createdAt: string;
   owner: { id: string; fullName: string; email: string | null; phone: string | null };
   plan: { id: string; name: string; monthlyPrice: number; courtLimit: number; pricedByCourts: boolean } | null;
+  salesModulePrice: number;
+  totalMonthlyPrice: number;
   subscriptionActive: boolean;
   nextPayment: string | null;
   /** Fin de la prueba gratuita; null si el plan es de pago. */
@@ -140,6 +142,8 @@ export interface ClientDetail {
   };
   subscription: {
     plan: { id: string; name: string; monthlyPrice: number; courtLimit: number; pricedByCourts: boolean };
+    salesModulePrice: number;
+    totalMonthlyPrice: number;
     since: string;
     nextPayment: string;
     isActive: boolean;
@@ -149,7 +153,7 @@ export interface ClientDetail {
     trialExpired: boolean;
   } | null;
   /** Módulos adicionales del negocio (los activa el super admin). */
-  modules: { sales: { enabled: boolean; enabledAt: string | null } };
+  modules: { sales: { enabled: boolean; enabledAt: string | null; monthlyPrice: number } };
   courts: {
     id: string;
     name: string;
@@ -204,6 +208,11 @@ export interface AdminUser {
 export interface PlanBenefit {
   title: string;
   detail: string;
+}
+
+export interface BillingSettings {
+  salesModulePrice: number;
+  salesModuleClients: number;
 }
 
 export interface Plan {

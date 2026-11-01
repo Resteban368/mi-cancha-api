@@ -114,3 +114,15 @@ export class CatalogsDto {
   paymentMethods: PaymentMethodDto[];
   courtSurfaces: CourtSurfaceDto[];
 }
+
+export class CourtPriceDto {
+  /** Canchas contratadas. @example 3 */
+  courts: number;
+  /** Precio mensual en COP. @example 117000 */
+  monthlyPrice: number;
+}
+
+export class ModulePricesDto {
+  /** Ventas e inventario, en COP al mes; 0 = aún sin precio publicado. @example 50000 */
+  sales: number;
+}

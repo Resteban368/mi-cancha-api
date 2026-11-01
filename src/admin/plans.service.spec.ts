@@ -31,6 +31,77 @@ describe('PlansService', () => {
     ).rejects.toThrow(ConflictException);
   });
 
+  describe('tabla de precios por canchas', () => {
+    const mainPlan = {
+      id: 'p1',
+      name: 'Mi Cancha',
+      monthlyPrice: 79_000,
+      courtLimit: 20,
+      pricedByCourts: true,
+      courtPrices: [79_000, 98_000],
+      benefits: [],
+    };
+
+    beforeEach(() => {
+      prisma.plan.update.mockResolvedValue({
+        ...mainPlan,
+        _count: { subscriptions: 0 },
+      });
+    });
+
+    it('guarda la tabla y sincroniza el precio «desde»', async () => {
+      prisma.plan.findUnique.mockResolvedValue(mainPlan);
+
+      await service.update('p1', { courtPrices: [85_000, 100_000] });
+
+      expect(prisma.plan.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            courtPrices: [85_000, 100_000],
+            monthlyPrice: 85_000,
+            courtLimit: 20,
+          }),
+        }),
+      );
+    });
+
+    it('rechaza que más canchas cuesten menos', async () => {
+      prisma.plan.findUnique.mockResolvedValue(mainPlan);
+
+      await expect(
+        service.update('p1', { courtPrices: [100_000, 90_000] }),
+      ).rejects.toThrow('El precio de 2 canchas no puede ser menor que el de 1');
+      expect(prisma.plan.update).not.toHaveBeenCalled();
+    });
+
+    it('no acepta tabla en un plan de precio fijo', async () => {
+      prisma.plan.findUnique.mockResolvedValue({
+        ...mainPlan,
+        name: 'Prueba',
+        pricedByCourts: false,
+      });
+
+      await expect(
+        service.update('p1', { courtPrices: [1, 2] }),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('ignora precio y límite sueltos en el plan por canchas', async () => {
+      prisma.plan.findUnique.mockResolvedValue(mainPlan);
+
+      await service.update('p1', { monthlyPrice: 1, courtLimit: 500 });
+
+      expect(prisma.plan.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            monthlyPrice: 79_000,
+            courtLimit: 20,
+          }),
+        }),
+      );
+    });
+  });
+
   it('no elimina un plan con clientes', async () => {
     prisma.plan.findUnique.mockResolvedValue({
       id: 'p1',

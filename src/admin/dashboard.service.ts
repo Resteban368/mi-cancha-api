@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { UserRole } from '../generated/prisma/enums.js';
-import { subscriptionTerms } from '../common/plan-pricing.js';
+import {
+  monthlyBill,
+  salesModuleListPrice,
+  subscriptionTerms,
+} from '../common/plan-pricing.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { DashboardDto, MonthlySignupsDto } from './dto/admin.dto.js';
 
@@ -40,11 +44,13 @@ export class DashboardService {
         where: { isActive: true },
         select: {
           courts: true,
+          business: { select: { salesModuleEnabled: true } },
           plan: {
             select: {
               monthlyPrice: true,
               courtLimit: true,
               pricedByCourts: true,
+              courtPrices: true,
             },
           },
         },
@@ -61,6 +67,7 @@ export class DashboardService {
         FROM "User" WHERE "createdAt" >= ${since} AND role = 'JUGADOR' GROUP BY 1`,
     ]);
 
+    const salesPrice = await salesModuleListPrice(this.prisma);
     const roleCount = (role: UserRole) =>
       usersByRole.find((r) => r.role === role)?._count._all ?? 0;
     const byMonth = (rows: { month: string; count: number }[]) =>
@@ -83,7 +90,13 @@ export class DashboardService {
       activeCourts,
       reservationsLast30Days: recentReservations,
       monthlyRecurringRevenue: activeSubscriptions.reduce(
-        (sum, s) => sum + subscriptionTerms(s).monthlyPrice,
+        (sum, s) =>
+          sum +
+          monthlyBill(
+            subscriptionTerms(s).monthlyPrice,
+            s.business.salesModuleEnabled,
+            salesPrice,
+          ).totalMonthlyPrice,
         0,
       ),
       clientsByPlan: plans.map((p) => ({

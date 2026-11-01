@@ -34,7 +34,9 @@ const card = (over: object = {}) => ({
   id: 'card-1',
   status: CouponCardStatus.EARNED,
   couponId: 'c-1',
+  customer: { name: 'Ana' },
   coupon: {
+    name: 'Fidelidad',
     rewardType: CouponRewardType.FREE_COURT,
     percent: null,
     expiresAt: null,
@@ -76,7 +78,7 @@ describe('CouponsService.redeem', () => {
   });
 
   const redeem = (courts?: number) =>
-    service.redeem('b-1', 'r-1', { cardId: 'card-1', courts }, NOW);
+    service.redeem('b-1', 'r-1', { cardId: 'card-1', courts }, 'u-1', NOW);
 
   it('cancha gratis: descuenta un turno de las canchas que decide el negocio', async () => {
     const result = await redeem(1);
@@ -94,6 +96,28 @@ describe('CouponsService.redeem', () => {
         totalPrice: { decrement: 80_000 },
       },
     });
+  });
+
+  it('deja registro del pago con cupón, sin crear un pago en dinero', async () => {
+    prisma.user.findUnique.mockResolvedValue({ displayName: 'Carlos' });
+
+    await redeem(1);
+
+    expect(prisma.couponPayment.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        businessId: 'b-1',
+        reservationId: 'r-1',
+        reservationKey: 'g-1',
+        couponName: 'Fidelidad',
+        customerName: 'Ana',
+        courts: 1,
+        amount: 80_000,
+        balanceAfter: 260_000,
+        createdById: 'u-1',
+        createdByName: 'Carlos',
+      }),
+    });
+    expect(prisma.payment.create).not.toHaveBeenCalled();
   });
 
   it('sin indicar canchas regala las de toda la reserva, y no los consumos', async () => {

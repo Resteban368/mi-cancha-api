@@ -55,11 +55,19 @@ export class PlayerHistoryService {
     });
     const { skip, take } = pageArgs(query);
     return {
-      items: games.slice(skip, skip + take).map((r) => ({
-        ...toReservationDto(r),
-        businessName: r.business.name,
-        businessSlug: r.business.slug ?? '',
-      })),
+      items: games.slice(skip, skip + take).map((r) => {
+        const dto = toReservationDto(r);
+        return {
+          ...dto,
+          // El jugador ve su bono, no qué empleado lo aplicó.
+          couponPayments: dto.couponPayments.map((c) => ({
+            ...c,
+            createdByName: null,
+          })),
+          businessName: r.business.name,
+          businessSlug: r.business.slug ?? '',
+        };
+      }),
       total: games.length,
       page: query.page,
       pageSize: query.pageSize,

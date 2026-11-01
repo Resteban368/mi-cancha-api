@@ -205,6 +205,10 @@ describe('BusinessDashboardService', () => {
       },
     ]);
     prisma.customer.count.mockResolvedValueOnce(4).mockResolvedValueOnce(2);
+    prisma.couponPayment.aggregate.mockResolvedValue({
+      _count: { _all: 2 },
+      _sum: { amount: 30_000 },
+    });
 
     const result = await service.getDashboard(
       'biz-1',
@@ -225,6 +229,7 @@ describe('BusinessDashboardService', () => {
       noShowRate: 10,
       pendingPayments: { count: 2, amount: 70_000 },
       refunds: { count: 1, amount: 50_000 },
+      couponPayments: { count: 2, amount: 30_000 },
     });
     expect(result.occupancyByCourt).toEqual([
       {
