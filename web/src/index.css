@@ -137,16 +137,68 @@ body {
   box-shadow: 0 0 20px -2px rgba(15, 139, 122, 0.45);
 }
 
+/*
+ * Tarjetas de cupón según el diseño de Stitch "Mis Cupones y Tarjetas de Fidelización 3D".
+ * La tarjeta es oscura en ambos temas, como un pase físico; la página (.coupons-page) sí sigue el tema.
+ */
+@theme {
+  --color-pass-dark: #081318;
+  --color-pass-surface: #0d1e24;
+  --color-pass-raised: #142931;
+  --color-pass-border: #1a3742;
+  --color-pass-lime: #ccff00;
+  --color-pass-neon: #00e599;
+  --color-pass-teal: #0f8b7a;
+  --color-pass-cyan: #22d3ee;
+}
+.pass-type {
+  font-family: 'Plus Jakarta Sans', var(--font-sans);
+}
+.pass-type h1,
+.pass-type h2,
+.pass-type h3,
+.pass-type .font-display {
+  font-family: 'Space Grotesk', var(--font-sans);
+}
+.coupons-page {
+  --cp-panel: var(--surface);
+  --cp-border: var(--hairline);
+  --cp-neon: var(--accent-text);
+  --cp-lime: var(--accent-text);
+  --cp-chip-on: var(--accent);
+  --cp-chip-on-fg: var(--accent-fg);
+  --cp-line: rgba(11, 31, 40, 0.035);
+  --cp-glow: rgba(0, 200, 83, 0.08);
+  min-height: 100vh;
+  background-image: radial-gradient(circle at 50% 0%, var(--cp-glow) 0%, transparent 60%),
+    linear-gradient(to bottom, var(--cp-line) 1px, transparent 1px),
+    linear-gradient(to right, var(--cp-line) 1px, transparent 1px);
+  background-size: 100% 100%, 40px 40px, 40px 40px;
+}
+[data-theme='dark'] .coupons-page {
+  --cp-panel: rgba(13, 30, 36, 0.9);
+  --cp-border: rgba(26, 55, 66, 0.8);
+  --cp-neon: #00e599;
+  --cp-lime: #ccff00;
+  --cp-chip-on: #ccff00;
+  --cp-chip-on-fg: #081318;
+  --cp-line: rgba(15, 139, 122, 0.05);
+  --cp-glow: rgba(204, 255, 0, 0.08);
+  background-color: #081318;
+}
+
 /* Flip 3D de tarjetas de fidelización / cupones */
 .flip-perspective {
   perspective: 1200px;
+  /* El giro 3D no debe ensanchar la página: en móvil la deja más ancha que la pantalla. */
+  overflow-x: clip;
 }
 .flip-inner {
   position: relative;
   width: 100%;
   height: 100%;
-  min-height: 450px;
-  transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  min-height: 510px;
+  transition: transform 0.65s cubic-bezier(0.4, 0.2, 0.2, 1);
   transform-style: preserve-3d;
 }
 .flip-inner.is-flipped {

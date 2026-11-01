@@ -15,13 +15,60 @@ function progressLabel(card: PlayerCoupon): string {
   return card.remaining === 1 ? '¡Falta solo 1 reserva!' : `Faltan ${card.remaining} reservas`;
 }
 
+const TONES = {
+  neon: {
+    pill: 'border-pass-neon/20 bg-pass-neon/10 text-pass-neon hover:bg-pass-neon/20',
+    dot: 'bg-pass-neon',
+    icon: 'border-pass-neon/30 bg-pass-teal/30 text-pass-lime',
+    bar: 'from-pass-teal to-pass-neon',
+    text: 'text-pass-neon',
+    stampBorder: 'border-pass-teal',
+    stampIcon: 'text-pass-lime',
+    goal: 'border-pass-neon bg-pass-neon/10',
+    back: 'border-pass-neon',
+    solid: 'bg-pass-neon shadow-pass-neon/20',
+  },
+  lime: {
+    pill: 'border-pass-lime/20 bg-pass-lime/10 text-pass-lime hover:bg-pass-lime/20',
+    dot: 'bg-pass-lime',
+    icon: 'border-pass-lime/30 bg-pass-lime/20 text-pass-lime',
+    bar: 'from-pass-neon to-pass-lime',
+    text: 'text-pass-lime',
+    stampBorder: 'border-pass-teal',
+    stampIcon: 'text-pass-lime',
+    goal: 'border-pass-lime bg-pass-lime/10',
+    back: 'border-pass-lime',
+    solid: 'bg-pass-lime shadow-pass-lime/20',
+  },
+  cyan: {
+    pill: 'border-pass-cyan/20 bg-pass-cyan/10 text-pass-cyan hover:bg-pass-cyan/20',
+    dot: 'bg-pass-cyan',
+    icon: 'border-pass-cyan/30 bg-pass-cyan/20 text-pass-cyan',
+    bar: 'from-pass-teal to-pass-cyan',
+    text: 'text-pass-cyan',
+    stampBorder: 'border-pass-cyan/50',
+    stampIcon: 'text-pass-cyan',
+    goal: 'border-pass-cyan bg-pass-cyan/10',
+    back: 'border-pass-cyan',
+    solid: 'bg-pass-cyan shadow-pass-cyan/20',
+  },
+};
+
+/** Cada sede conserva su color, como en el diseño: mismo nombre, mismo tono en todas las vistas. */
+function toneOf(businessName: string) {
+  const sum = [...businessName].reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return sum % 2 === 0 ? TONES.neon : TONES.cyan;
+}
+
+const isNear = (card: PlayerCoupon) => card.status === 'EARNED' || card.remaining === 1;
+
 /** Cupón interactivo con Flip 3D: portada con avance y reverso con cartilla de sellos. */
 export function LoyaltyCard({ card }: { card: PlayerCoupon }) {
   const [flipped, setFlipped] = useState(false);
   const toggle = () => setFlipped((prev) => !prev);
 
   return (
-    <div className="flip-perspective h-[450px] w-full">
+    <div className="flip-perspective pass-type h-[510px] w-full">
       <div
         className={`flip-inner cursor-pointer ${flipped ? 'is-flipped' : ''}`}
         onClick={toggle}
@@ -36,7 +83,7 @@ export function LoyaltyCard({ card }: { card: PlayerCoupon }) {
         }}
       >
         <div inert={flipped} className="flip-face">
-          <Front card={card} />
+          <Front card={card} onFlip={toggle} />
         </div>
         <div inert={!flipped} className="flip-face flip-face-back">
           <Back card={card} onFlip={toggle} />
@@ -46,130 +93,121 @@ export function LoyaltyCard({ card }: { card: PlayerCoupon }) {
   );
 }
 
-function Front({ card }: { card: PlayerCoupon }) {
+function Front({ card, onFlip }: { card: PlayerCoupon; onFlip: () => void }) {
   const earned = card.status === 'EARNED';
+  const near = isNear(card);
+  const tone = toneOf(card.businessName);
   const percent = Math.min(100, Math.round((card.completed / Math.max(1, card.required)) * 100));
-  const near = earned || card.remaining === 1;
   const [imageFailed, setImageFailed] = useState(false);
+  const hasImage = Boolean(card.imageUrl) && !imageFailed;
+  const pill = `min-w-0 rounded-2xl border px-3 py-1 text-xs font-semibold uppercase tracking-wider transition ${tone.pill}`;
 
   return (
     <div
-      className={`relative flex h-full flex-col justify-between rounded-2xl border p-4 sm:p-5 transition-all select-none ${
-        earned
-          ? 'border-accent/60 bg-gradient-to-br from-accent/15 via-surface to-surface-2 shadow-lg shadow-accent/10'
-          : near
-            ? 'border-accent/40 bg-surface shadow-md'
-            : 'border-hairline bg-surface shadow-sm'
+      className={`relative flex h-full select-none flex-col justify-between overflow-hidden rounded-[1.25rem] bg-gradient-to-b from-pass-surface to-[#0a181e] p-5 text-slate-100 transition-colors sm:p-6 ${
+        near ? 'border-2 border-pass-neon/40 hover:border-pass-neon' : 'border border-pass-border hover:border-pass-neon/60'
       }`}
     >
-      {/* Glow decorativo sutil */}
       {near && (
-        <div className="pointer-events-none absolute -right-12 -top-12 size-36 rounded-full bg-accent/15 blur-2xl" />
+        <div className="pointer-events-none absolute -right-16 -top-16 size-44 rounded-full bg-pass-neon/10 blur-3xl" />
       )}
 
-      <div className="relative min-h-0 space-y-3">
-        {/* Cabecera: Sede y Badge de Estado */}
-        <div className="flex items-center justify-between gap-2">
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        <div className="mb-4 flex items-start justify-between gap-2">
           {card.businessSlug ? (
-            <Link
-              to={`/${card.businessSlug}`}
-              onClick={(e) => e.stopPropagation()}
-              className="inline-flex max-w-[65%] items-center gap-1 truncate rounded-full border border-accent/25 bg-accent/10 px-2.5 py-1 text-xs font-bold text-accent-text hover:border-accent hover:bg-accent/20 transition-all"
-            >
-              <span className="truncate">{card.businessName}</span>
+            <Link to={`/${card.businessSlug}`} onClick={(e) => e.stopPropagation()} className={pill}>
+              {near && <span className={`mr-1.5 inline-block size-1.5 rounded-full align-middle animate-ping ${tone.dot}`} />}
+              {card.businessName}
             </Link>
           ) : (
-            <span className="inline-flex max-w-[65%] items-center gap-1 truncate rounded-full border border-hairline bg-surface-2 px-2.5 py-1 text-xs font-semibold text-fg-2">
-              <span className="truncate">{card.businessName}</span>
-            </span>
+            <span className={pill}>{card.businessName}</span>
           )}
-
-          {earned ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-accent-fg shadow-glow-accent animate-pulse">
-              <SparklesIcon className="size-3" />
-              ¡Listo!
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1 rounded-full border border-hairline bg-surface-2 px-2 py-0.5 text-[10px] font-bold text-fg-3">
-              {card.completed}/{card.required} sellos
-            </span>
-          )}
+          <span className="shrink-0 rounded border border-pass-border bg-pass-raised px-2 py-0.5 text-[11px] font-medium text-slate-400">
+            {earned ? '¡Listo!' : 'En curso'}
+          </span>
         </div>
 
-        {/* Imagen del Cupón o Banner Ilustrado */}
-        <div className="relative flex h-28 sm:h-32 w-full items-center justify-center overflow-hidden rounded-xl border border-hairline bg-surface-2">
-          {card.imageUrl && !imageFailed ? (
+        <div className="relative mb-4 flex max-h-36 min-h-16 w-full flex-1 items-center justify-center overflow-hidden rounded-xl border border-pass-border/60 bg-gradient-to-tr from-pass-dark via-pass-raised to-[#122e3b]">
+          {hasImage ? (
             <img
-              src={card.imageUrl}
+              src={card.imageUrl ?? undefined}
               alt=""
               loading="lazy"
               onError={() => setImageFailed(true)}
-              className="size-full object-cover transition-transform group-hover:scale-105"
+              className="size-full object-cover"
             />
           ) : (
-            <div className="flex flex-col items-center justify-center gap-1.5 p-3 text-center">
-              <div className="flex size-11 items-center justify-center rounded-2xl border border-accent/30 bg-accent/15 text-accent-text shadow-sm">
-                <TicketIcon className="size-6 font-bold" />
+            <>
+              <div className="absolute inset-0 bg-[radial-gradient(#00e599_1px,transparent_1px)] opacity-15 [background-size:16px_16px]" />
+              <div className="relative z-10 px-4 text-center">
+                <div className={`mb-2 inline-block rounded-2xl border p-2 ${tone.icon}`}>
+                  <SoccerBallIcon className="size-8" />
+                </div>
+                <p className="font-display line-clamp-2 text-xl font-bold uppercase leading-tight tracking-wide text-white">
+                  {card.rewardDescription}
+                </p>
               </div>
-              <span className="text-[11px] font-semibold text-fg-3">Club de Fidelización</span>
-            </div>
+            </>
           )}
         </div>
 
-        {/* Título y Beneficio */}
-        <div>
-          <h2 className="font-display text-base sm:text-lg font-bold tracking-tight text-fg truncate">
-            {card.name}
-          </h2>
-          <p className="mt-0.5 text-xs text-fg-2 line-clamp-2 leading-relaxed">
-            {card.rewardDescription}
-          </p>
-          <p className="mt-1.5 text-[11px] font-medium text-fg-3">
-            {card.expiresAt ? `Vence el ${expiryDate.format(new Date(card.expiresAt))}` : 'Sin fecha de vencimiento'}
-          </p>
+        <h2 className="truncate text-2xl font-bold tracking-tight text-white">{card.name}</h2>
+        <p className="mt-1 line-clamp-2 text-xs text-slate-300 sm:text-sm">
+          {hasImage
+            ? card.rewardDescription
+            : `Canjea este bono con ${card.required} ${card.required === 1 ? 'reserva completada' : 'reservas completadas'} en ${card.businessName}.`}
+        </p>
+        <div className="mt-2 flex items-center gap-2 text-xs">
+          {card.expiresAt ? (
+            <span className="font-medium text-amber-400">Vence: {expiryDate.format(new Date(card.expiresAt))}</span>
+          ) : (
+            <span className="font-medium text-pass-neon">Sin vencimiento</span>
+          )}
+          <span className="text-slate-600">•</span>
+          <span className="text-slate-400">Canjeable en caja</span>
         </div>
       </div>
 
-      {/* Barra de Progreso y Acción Flip */}
-      <div className="relative mt-3 border-t border-hairline pt-3">
-        <div className="mb-1.5 flex items-center justify-between text-xs font-bold">
-          <span className={`flex items-center gap-1.5 ${near ? 'text-accent-text' : 'text-fg-2'}`}>
+      <div className="relative mt-4 border-t border-pass-border/60 pt-3">
+        <div className="mb-2 flex items-center justify-between text-xs font-bold">
+          <span className="flex items-center gap-1.5 text-pass-lime">
             <BoltIcon className="size-3.5 shrink-0" />
             {progressLabel(card)}
           </span>
-          <span className="text-xs font-semibold tabular-nums text-fg-3">
-            {percent}%
+          <span className="font-display text-sm tracking-wide text-slate-300">
+            {card.completed} de {card.required}
           </span>
         </div>
-
-        {/* Barra animada */}
         <div
           role="progressbar"
           aria-label={`Progreso de ${card.name}`}
           aria-valuemin={0}
           aria-valuemax={card.required}
           aria-valuenow={card.completed}
-          className="h-2.5 w-full overflow-hidden rounded-full bg-surface-2 border border-hairline p-0.5"
+          className="h-3 w-full overflow-hidden rounded-full border border-pass-border bg-pass-raised p-0.5"
         >
           <div
-            className="h-full rounded-full bg-accent transition-all duration-500 shadow-glow-accent"
+            className={`h-full rounded-full bg-gradient-to-r transition-all duration-500 ${
+              near && tone === TONES.neon ? 'from-pass-teal via-pass-neon to-pass-lime shadow-[0_0_20px_-3px_rgba(0,229,153,0.4)]' : tone.bar
+            }`}
             style={{ width: `${percent}%` }}
           />
         </div>
-
-        {earned && (
-          <p className="mt-2 text-center text-[11px] font-semibold text-accent-text">
-            🎁 Canjea este premio en caja al llegar a tu partido.
-          </p>
-        )}
-
-        <div className="mt-3 flex items-center justify-between gap-2 pt-1">
-          <span className="inline-flex items-center gap-1 text-xs font-bold text-accent-text hover:underline">
-            <span>Ver sellos</span>
-            <RotateIcon className="size-3.5" />
-          </span>
-          <span className="inline-flex items-center gap-1 rounded-lg bg-surface-2 px-2 py-1 text-[10px] font-medium text-fg-3">
-            Toca para voltear ↺
+        <div className="mt-4 flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onFlip();
+            }}
+            className={`flex items-center gap-1 text-xs font-semibold transition hover:text-white ${tone.text}`}
+          >
+            Ver cartilla de sellos
+            <ChevronIcon className="size-3.5" />
+          </button>
+          <span className="flex items-center gap-1 text-[11px] text-slate-400">
+            Toca para voltear
+            <RotateIcon className="size-3.5 text-pass-lime" />
           </span>
         </div>
       </div>
@@ -179,42 +217,39 @@ function Front({ card }: { card: PlayerCoupon }) {
 
 function Back({ card, onFlip }: { card: PlayerCoupon; onFlip: () => void }) {
   const slots = Array.from({ length: card.required }, (_, i) => i);
-  const few = card.required <= 4;
+  const few = card.required <= 3;
+  const base = toneOf(card.businessName);
+  const tone = base === TONES.neon && isNear(card) ? TONES.lime : base;
+  const flip = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onFlip();
+  };
 
   return (
-    <div className="relative flex h-full flex-col justify-between rounded-2xl border-2 border-accent/40 bg-surface p-4 sm:p-5 shadow-2xl transition-all select-none">
-      <div className="min-h-0 space-y-3">
-        {/* Cabecera del Reverso */}
-        <div className="flex items-center justify-between gap-2 border-b border-hairline pb-2.5">
+    <div
+      className={`flex h-full select-none flex-col justify-between rounded-[1.25rem] border-2 bg-gradient-to-b from-[#0c222b] to-[#071318] p-5 text-slate-100 sm:p-6 ${tone.back}`}
+    >
+      <div className="flex min-h-0 flex-col">
+        <div className="flex items-center justify-between gap-2 border-b border-pass-border pb-3">
           <div className="min-w-0">
-            <span className="block text-[10px] font-extrabold uppercase tracking-wider text-accent-text">
-              Cartilla de sellos
-            </span>
-            <h3 className="font-display font-bold text-base text-fg truncate">{card.name}</h3>
-            <p className="text-xs text-fg-3 truncate">{card.businessName}</p>
+            <span className={`block text-xs font-bold uppercase tracking-wider ${tone.text}`}>Cartilla de sellos</span>
+            <h3 className="truncate text-lg font-bold text-white">{card.name}</h3>
+            <p className="text-xs text-slate-400">{card.businessName}</p>
           </div>
           <button
             type="button"
             aria-label="Voltear al frente"
-            onClick={(e) => {
-              e.stopPropagation();
-              onFlip();
-            }}
-            className="flex size-8 shrink-0 items-center justify-center rounded-xl border border-hairline bg-surface-2 text-fg-2 hover:bg-hover hover:text-fg transition"
+            onClick={flip}
+            className="shrink-0 rounded-lg bg-pass-raised p-1.5 text-slate-300 transition hover:bg-pass-teal hover:text-white"
           >
-            <RotateIcon className="size-4" />
+            <CloseIcon className="size-4" />
           </button>
         </div>
 
-        <p className="text-[11px] text-fg-3 leading-tight">
-          Recibes 1 sello por cada reserva jugada y confirmada en la sede.
-        </p>
+        <p className="mb-2 mt-3 text-[11px] text-slate-400">Recibes 1 sello por cada reserva jugada y confirmada en la sede:</p>
 
-        {/* Grilla de Sellos */}
         <ul
-          className={`grid max-h-52 content-start overflow-y-auto no-scrollbar gap-2 py-1 pr-0.5 ${
-            few ? 'grid-cols-2 sm:grid-cols-3' : 'grid-cols-4 sm:grid-cols-5'
-          }`}
+          className={`no-scrollbar grid min-h-0 content-start overflow-y-auto ${few ? 'grid-cols-3 gap-3' : 'grid-cols-5 gap-2'}`}
           aria-label={`${card.completed} de ${card.required} sellos acumulados`}
         >
           {slots.map((i) => {
@@ -225,15 +260,26 @@ function Back({ card, onFlip }: { card: PlayerCoupon; onFlip: () => void }) {
               return (
                 <li
                   key={i}
-                  className="flex aspect-square flex-col items-center justify-center rounded-xl border border-accent/40 bg-accent/15 p-1 text-center shadow-sm"
+                  className={`flex aspect-square flex-col items-center justify-center rounded-xl border bg-pass-surface p-1 text-center ${tone.stampBorder}`}
                 >
-                  <span className="text-[9px] font-black text-accent-text">#{i + 1}</span>
-                  <div className="my-0.5 flex size-5 items-center justify-center rounded-full bg-accent text-accent-fg shadow-glow-accent">
-                    <SoccerBallIcon className="size-3.5" />
-                  </div>
-                  <span className="text-[8px] font-medium leading-none text-fg-2 truncate max-w-full">
+                  <span className={`text-[10px] font-bold ${tone.text}`}>#{i + 1}</span>
+                  <CheckIcon className={`size-4 ${tone.stampIcon}`} />
+                  <span className="max-w-full truncate text-[8px] text-slate-400">
                     {stampDate.format(new Date(stamp.playedAt))}
                   </span>
+                </li>
+              );
+            }
+
+            if (isGoal) {
+              return (
+                <li
+                  key={i}
+                  className={`flex aspect-square animate-pulse flex-col items-center justify-center rounded-xl border-2 border-dashed p-1 text-center ${tone.goal}`}
+                >
+                  <span className={`text-[10px] font-black ${tone.text}`}>#{i + 1}</span>
+                  <TrophyIcon className={`size-5 ${tone.text}`} />
+                  <span className={`text-[8px] font-bold uppercase ${tone.text}`}>¡Meta!</span>
                 </li>
               );
             }
@@ -241,37 +287,20 @@ function Back({ card, onFlip }: { card: PlayerCoupon; onFlip: () => void }) {
             return (
               <li
                 key={i}
-                className={`flex aspect-square flex-col items-center justify-center rounded-xl p-1 text-center transition-all ${
-                  isGoal
-                    ? 'border-2 border-dashed border-accent bg-accent/10 animate-pulse'
-                    : 'border-2 border-dashed border-hairline bg-surface-2/40'
-                }`}
+                className="flex aspect-square flex-col items-center justify-center rounded-xl border border-dashed border-pass-border p-1 text-center"
               >
-                <span className={`text-[9px] font-bold ${isGoal ? 'text-accent-text' : 'text-fg-3'}`}>
-                  #{i + 1}
-                </span>
-                {isGoal ? (
-                  <>
-                    <TrophyIcon className="size-4 text-accent-text" />
-                    <span className="text-[8px] font-extrabold uppercase text-accent-text">¡Meta!</span>
-                  </>
-                ) : (
-                  <span className="text-[10px] text-fg-3/60">⚽</span>
-                )}
+                <span className="text-[10px] font-bold text-slate-500">#{i + 1}</span>
+                <LockIcon className="size-4 text-slate-600" />
               </li>
             );
           })}
         </ul>
       </div>
 
-      {/* Botón inferior para regresar */}
       <button
         type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onFlip();
-        }}
-        className="w-full shrink-0 rounded-xl bg-surface-2 border border-hairline py-2.5 text-xs font-bold text-fg hover:border-accent hover:bg-surface transition active:scale-95 shadow-sm"
+        onClick={flip}
+        className={`mt-3 w-full shrink-0 rounded-xl py-2.5 text-xs font-bold uppercase tracking-wider text-pass-dark shadow-lg transition hover:opacity-95 ${tone.solid}`}
       >
         ↺ Volver a la portada del cupón
       </button>
@@ -281,21 +310,33 @@ function Back({ card, onFlip }: { card: PlayerCoupon; onFlip: () => void }) {
 
 type IconProps = { className?: string };
 
-const TicketIcon = ({ className }: IconProps) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className={className}>
-    <path d="M3 9a2 2 0 0 0 0 6v3a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1v-3a2 2 0 0 1 0-4V6a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v3Zm11-4v2m0 4v2m0 4v2" />
-  </svg>
-);
-
 const BoltIcon = ({ className }: IconProps) => (
-  <svg viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden className={className}>
-    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden className={className}>
+    <path d="M13 10V3L4 14h7v7l9-11h-7z" />
   </svg>
 );
 
-const SparklesIcon = ({ className }: IconProps) => (
+const ChevronIcon = ({ className }: IconProps) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className={className}>
-    <path d="m12 3-1.9 4.3a2 2 0 0 1-.9.9L4.9 10l4.3 1.9a2 2 0 0 1 .9.9L12 17l1.9-4.3a2 2 0 0 1 .9-.9l4.3-1.9-4.3-1.9a2 2 0 0 1-.9-.9L12 3z" />
+    <path d="M9 5l7 7-7 7" />
+  </svg>
+);
+
+const CloseIcon = ({ className }: IconProps) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className={className}>
+    <path d="M6 18L18 6M6 6l12 12" />
+  </svg>
+);
+
+const CheckIcon = ({ className }: IconProps) => (
+  <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden className={className}>
+    <path fillRule="evenodd" clipRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" />
+  </svg>
+);
+
+const LockIcon = ({ className }: IconProps) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className={className}>
+    <path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
   </svg>
 );
 

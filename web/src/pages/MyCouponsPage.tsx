@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, Navigate } from 'react-router';
 import { LoyaltyCard } from '../components/LoyaltyCard';
-import { BoltIcon, PitchBottomNav, PitchHeader, SparklesIcon, TicketIcon } from '../components/PitchChrome';
+import { PitchBottomNav, PitchHeader, TicketIcon } from '../components/PitchChrome';
 import { Alert, Skeleton } from '../components/ui';
 import { accountPath } from '../lib/next';
 import { useSession } from '../lib/session';
@@ -28,54 +28,44 @@ export function MyCouponsPage() {
   const cards = coupons.data ?? [];
   const businesses = [...new Set(cards.map((card) => card.businessName))];
   const near = cards.filter(isNear);
-  const earned = cards.filter((c) => c.status === 'EARNED' || (c.required > 0 && c.completed >= c.required));
   const visible =
     filter === ALL ? cards : filter === NEAR ? near : cards.filter((card) => card.businessName === filter);
 
   return (
     <>
       <PitchHeader />
-      <main className="mx-auto flex max-w-5xl flex-col gap-4 px-3.5 pb-28 pt-3 sm:gap-5 sm:px-4 sm:pb-14 sm:pt-4">
-        {/* Encabezado Principal */}
-        <section className="space-y-1">
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-accent/25 bg-accent/10 px-2.5 py-0.5 text-[11px] font-bold tracking-wide text-accent-text uppercase shadow-sm">
-            <SparklesIcon className="size-3" />
-            Club de Beneficios · Sellos
+      <div className="coupons-page pass-type">
+      <main className="mx-auto flex max-w-7xl flex-col gap-6 px-4 pb-28 pt-6 sm:px-6 sm:pb-14 sm:pt-10 lg:px-8">
+        {/* Encabezado y resumen */}
+        <section className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-fg sm:text-4xl lg:text-5xl">Mis Cupones y Tarjetas</h1>
+            <p className="mt-2 max-w-xl text-sm text-fg-3 sm:text-base">
+              Lo que llevas y lo que te falta en cada sede. Toca cualquier tarjeta para{' '}
+              <span className="font-medium text-(--cp-lime)">voltearla</span> y descubrir tus sellos acumulados.
+            </p>
           </div>
-          <h1 className="font-display text-xl sm:text-2xl font-extrabold tracking-tight text-fg">
-            Mis cupones y tarjetas
-          </h1>
-          <p className="text-xs text-fg-3 sm:text-sm">
-            Tus recompensas acumuladas en cada sede. Toca cualquier tarjeta para{' '}
-            <span className="font-semibold text-accent-text">voltearla</span> y ver tus sellos.
-          </p>
-        </section>
 
-        {/* Resumen de Estadísticas */}
-        {coupons.data && (
-          <section className="grid grid-cols-3 gap-2.5 sm:gap-3" aria-label="Resumen de cupones">
-            <Stat label="Activos" value={cards.length} icon={<TicketIcon className="size-4 text-fg-3" />} />
-            <Stat
-              label="Sellos"
-              value={cards.reduce((sum, card) => sum + card.completed, 0)}
-              icon={<SparklesIcon className="size-4 text-accent-text" />}
-              accent
-            />
-            <Stat
-              label="Canjeados"
-              value={summary.data?.redeemed ?? '0'}
-              icon={<BoltIcon className="size-4 text-fg-3" />}
-            />
-          </section>
-        )}
+          {coupons.data && (
+            <dl className="grid w-full grid-cols-3 gap-3 sm:gap-4 lg:w-auto" aria-label="Resumen de cupones">
+              <Stat label="Activos" value={cards.length} />
+              <Stat
+                label="Sellos totales"
+                value={cards.reduce((sum, card) => sum + card.completed, 0)}
+                valueClass="text-(--cp-neon)"
+              />
+              <Stat label="Canjeados" value={summary.data?.redeemed ?? '0'} valueClass="text-(--cp-lime)" />
+            </dl>
+          )}
+        </section>
 
         {/* Mensajes de Error y Carga */}
         {coupons.error && <Alert>{coupons.error}</Alert>}
 
         {!coupons.data && !coupons.error && (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <Skeleton className="h-[450px] rounded-2xl" />
-            <Skeleton className="h-[450px] rounded-2xl" />
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 lg:gap-8">
+            <Skeleton className="h-[510px] rounded-[1.25rem]" />
+            <Skeleton className="h-[510px] rounded-[1.25rem]" />
           </div>
         )}
 
@@ -103,35 +93,33 @@ export function MyCouponsPage() {
         {/* Listado y Filtros */}
         {cards.length > 0 && (
           <>
-            {/* Filtros Horizontales (chips) */}
+            {/* Filtros por sede y estado */}
             <div
-              className="flex items-center gap-2 overflow-x-auto no-scrollbar -mx-3.5 px-3.5 py-1 sm:-mx-4 sm:px-4"
+              className="no-scrollbar -mx-4 flex items-center gap-2 overflow-x-auto border-b border-(--cp-border) px-4 pb-4 sm:mx-0 sm:flex-wrap sm:px-0"
               role="group"
               aria-label="Filtrar cupones por sede o estado"
             >
               <FilterChip active={filter === ALL} onClick={() => setFilter(ALL)}>
-                <span>Todas ({cards.length})</span>
+                Todas las sedes ({cards.length})
               </FilterChip>
-
-              {near.length > 0 && (
-                <FilterChip active={filter === NEAR} onClick={() => setFilter(NEAR)} highlight>
-                  <span className="flex size-1.5 rounded-full bg-accent" />
-                  <span>
-                    {earned.length > 0 ? `Por reclamar (${near.length})` : `Cerca de ganar (${near.length})`}
-                  </span>
-                </FilterChip>
-              )}
 
               {businesses.length > 1 &&
                 businesses.map((name) => (
                   <FilterChip key={name} active={filter === name} onClick={() => setFilter(name)}>
-                    <span>{name} ({cards.filter((card) => card.businessName === name).length})</span>
+                    {name} ({cards.filter((card) => card.businessName === name).length})
                   </FilterChip>
                 ))}
+
+              {near.length > 0 && (
+                <FilterChip active={filter === NEAR} onClick={() => setFilter(NEAR)} highlight>
+                  <span className="size-1.5 rounded-full bg-current" />
+                  Cerca de reclamar ({near.length})
+                </FilterChip>
+              )}
             </div>
 
-            {/* Grilla de Cupones */}
-            <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {/* Grilla de cupones */}
+            <ul className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 lg:gap-8">
               {visible.map((card) => (
                 <li key={card.couponId} className="min-w-0">
                   <LoyaltyCard card={card} />
@@ -141,6 +129,7 @@ export function MyCouponsPage() {
           </>
         )}
       </main>
+      </div>
       <PitchBottomNav />
     </>
   );
@@ -149,35 +138,16 @@ export function MyCouponsPage() {
 function Stat({
   label,
   value,
-  icon,
-  accent = false,
+  valueClass = 'text-fg',
 }: {
   label: string;
   value: number | string;
-  icon?: React.ReactNode;
-  accent?: boolean;
+  valueClass?: string;
 }) {
   return (
-    <div
-      className={`rounded-2xl border p-3 sm:p-3.5 text-center transition-all ${
-        accent
-          ? 'border-accent/40 bg-accent/10 shadow-sm'
-          : 'border-hairline bg-surface shadow-sm'
-      }`}
-    >
-      <div className="flex items-center justify-center gap-1.5">
-        {icon}
-        <dd
-          className={`font-display text-lg sm:text-xl font-extrabold tabular-nums tracking-tight ${
-            accent ? 'text-accent-text' : 'text-fg'
-          }`}
-        >
-          {value}
-        </dd>
-      </div>
-      <dt className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-fg-3 mt-0.5">
-        {label}
-      </dt>
+    <div className="flex flex-col-reverse rounded-2xl border border-(--cp-border) bg-(--cp-panel) p-3.5 text-center sm:p-4 lg:min-w-32">
+      <dt className="text-[11px] uppercase tracking-wider text-fg-3 sm:text-xs">{label}</dt>
+      <dd className={`font-display text-xl font-bold sm:text-2xl ${valueClass}`}>{value}</dd>
     </div>
   );
 }
@@ -198,12 +168,10 @@ function FilterChip({
       type="button"
       aria-pressed={active}
       onClick={onClick}
-      className={`flex shrink-0 items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition active:scale-95 shadow-sm ${
+      className={`flex shrink-0 items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-semibold transition sm:text-sm ${
         active
-          ? 'bg-accent text-accent-fg shadow-glow-accent'
-          : highlight
-            ? 'border border-accent/30 bg-accent/10 text-accent-text hover:bg-accent/20'
-            : 'border border-hairline bg-surface text-fg-2 hover:border-fg-3 hover:text-fg'
+          ? 'bg-(--cp-chip-on) text-(--cp-chip-on-fg) shadow-md'
+          : `border border-(--cp-border) bg-(--cp-panel) hover:border-(--cp-neon) ${highlight ? 'text-(--cp-neon)' : 'text-fg-2 hover:text-fg'}`
       }`}
     >
       {children}
