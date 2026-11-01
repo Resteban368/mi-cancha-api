@@ -8,11 +8,9 @@ import { SparklesIcon } from './PitchChrome';
 export function BusinessCoupons({
   slug,
   businessName,
-  plain = false,
 }: {
   slug: string;
   businessName?: string;
-  plain?: boolean;
 }) {
   const { token } = useSession();
   const coupons = useApi<PublicCoupon[]>(`/public/businesses/${slug}/coupons`);
@@ -22,7 +20,7 @@ export function BusinessCoupons({
   if (offered.length === 0) return null;
 
   return (
-    <section className={plain ? 'border-t border-hairline pt-4 space-y-3' : 'space-y-3'} aria-label="Cupones y fidelización">
+    <section className="space-y-3" aria-label="Cupones y fidelización">
       <div className="flex flex-col gap-0.5">
         <div className="inline-flex w-fit items-center gap-1.5 rounded-full border border-accent/25 bg-accent/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-accent-text">
           <SparklesIcon className="size-3" />

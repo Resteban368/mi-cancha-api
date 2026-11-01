@@ -368,7 +368,6 @@ function VenueInfoDialog({ business: b, open, onClose }: { business: PublicBusin
             </ul>
           </div>
         )}
-        {b.bookingAvailable && <BusinessCoupons slug={b.slug} businessName={b.name} plain />}
         <button
           type="button"
           onClick={onClose}
