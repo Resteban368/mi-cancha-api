@@ -333,11 +333,11 @@ export function PitchHeader({
               >
                 <span>Mis cupones</span>
                 {earnedCount > 0 ? (
-                  <span className="flex size-4.5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-black text-slate-950 shadow-glow-primary">
+                  <span className="flex size-4.5 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-black text-accent-fg shadow-glow-accent">
                     {earnedCount}
                   </span>
                 ) : nearCount > 0 ? (
-                  <span className="size-2 rounded-full bg-accent-lime animate-pulse" />
+                  <span className="size-2 rounded-full bg-accent animate-pulse" />
                 ) : null}
               </Link>
               <div className="relative">
@@ -428,11 +428,11 @@ export function PitchBottomNav() {
                   <div className="relative">
                     <TicketIcon className="size-5 transition-transform" />
                     {earnedCount > 0 ? (
-                      <span className="absolute -top-1 -right-2 flex size-4 items-center justify-center rounded-full bg-primary text-[9px] font-black text-slate-950 shadow-glow-primary animate-pulse">
+                      <span className="absolute -top-1 -right-2 flex size-4 items-center justify-center rounded-full bg-accent text-[9px] font-black text-accent-fg shadow-glow-accent animate-pulse">
                         {earnedCount}
                       </span>
                     ) : nearCount > 0 ? (
-                      <span className="absolute -top-0.5 -right-1 size-2 rounded-full bg-accent-lime animate-ping" />
+                      <span className="absolute -top-0.5 -right-1 size-2 rounded-full bg-accent animate-ping" />
                     ) : null}
                     {isActive && (
                       <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 size-1.5 rounded-full bg-accent shadow-[0_0_10px_var(--accent)]" />
