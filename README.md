@@ -32,35 +32,33 @@ SPA en React + Vite + Tailwind servida en `/admin`: se compila en `public/admin`
 
 Desarrollo con recarga en caliente: `npm run start:dev` y, en otra terminal, `npm run admin:dev` → `http://localhost:5173/admin/` (Vite reenvía `/api` a Nest).
 
-## Base de datos en Neon
+## Producción (VPS con Easypanel)
 
-Proyecto Neon **`mi-cancha`** (`empty-mud-04894416`, rama `main`, `aws-us-east-1`). Las credenciales viven en `.env.neon` (ignorado por git):
-`DATABASE_URL` con pooler para la API y `DATABASE_URL_UNPOOLED` directa para migraciones y seed.
+Todo corre en un VPS de Hostinger (`179.66.129.62`) con Easypanel, proyecto **`mi_cancha_app`**:
+
+| Servicio | Qué es | Dominios |
+|---|---|---|
+| `api` | Esta API + landing + `/admin` + `/reservar` (imagen del `Dockerfile`) | `app.micanchaapp.com`, `micanchaapp.com`, `www.micanchaapp.com` |
+| `db` | PostgreSQL 18, solo red interna (`mi_cancha_app_db:5432`) | — |
+| `negocio` | Nginx con la app Flutter web (repo `mi-cacha-app`) | `negocio.micanchaapp.com` |
+
+- **Despliegue:** Easypanel compila la rama `main` con el `Dockerfile`. Las variables de producción se editan en Easypanel → `api` → Environment y se aplican al darle a **Deploy**.
+- **Migraciones:** **no** corren en el build. Aplícalas antes de hacer push de código que las necesite (si borras columnas: primero el push, luego la migración):
 
 ```bash
-# Aplicar migraciones nuevas en Neon
-( set -a; . ./.env.neon; set +a; DATABASE_URL="$DATABASE_URL_UNPOOLED" npx prisma migrate deploy )
-
-# Seed mínimo (planes, catálogos y SUPER_ADMIN; idempotente, no pisa cambios del panel)
-( set -a; . ./.env.neon; set +a; DATABASE_URL="$DATABASE_URL_UNPOOLED" SEED_MODE=minimal npx prisma db seed )
-
-# Correr la API local contra Neon (modo watch, con Swagger)
-npm run start:neon
+scripts/migrate-vps.sh status   # qué falta (no cambia nada)
+scripts/migrate-vps.sh deploy   # backup a Koofr y aplica las pendientes de tu prisma/ local
 ```
+
+- **Backups:** cron diario a las 3:00 a. m. (Colombia), `pg_dump` a Koofr (`mi-cancha-backups`, 30 días) y copia local en el VPS (`/var/backups/mi-cancha`, 7 días). Script y pasos para restaurar: `/usr/local/bin/mi-cancha-backup.sh` en el VPS; log en `/var/log/mi-cancha-backup.log`.
+
+### Neon (histórico)
+
+Hasta el 2026-11-02 la base estuvo en Neon (proyecto `mi-cancha`, `empty-mud-04894416`); quedó como copia congelada de ese día. `.env.neon` sigue sirviendo para el desarrollo contra esa copia (`npm run start:neon`), **no** para producción.
 
 `start:dev` usa la base local de Docker (`.env`) y `start:neon` usa Neon (`.env.neon`). Las dos usan el puerto 3000: corre una a la vez, o cambia el puerto con `PORT=3001 npm run start:neon`.
 
 `SEED_MODE=minimal` exige `SEED_SUPER_ADMIN_PASSWORD` (mín. 12 caracteres). Sin `SEED_MODE`, el seed carga los datos demo: úsalo solo en local.
-
-## Despliegue en Vercel
-
-Proyecto Vercel **`mi-cancha-api`** (equipo `banestecodes-7711's projects`), conectado al repo de GitHub: cada push a `main` despliega a producción.
-
-- Producción: https://mi-cancha-api.vercel.app — API en `/api/v1`, panel en `/admin` (Swagger desactivado en producción).
-- NestJS se detecta solo (`src/main.ts` → una Vercel Function con Fluid compute, región `iad1`, junto a Neon en `us-east-1`).
-- `vercel.json`: compila el panel en `public/admin` (lo sirve el CDN) y reescribe las rutas del panel a su `index.html`.
-- Variables de producción (sensibles): `DATABASE_URL` (Neon con pooler), `JWT_SECRET`, `JWT_EXPIRES_IN`, `APP_UTC_OFFSET`.
-- Las migraciones **no** corren en el build: aplícalas a Neon antes de desplegar cambios de schema (ver «Base de datos en Neon»).
 
 ## Diagrama de la base de datos
 
