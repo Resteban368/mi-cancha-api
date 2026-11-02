@@ -1,0 +1,15 @@
+**/node_modules
+dist
+coverage
+.git
+.github
+.vercel
+.env
+.env.*
+*.tsbuildinfo
+src/generated/prisma
+public/admin
+public/reservar
+admin/dist
+docs
+test
